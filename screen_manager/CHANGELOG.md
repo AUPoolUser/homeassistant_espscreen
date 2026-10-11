@@ -1,3 +1,10 @@
+## Unreleased
+
+- **A new board, experimental: the Elecrow CrowPanel Advanced 10.1-inch ESP32-P4** (V1.1 and V1.2), 1024 x 600 glass
+  with GT911 touch, a dimmable backlight, and its speaker and microphone as the screen's audio, so audio plugins such as
+  a voice assistant fit it. Built from Elecrow's own ESPHome example and a configuration a community member ran on the
+  board (#116). Choose it under New screen.
+
 ## 0.4.87 (firmware 0.55.0)
 
 - **Plugins for everyone.** The Plugins page is now in every Tessera app, not only the dev app: add a tile, a top bar
