@@ -31,8 +31,8 @@ come from `packages/hardware/esp32p4-c6.yaml`, with this board's own pins in the
 
 ## Layout and capabilities
 
-- 1024 x 600 at 117 dpi, the standard look. A screen starts with five columns of five, lying down and standing up, as on
-  the 10.1-inch Guition; the editor's Grid button gives it another.
+- 1024 x 600 at 117 dpi, the standard look. A screen starts with five columns of five lying down, as on the 10.1-inch
+  Guition, and four columns of six standing up; the editor's Grid button gives it another.
 - The panel is 1024 x 600 itself, so it lies down without a turn.
 - The backlight is a PWM pin (GPIO31), with the panel's power on GPIO29 kept on: brightness is a percentage, and
   standby, night mode, Sleep, Wake and the alert's flashes are enabled.

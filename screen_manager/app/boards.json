@@ -95,7 +95,7 @@
       151
      ]
     },
-    "columns": 5,
+    "columns": 4,
     "height": 1024,
     "max": [
      5,
@@ -106,7 +106,7 @@
      1
     ],
     "rotation": 90,
-    "rows": 5,
+    "rows": 6,
     "width": 600
    }
   },
@@ -2702,7 +2702,7 @@
       151
      ]
     },
-    "columns": 5,
+    "columns": 4,
     "height": 1024,
     "max": [
      5,
@@ -2713,7 +2713,7 @@
      1
     ],
     "rotation": 90,
-    "rows": 5,
+    "rows": 6,
     "width": 600
    }
   },
@@ -4145,7 +4145,7 @@
       151
      ]
     },
-    "columns": 5,
+    "columns": 4,
     "height": 1024,
     "max": [
      5,
@@ -4156,7 +4156,7 @@
      1
     ],
     "rotation": 90,
-    "rows": 5,
+    "rows": 6,
     "width": 600
    }
   },

@@ -1,7 +1,7 @@
 # ESP Screens - Elecrow CrowPanel Advanced 10.1-inch ESP32-P4 (DHE04310D), EXPERIMENTAL: a 10.1-inch 1024x600
 # MIPI-DSI panel (EK79007) with GT911 capacitive touch, on an ESP32-P4 with an ESP32-C6 for Wi-Fi.
 #
-# 1024x600 at 117 dpi, the standard look, a grid of 5 x 5 cells whichever way it hangs, as on the 10.1-inch Guition.
+# 1024x600 at 117 dpi, the standard look, a grid of 5 x 5 cells lying down, as on the 10.1-inch Guition, and 4 x 6 standing up.
 # The panel is 1024x600 itself, so it lies down without a turn. Built from Elecrow's own ESPHome example for the
 # CrowPanel Advanced P4 boards (V1.1) and from the configuration a community member ran on a V1.2 board (GitHub #116):
 # the two agree pin for pin. That member tried pages, tiles, dimming and waking on the glass; the rest is in
@@ -37,10 +37,14 @@ substitutions:
   PANEL_W: "1024"
   PANEL_H: "600"
   DISPLAY_DPI: "117.508"
-  # The grid a screen starts with, the same five by five as the 10.1-inch Guition lying down and standing up; the owner
-  # picks another in the editor within what the glass holds (docs/RESPONSIVE.md, "The grid a screen is given").
+  # The grid a screen starts with lying down, the same five by five as the 10.1-inch Guition; the owner picks another in
+  # the editor within what the glass holds (docs/RESPONSIVE.md, "The grid a screen is given").
   GRID_COLS: "5"
   GRID_ROWS: "5"
+  # Standing up, four columns of six: the glass is 600 pixels wide, and five columns of 120 cut a one-row climate card's
+  # temperature (the layout audit).
+  GRID_COLS_PORTRAIT: "4"
+  GRID_ROWS_PORTRAIT: "6"
   # More tiles and pages than the 64 and eight of a board without PSRAM (firmware 0.34.0+): an ESP32-P4 has the PSRAM and
   # the memory inside the chip for them, and the memory budget (tile_memory.h) says how many a layout really takes.
   SCREEN_MAX_TILES: "256"
