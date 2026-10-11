@@ -224,6 +224,11 @@ class Plugins:
         self.config = Path(config_dir)
         self.store = PluginStore(Path(data_dir) / 'plugins.json')
         self.secrets = PluginSecrets(Path(data_dir) / 'plugin_secrets.json')
+        installed = {}
+        for records in self.store.everywhere().values():
+            for record in records:
+                installed.setdefault(record['id'], set()).add(record_origin(record))
+        self.secrets.adopt(installed)
         self.liker = plugin_likes.Likes(Path(data_dir) / 'plugin_likes.json')
         self.fetcher = plugin_fetch.Fetcher(f'Tessera/{core.FIRMWARE_VERSION} (+plugins)', session_factory)
         self.index = {}             # id -> Entry, from index.json

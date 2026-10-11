@@ -852,6 +852,27 @@ class BuildOutcome(unittest.IsolatedAsyncioTestCase):
         secrets.drop_scope('bus', 'hall')
         self.assertEqual(secrets.of('bus', 'hall'), {'key': 'all'})
 
+    def test_a_secret_kept_before_origins_is_handed_out_after_the_update(self):
+        # The files of app 0.4.86: a plugin added with a link, and its key with no origin. A plugin of the same id from
+        # another repository still gets nothing, and a key whose plugin is on no screen stays without an origin.
+        import plugins as plugin_service
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        data = Path(tmp.name) / 'data'
+        data.mkdir()
+        (data / 'plugins.json').write_text(json.dumps({'version': 1, 'screens': {'hall': {'plugins': [
+            {'id': 'bus', 'source': 'link', 'repo': 'https://github.com/Maker/Bus-Plugin.git', 'path': '.', 'ref': 'v1.0.0',
+             'version': '1.0.0', 'state': 'active'}]}}}))
+        (data / 'plugin_secrets.json').write_text(json.dumps({'version': 1, 'values': {
+            'bus/key/all': 'abc', 'bus/token/hall': 'def', 'gone/key/all': 'ghi'}}))
+        service = plugin_service.Plugins(type('Manager', (), {'page_senders': {}})(), data, Path(tmp.name) / 'esphome')
+        origin = plugin_service.origin_of('https://github.com/maker/bus-plugin')
+        self.assertEqual(service.secrets.of('bus', 'hall', origin), {'key': 'abc', 'token': 'def'})
+        self.assertTrue(service.secrets.has('bus', 'key', origin=origin))
+        self.assertEqual(service.secrets.of('bus', 'hall', plugin_service.origin_of('https://github.com/fork/bus')), {})
+        kept = json.loads((data / 'plugin_secrets.json').read_text())
+        self.assertEqual(kept['origins'], {'bus/key/all': origin, 'bus/token/hall': origin})
+
 
 class Builds(unittest.TestCase):
     """Manager.builds: one record per screen for whatever is being built for it, whoever asked, so the editor tracks
