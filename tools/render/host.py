@@ -460,16 +460,6 @@ PROBES = '''    - action: render_finger
         - lambda: |-
             id(close_cards).execute();
             ESP_LOGI("render", "cards closed");
-    - action: render_settings
-      variables:
-        page: int
-      then:
-        - lambda: |-
-            // The settings page at a plugin's page (tools/render/plugin_preview.py): 0 the list of plugins, then each
-            // plugin's own; below 0 closes it. The count goes to the log, so the preview knows how many there are.
-            if (page < 0) settings_screen::close();
-            else if ((size_t) page < settings_screen::plugin_pages.size()) settings_screen::open(settings_screen::PLUGINS_PAGE + page);
-            ESP_LOGI("render", "settings pages=%u", (unsigned) settings_screen::plugin_pages.size());
     - action: render_tile_center
       variables:
         index: int
@@ -479,8 +469,7 @@ PROBES = '''    - action: render_finger
             lv_area_t a{0, 0, -2, -2};
             for (auto &w : runtime_tiles::widgets)
               if (w.tile && w.index == (size_t) index && !lv_obj_has_flag(w.tile, LV_OBJ_FLAG_HIDDEN)) lv_obj_get_coords(w.tile, &a);
-            ESP_LOGI("render", "tile_center index=%d x=%d y=%d box=%d,%d,%d,%d", index, (int) ((a.x1 + a.x2) / 2),
-                     (int) ((a.y1 + a.y2) / 2), (int) a.x1, (int) a.y1, (int) a.x2, (int) a.y2);
+            ESP_LOGI("render", "tile_center index=%d x=%d y=%d", index, (int) ((a.x1 + a.x2) / 2), (int) ((a.y1 + a.y2) / 2));
     - action: render_offline_swipe
       variables:
         forward: bool
@@ -751,99 +740,11 @@ SKIP_CALIBRATION = '''    - action: render_skip_calibration
 '''
 
 
-# The preview of a plugin (tools/render/plugin_preview.py), only in a build with one: any card of the plugin opened by its
-# id, as a tap, a tap action or a settings row would open it, and an audit of what the plugin drew. The audit walks every
-# object of each plugin tile on the glass (or, with `card`, of the card that is open) and counts what a
-# person would see wrong: a part outside its tile (or the glass), a label cut with dots, a character its font lacks.
-PLUGIN_ACTIONS = '''    - action: render_open_card
-      variables:
-        card: string
-        entity: string
-        title: string
-      then:
-        - lambda: |-
-            const bool opened = tessera::open_card("{plugin}", card.c_str(), entity, -1, title);
-            ESP_LOGI("render", "card %s opened=%d", card.c_str(), (int) opened);
-    - action: render_bar_item
-      variables:
-        key: string
-      then:
-        - lambda: |-
-            const auto shown = header_bar::plugin_item ? header_bar::plugin_item(key) : header_bar::Shown{{}};
-            ESP_LOGI("render", "bar item %s shown=%d icon=%X text=[%s]", key.c_str(), (int) shown.shown, (unsigned) shown.icon,
-                     shown.text.c_str());
-    - action: render_plugin_audit
-      variables:
-        card: bool
-      then:
-        - lambda: |-
-            lv_obj_update_layout(lv_screen_active());
-            const int sw = lv_display_get_horizontal_resolution(lv_display_get_default()),
-                      sh = lv_display_get_vertical_resolution(lv_display_get_default());
-            struct Count {{ int objects = 0, outside = 0, cut = 0, glyph = 0, faint = 0; std::string notes; }};
-            // A label's ink against the ground it stands on (the nearest opaque background up its parents), as the WCAG
-            // contrast ratio; below 2.5 a person cannot read it, a colour left behind by a change of look most often.
-            auto luminance = [](lv_color_t c) {{
-              auto channel = [](uint8_t v) {{ const float s = v / 255.0f; return s <= 0.03928f ? s / 12.92f : std::pow((s + 0.055f) / 1.055f, 2.4f); }};
-              return 0.2126f * channel(c.red) + 0.7152f * channel(c.green) + 0.0722f * channel(c.blue);
-            }};
-            auto ground = [](lv_obj_t *o) {{
-              for (lv_obj_t *p = lv_obj_get_parent(o); p; p = lv_obj_get_parent(p))
-                if (lv_obj_get_style_bg_opa(p, LV_PART_MAIN) >= LV_OPA_80) return lv_obj_get_style_bg_color(p, LV_PART_MAIN);
-              return theme::color(theme::PAGE);
-            }};
-            std::function<void(lv_obj_t *, const lv_area_t &, Count &)> walk = [&](lv_obj_t *o, const lv_area_t &room, Count &n) {{
-              if (!o || lv_obj_has_flag(o, LV_OBJ_FLAG_HIDDEN)) return;
-              ++n.objects;
-              lv_area_t a; lv_obj_get_coords(o, &a);
-              const bool label = lv_obj_check_type(o, &lv_label_class);
-              const std::string text = label ? lv_label_get_text(o) : "";
-              auto note = [&](const char *what) {{
-                if (n.notes.size() < 160) n.notes += std::string(what) + (text.empty() ? "" : "[" + text.substr(0, 24) + "]") + ";";
-              }};
-              if (a.x2 >= a.x1 && a.y2 >= a.y1 && (a.x1 < room.x1 - 1 || a.y1 < room.y1 - 1 || a.x2 > room.x2 + 1 || a.y2 > room.y2 + 1)) {{
-                ++n.outside; note("outside");
-              }}
-              if (label && !text.empty()) {{
-                const lv_font_t *face = lv_obj_get_style_text_font(o, LV_PART_MAIN);
-                if (text.size() >= 3 && text.compare(text.size() - 3, 3, "\\u2026") == 0) {{ ++n.cut; note("cut"); }}
-                else if (face && !runtime_tiles::face_covers(face, text)) {{ ++n.glyph; note("glyph"); }}
-                if (lv_obj_get_style_text_opa(o, LV_PART_MAIN) >= LV_OPA_50) {{
-                  const float a = luminance(lv_obj_get_style_text_color(o, LV_PART_MAIN)), b = luminance(ground(o));
-                  if ((std::max(a, b) + 0.05f) / (std::min(a, b) + 0.05f) < 2.5f) {{ ++n.faint; note("faint"); }}
-                }}
-              }}
-              for (uint32_t i = 0; i < lv_obj_get_child_count(o); ++i) walk(lv_obj_get_child(o, i), room, n);
-            }};
-            if (card) {{
-              Count n; const lv_area_t glass{{0, 0, (int32_t) (sw - 1), (int32_t) (sh - 1)}};
-              // The card's root is the newest object on the screen (plugin_host::open_card).
-              lv_obj_t *screen = lv_screen_active();
-              const uint32_t count = lv_obj_get_child_count(screen);
-              if (count) walk(lv_obj_get_child(screen, count - 1), glass, n);
-              ESP_LOGI("render", "audit card objects=%d outside=%d cut=%d glyph=%d faint=%d notes=%s", n.objects, n.outside, n.cut,
-                       n.glyph, n.faint, n.notes.c_str());
-              return;
-            }}
-            for (auto &w : runtime_tiles::widgets) {{
-              if (!w.plugin || !w.tile || lv_obj_has_flag(w.tile, LV_OBJ_FLAG_HIDDEN)) continue;
-              Count n; lv_area_t room; lv_obj_get_coords(w.tile, &room);
-              for (uint32_t i = 0; i < lv_obj_get_child_count(w.tile); ++i) walk(lv_obj_get_child(w.tile, i), room, n);
-              ESP_LOGI("render", "audit tile=%u objects=%d outside=%d cut=%d glyph=%d faint=%d notes=%s", (unsigned) w.index,
-                       n.objects, n.outside, n.cut, n.glyph, n.faint, n.notes.c_str());
-            }}
-            ESP_LOGI("render", "audit end");
-'''
-
-
 class Build:
     """The host build of one variant of one tree, under `work` (the tree's own .esphome/render/ by default)."""
 
-    def __init__(self, item, tree=REPO, work=None, esphome=('esphome',), plugin=None, glass=None):
+    def __init__(self, item, tree=REPO, work=None, esphome=('esphome',), plugin=None):
         self.variant, self.tree = item, Path(tree).resolve()
-        # Substitutions of the board file replaced in its mirror ({'PANEL_W': '800', ...}, and 'look' as the name of a
-        # file under packages/looks/): a glass no board has, for the preview of a plugin.
-        self.glass = dict(glass or {})
         self.work = Path(work or REPO / '.esphome' / 'render' / 'build').resolve()
         self.esphome = list(esphome)  # the command, which may be more than one word ('python -m esphome')
         # A plugin folder (docs/PLUGINS.md) built into the program, the way a screen's plugins file adds one: its
@@ -877,28 +778,10 @@ class Build:
         if not board.is_file():
             raise SystemExit(f'{tree} has no packages/boards/{item.file}')
         walk(tree, board, mirror, chain)
-        if self.glass:
-            mirrored = mirror / 'boards' / item.file
-            text = mirrored.read_text()
-            for key, value in self.glass.items():
-                if key == 'look':
-                    text, found = re.subn(r'(?m)^(  look: !include \.\./looks/)\w+(\.yaml)', rf'\g<1>{value}\2', text)
-                else:
-                    text, found = re.subn(rf'(?m)^  {key}: .*$', f'  {key}: "{value}"', text)
-                    if not found:
-                        text, found = re.subn(r'(?m)^substitutions:\n', f'substitutions:\n  {key}: "{value}"\n', text, count=1)
-                if not found:
-                    raise SystemExit(f'{item.file}: no {key} to give another glass')
-            mirrored.write_text(text)
-            if 'look' in self.glass:
-                walk(tree, tree / 'packages' / 'looks' / f'{self.glass["look"]}.yaml', mirror, chain)
-        board_text = (mirror / 'boards' / item.file).read_text() if self.glass else board.read_text()
-        (mirror_root / 'host-hw.yaml').write_text(host_hw(board_text, chain))
+        (mirror_root / 'host-hw.yaml').write_text(host_hw(board.read_text(), chain))
         (mirror_root / 'chain.txt').write_text('\n'.join([str(f) for f in chain.files] + [''] + chain.notes) + '\n')
         chain_text = ''.join((mirror / f).read_text() for f in chain.files)
         actions = ACTIONS + PROBES + ALARM_PROBE + MEDIA_PROBE + SAVER_PROBE + (SKIP_CALIBRATION if 'screen_calibration::' in chain_text else '')
-        if self.plugin:
-            actions += PLUGIN_ACTIONS.format(plugin=self.plugin.name)
         turned = f'\n  LVGL_ROTATION: "{item.rotation}"' if item.rotation else ''
         rel = f'host/{item.key}'
         plugin_package = plugin_component = ''

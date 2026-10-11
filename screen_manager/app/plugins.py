@@ -155,16 +155,6 @@ def trimmed(data):
     return data
 
 
-def answer_of(entry, ask, result, zone=None):
-    """What a screen gets of Home Assistant's answer to a plugin's command: the fields of the manifest's `answers` when
-    it maps that command, else the answer as it came; both bounded."""
-    spec = next((a for a in entry.manifest.get('answers') or [] if a['command'] == ask), None)
-    if spec:
-        result = {name: plugin_fetch.field_value(result, {**field, 'tz': field.get('tz') or zone})
-                  for name, field in spec['fields'].items()}
-    return bounded(result)
-
-
 class Entry:
     """One plugin the app knows, from the index, a snapshot of an installed release, or a folder."""
 
@@ -1499,7 +1489,13 @@ class Plugins:
                     result = (result or {}).get('response', result) if isinstance(result, dict) else result
                 else:
                     result = await self.manager.ha.request(ask, **data)
-                reply.update(ok=True, result=answer_of(entry, ask, result, getattr(self.manager.ha, 'time_zone', None)))
+                # An answer the manifest maps (`answers`) goes as its fields, the rest as it came; both bounded.
+                spec = next((a for a in entry.manifest.get('answers') or [] if a['command'] == ask), None)
+                if spec:
+                    zone = getattr(self.manager.ha, 'time_zone', None)
+                    result = {name: plugin_fetch.field_value(result, {**field, 'tz': field.get('tz') or zone})
+                              for name, field in spec['fields'].items()}
+                reply.update(ok=True, result=bounded(result))
             except Exception as error:   # Home Assistant said no, or did not answer
                 reply.update(ok=False, error=str(error)[:120] or type(error).__name__)
         action = self.manager.transport(inbox, screen) if hasattr(self.manager, 'transport') else None

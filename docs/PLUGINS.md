@@ -30,7 +30,6 @@ adds is not listed, so a 0.8 plugin builds on 0.9. A test keeps the number equal
 | Add-on | `screen_manager/app/plugins.py` | The index and test folders, the editor's payload, the plugins file, adding and removing, a plugin tile's state message, the fetch loop. |
 | Add-on | `firmware.py` (`PLUGINS_SUFFIX`, `save_plugins`), `page_layout.py`, `core.py` (`plugin_tile`, `PLUGIN_MEMORY`), `page_delivery.py` (`plugins_of`) | The sidecar, the document, the layout check and price, the negotiation. |
 | Editor | `web/src/model/plugins.ts`, `web/src/stores/plugins.ts`, `web/src/components/Plugin*.vue`, `ScreenPluginsTab.vue` | The Plugins page, the screen's Plugins tab, a plugin tile in the library and the inspector. |
-| Tool | `tools/render/plugin_preview.py`, `host.py` (`PLUGIN_ACTIONS`, `Build(glass=)`) | The plugin bench a maker runs through the plugins repository's `tools/preview.py`: a plugin on the real firmware of boards and glasses of any size, every tile at every size, its cards, top bar items and settings pages, light and dark, with an audit of what it draws (docs/TESTING.md, "The plugin bench"). |
 | Test | `tests/fixtures/plugins/host_probe/`, `tools/render/run.py --plugin` | The host probe: a complete plugin that logs every moment of the API; the render harness builds it into a board's firmware for this computer and reads the moments back (docs/TESTING.md, "The plugin host"). |
 
 ## A plugin tile, end to end
@@ -131,9 +130,6 @@ repository's `docs/FETCH.md`.
   page comes back) and with `KEPT_PAGES_HOST=1` (the kept path of a board with PSRAM), docs/TESTING.md, "The plugin
   host": the probe's log lines are the only proof that a card is made, fed, ticked and deleted at the right moments. A
   new moment of the API gets a line in the probe and a wait in `plugin_round`.
-- **The bench is the app's own code.** `plugin_preview.py` shapes a tile's message with `Plugins.tile_message`, an
-  answer with `answer_of`, a layout with `migrate_legacy` and `compile_tiles`, and asks the screen through the Sender
-  the app uses. A change to how the app feeds a plugin tile reaches the bench by itself; never give it a second copy.
 - **One name per thing.** A plugin's part is keyed `plugin:<plugin>.<part>` (`plugin_key()` on the screen,
   `core.plugin_tile()` in the add-on, `TileType::key` and its siblings in the API); the Home Assistant entity a plugin
   tile belongs to is `plugin_entity` (the option, `Extra::plugin_entity`, `TileContext::entity`). The domains a tile, a

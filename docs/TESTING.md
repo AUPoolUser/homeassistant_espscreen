@@ -120,25 +120,6 @@ and with `KEPT_PAGES_HOST=1`, the path a board with PSRAM takes (docs/KEPT_PAGES
 and the probe counts no new object. A host program never has PSRAM, so a Guition built plain proves the CYD's path at
 the Guition's sizes, not the kept one.
 
-### The plugin bench
-
-```sh
-ESPHOME=... python3 tools/render/plugin_preview.py ../tessera-plugins/plugins/waste_collection
-ESPHOME=... python3 tools/render/plugin_preview.py <plugin folder> --board cyd --screen 1024x600@7 --grid max
-```
-
-is what a plugin maker runs through the plugins repository's `tools/preview.py` (its `docs/PREVIEW.md`): it builds
-each screen with the plugin (`host.Build` with `plugin=`, and `glass=` for a glass no board has, on the Guition's chain
-with its sizes, density, look and grids replaced), gives the tiles the data of the plugin's `preview.yaml` through the
-app's own `Plugins.tile_message`, stands in for Home Assistant (states the screen subscribes to, the plugin's questions)
-and photographs every tile at every size on every grid asked for, light and dark, every card of the manifest
-(`render_open_card`), what a tap opens, the top bar with words and as icons, and the plugin's settings pages. Its audit
-(`render_plugin_audit`) counts a part outside its tile or card, a label cut with dots, a character the font lacks and a
-word below a contrast of 2.5 on its ground. The screen draws in no window unless `--window`. A change to what the bench
-drives (`host.py`'s actions, the receiver, `plugin_host.cpp`) runs it on the host probe and on
-`waste_collection` (a card, a top bar item, settings, a question). `tests/test_plugin_preview.py` covers the parts
-before the compiler.
-
 ## 4. One screen on the glass
 
 `diagnostics/send_layout.py` pushes the same demo layout to a screen over its API; `diagnostics/run_ui_test.py` runs
