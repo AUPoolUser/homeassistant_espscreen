@@ -5,9 +5,8 @@ from a web service, hardware on one board, a feature not everyone needs. How to 
 [github.com/MaxGramser/tessera-plugins](https://github.com/MaxGramser/tessera-plugins) (its `docs/` and `AGENTS.md`).
 This page is the core's side: what the firmware, the add-on and the editor do, and the rules a change here keeps.
 
-Plugins are on dev while the plugin API is 0.x (the plugin API is 0.8 now): in an app added from the `#dev` URL, a
-local copy of the app, and the editor's development server (`core.plugins_enabled()`). The stable app has no Plugins
-page, no routes and no loop.
+Plugins are on in every app since 0.4.87 (the plugin API is 0.8 now); before, only in the dev app.
+`core.plugins_enabled()` is the one switch: false takes the Plugins page, its routes and its loops out of the app.
 
 **The API's number.** A plugin builds on every core with the same major and at least its minor. From 1.0 on that is a
 promise: a minor only adds, only a break raises the major. Major 0 is the time before the promise: a minor may still

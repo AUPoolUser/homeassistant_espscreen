@@ -1,5 +1,9 @@
 ## 0.4.87 (firmware 0.55.0)
 
+- **Plugins for everyone.** The Plugins page is now in every Tessera app, not only the dev app: add a tile, a top bar
+  item or a function made by Tessera or the community to a screen, pick several and build once, and make your own.
+  Plugins are pinned to the exact version you added, a build that fails changes nothing on the screen, and a screen
+  without plugins builds and runs as before.
 - **Two new boards, experimental.** The Guition JC8048W550C_I, a 5-inch ESP32-S3 with 800 x 480 RGB glass and GT911
   touch, by [@BSkando](https://github.com/BSkando) (#230), and the Guition JC4880P443, a 4.3-inch ESP32-P4 with
   MIPI-DSI glass and GT911 touch, by [@pmarki](https://github.com/pmarki) (#200). Both were tried on the glass by

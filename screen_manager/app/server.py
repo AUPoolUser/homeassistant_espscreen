@@ -3782,7 +3782,7 @@ def create_app(manager, development=False):
     # rules allow stays under about 75 KB (app 0.2.78). The YAML override keeps its own 12 KB limit (firmware.py).
     # Named editor features. An experiment can sit behind SCREEN_EDITOR_ENV=development here and never changes
     # authentication or firmware capabilities; taller tiles left that stage in 0.3.1.
-    # Plugins (docs/PLUGINS.md) are on dev only while their API is 0.x (core.plugins_enabled).
+    # Plugins (docs/PLUGINS.md), on in every app since 0.4.87 (core.plugins_enabled).
     editor_features = {'tall_tiles': True, 'plugins': core.plugins_enabled()}
     app = web.Application(middlewares=[guard], client_max_size=128*1024)
     static = Path(__file__).parent / 'static'
@@ -4556,7 +4556,7 @@ def create_app(manager, development=False):
     app.router.add_delete('/api/firmware/profiles/{file}', firmware_forget)
     app.router.add_post('/api/firmware/profiles', firmware_create)
     app.router.add_put('/api/firmware/wifi', firmware_wifi)
-    # Plugins (docs/PLUGINS.md): only where they are on, so the stable app has none of these routes.
+    # Plugins (docs/PLUGINS.md): only where they are on (core.plugins_enabled), so an app without them has none of these routes.
     if editor_features['plugins']:
         async def plugins_list(request):
             await manager.plugins.refresh_index(force=request.query.get('refresh') == '1')
@@ -4708,7 +4708,6 @@ async def main():
         # The branch the screens build from (docs/RELEASING.md, "Testing dev"): dev for an app added from the `#dev` URL.
         slug, version = await addon_self(session)
         core.set_channel(core.channel_of(slug))
-        core.set_local(slug)
         core.set_version(version)
         LOG.info('App %s %s, channel %s, screens build from %s', slug or 'without a Supervisor', version or '',
                  core.channel() or 'none', core.ref() if core.channel() else 'the ref they have')

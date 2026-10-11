@@ -166,6 +166,18 @@ class Manifest(unittest.TestCase):
         self.assertIn(f'PLACEHOLDER_BYTES = {core.PLUGIN_PLACEHOLDER_BYTES};', host)
 
 
+class Everywhere(unittest.TestCase):
+    """Plugins are on in every app since 0.4.87: the stable app (added from the repository URL), the dev app and a copy
+    without a Supervisor all have the Plugins page, its routes and its loops."""
+
+    def test_every_channel_has_plugins(self):
+        before = core.channel()
+        self.addCleanup(core.set_channel, before)
+        for channel in ('main', 'dev', None):
+            core.set_channel(channel)
+            self.assertTrue(core.plugins_enabled(), channel)
+
+
 class Boards(unittest.TestCase):
     """A plugin for one board's hardware (P4 panel audio) is offered to that board's screens only, and to a screen
     whose core is too old for its API to none."""

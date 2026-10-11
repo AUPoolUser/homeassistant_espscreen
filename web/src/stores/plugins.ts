@@ -80,8 +80,8 @@ export const usePluginsStore = defineStore("plugins", () => {
   const asking = new Set<string>(), drawing = new Set<string>(), planning = new Set<string>();
   const sending = reactive<Record<string, string[]>>({});
 
-  // Plugins are on in the dev app and in `npm run dev` (the inventory store's pluginsEnabled, an editor feature the add-on
-  // turns on): a person with a released add-on never sees the page or the tab.
+  // Plugins are on where the add-on says so (the inventory store's pluginsEnabled, an editor feature the add-on turns on
+  // with core.plugins_enabled, in every app since 0.4.87) and in `npm run dev`.
   const pluginsEnabled = computed(() => inv.pluginsEnabled);
 
   // ---- The tile types and bar items of the plugins the editor knows, from its index ----

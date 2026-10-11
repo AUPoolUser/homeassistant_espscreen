@@ -123,17 +123,10 @@ def channel():
     """'main', 'dev', or None when this app was not added from this repository."""
     return CHANNEL
 
-# A copy of the app installed from a local folder (its slug starts with local_): someone working on Tessera itself.
-LOCAL_APP = False
-
-def set_local(slug):
-    global LOCAL_APP
-    LOCAL_APP = isinstance(slug, str) and slug.startswith('local_')
-
 def plugins_enabled():
-    """Plugins (docs/PLUGINS.md) are on dev while their API is 0.x: for an app added from the `#dev` URL, a local copy of
-    the app, and the editor's development server. The stable app shows nothing of them."""
-    return os.environ.get('SCREEN_EDITOR_ENV') == 'development' or CHANNEL == 'dev' or LOCAL_APP
+    """Plugins (docs/PLUGINS.md) are on in every app since 0.4.87 (before, in the dev app only). The one switch: false
+    takes the Plugins page, its routes and its loops out of the app again."""
+    return True
 
 # The release a screen of the stable app builds from (app 0.4.85): the tag tools/release.py publish makes of this app's
 # own version, so every build of a screen, also one Home Assistant's firmware update or ESPHome Device Builder starts,
