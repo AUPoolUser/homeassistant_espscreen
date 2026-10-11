@@ -77,6 +77,12 @@ export function placeTile(tile: Tile, target: number) {
  * on this glass (app 0.4.77), since a 2 x 2 card is too low for it on some. */
 export function startTile(id: string): Tile {
   const tile = newTile(id, useScreenStore().coversByDefault);
+  // A calendar card shows more as it gets more room (firmware 0.56.0): it starts 2 x 2 where the screen takes that size,
+  // else double width, else in one cell.
+  if (id.startsWith("calendar.")) {
+    const sizes = tileSizeChoices(tile), size = ["square", "wide"].find((choice) => sizes.includes(choice as Size));
+    return size ? { ...tile, options: { ...tile.options, size } } : tile;
+  }
   if (id !== "screen.energy") return tile;
   const { grid } = useDocumentStore().editorLayout;
   const area = (size: Size) => { const d = dimensions(size, grid); return d.columns * d.rows; };
@@ -275,6 +281,17 @@ export function setTileOption(tile: Tile, key: string, value: unknown, field?: s
   tile.options = canonicalOptions(tile.entity, tile.options, tile.in !== undefined);
   normalize(layout);
   commitArrangement(layout.tiles.map((item) => ({ tile: item, slot: item.slot })), field);
+}
+/** Several choices of a tile at once, as one step of undo: a preset that sets more than one (the calendar card's Free or
+ * busy also turns Starts soon on). Only for choices that leave the tile's size, face and controls alone. */
+export function setTileOptions(tile: Tile, changes: Record<string, unknown>) {
+  const doc = useDocumentStore();
+  if (!doc.layout) return;
+  const layout = pages.clone(doc.layout);
+  tile = currentView(tile, layout) || tile;
+  tile.options = canonicalOptions(tile.entity, { ...tile.options, ...changes }, tile.in !== undefined);
+  doc.editorLayout.normalize(layout);
+  commitArrangement(layout.tiles.map((item) => ({ tile: item, slot: item.slot })));
 }
 // A navigation tile goes to another page: its entity changes (screen.page_<n>). One tile per page it goes to, unless the
 // firmware takes several (0.2.65). The page after the last one becomes a new, empty page to fill (app 0.2.78).

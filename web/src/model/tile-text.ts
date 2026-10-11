@@ -143,6 +143,9 @@ export function stateText(entity: string, live: Live | null | undefined, options
   if (domain === "media_player" && a.media_title) return `${word} · ${a.media_title}`;
   // A remote that runs an activity names it (firmware 0.22.0+), as the screen does.
   if (domain === "remote" && live.state === "on" && a.current_activity) return String(a.current_activity);
+  // A calendar names the event of the moment (Home Assistant's `message`) and says Free while none runs, as its card does
+  // (screen.calendar.free; the page carries the same word as editor.mockup.calendar_free).
+  if (domain === "calendar") return live.state === "on" && a.message ? String(a.message) : live.state === "off" ? screenText(words, "editor.mockup.calendar_free") : word;
   if (domain === "sensor" || NUMERIC.includes(domain)) return valueText(domain, live.state, a.unit_of_measurement, words);
   return word;
 }

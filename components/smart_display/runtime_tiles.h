@@ -57,6 +57,7 @@
 #include "media_card.h"
 #include "saver_view.h"
 #include "energy_view.h"
+#include "calendar_view.h"
 #include "plugin_api.h"
 #include "plugin_host.h"
 #include "screen_hooks.h"
@@ -579,6 +580,8 @@ struct Widgets {
   bool media_live=false;  // the media card shows "Live" for a stream (media_live), drawn again when that changes
   // The energy card's scene and running dots (firmware 0.47.0+, energy_view.cpp); it goes with the card's extra layer.
   energy_view::View *energy{};
+  // A calendar card's plan (firmware 0.56.0+, calendar_view.cpp); it goes with the card's extra layer.
+  calendar_view::View *calendar{};
   // A plugin tile's card (docs/PLUGINS.md, plugin_host.cpp): the plugin's object; it goes with the card's extra layer.
   plugin_host::Card *plugin{};
 };
@@ -5272,6 +5275,8 @@ inline void show_detail(unsigned index){
   lv_obj_set_style_bg_color(detail_root,theme::color(theme::PAGE),0);lv_obj_set_style_bg_opa(detail_root,LV_OPA_COVER,0);
   lv_obj_set_style_bg_grad_dir(detail_root,LV_GRAD_DIR_NONE,0);
   media_knob=media_pill_obj=media_library_key=media_input_key=nullptr;
+  // The calendar card's full screen (firmware 0.56.0+) is its own: the whole glass, its own header with the view key.
+  if(t.domain()=="calendar"){calendar_view::open(detail_root,t,index);return;}
   // The card's room: capped to what a hand spans and centred, unless it shows a picture (the media card's
   // cover art, a camera), which may fill the glass. Every size below follows from `width`.
   auto d=t.domain();
@@ -5429,6 +5434,8 @@ inline const char *icon_for(const Tile &tile) {
   if (d == "remote" && tile.state == "off") return "\U000F0EC4";
   if (d == "remote") return "\U000F0454";
   if (d == "weather") return tile.available() ? weather_icon(tile.state) : "\U000F0595";
+  // Home Assistant's calendar icons: calendar-check while an event runs, calendar-blank while none does.
+  if (d == "calendar") return tile.state == "on" ? "\U000F00EF" : "\U000F00EE";
   if (d == "sensor" || d == "binary_sensor") return "\U000F029A";
   if (d == "sun") return tile.state == "above_horizon" ? "\U000F059B" : "\U000F059C";
   if (d == "timer") return "\U000F051B";
@@ -6091,6 +6098,7 @@ inline void end_extra(Widgets &w) {
   if(!w.extra_mode.empty()){
     if(captured_slider&&std::find(w.parts.begin(),w.parts.end(),captured_slider)!=w.parts.end()){captured_slider=nullptr;slider_changed=false;}
     if(w.energy)energy_view::release(w);
+    if(w.calendar)calendar_view::release(w);
     if(w.plugin)plugin_host::release(w);
     lv_obj_clean(w.extra);w.parts.fill(nullptr);w.extra_mode.clear();delete[] w.points;w.points=nullptr;}
 }
@@ -8306,9 +8314,11 @@ inline void render_slot(size_t slot) {
   bool graph=d=="sensor" && t.display=="graph" && t.has_history && !clock;
   // The energy card (firmware 0.47.0+) draws its own diagram, on any size it takes.
   bool energy=t.is_energy();
+  // The calendar card (firmware 0.56.0+) draws its own head and what its room allows, on any size (calendar_card.h).
+  bool calendar=d=="calendar" && !w.key;
   // A plugin's tile (docs/PLUGINS.md) draws itself too, when this screen has its plugin; else it is a plain card.
   bool plugin=t.is_plugin() && plugin_host::known(t);
-  bool custom=clock||forecast||sunpath||bedside||energy||plugin;
+  bool custom=clock||forecast||sunpath||bedside||energy||plugin||calendar;
   if(!large_tile)pad_vertical(w.tile,watch||custom||graph?2:4);
   // A big value that stepped up to the setpoint's digits (the watch block below) keeps them until that block
   // decides again, so a card is not restyled twice a render.
@@ -8347,6 +8357,12 @@ inline void render_slot(size_t slot) {
     lv_obj_add_flag(w.slider,LV_OBJ_FLAG_HIDDEN);hide_panel(w);lv_obj_add_flag(w.progress,LV_OBJ_FLAG_HIDDEN);
     lap(swipe_profile::GEOMETRY);
     energy_view::render(w,t,content_w,content_h);
+    lap(swipe_profile::CUSTOM);
+  }else if(calendar){
+    lv_obj_add_flag(w.slider,LV_OBJ_FLAG_HIDDEN);hide_panel(w);lv_obj_add_flag(w.progress,LV_OBJ_FLAG_HIDDEN);
+    if(w.picture)lv_obj_add_flag(w.picture,LV_OBJ_FLAG_HIDDEN);
+    lap(swipe_profile::GEOMETRY);
+    calendar_view::render(w,t,content_w,content_h);
     lap(swipe_profile::CUSTOM);
   }else if(plugin){
     lv_obj_add_flag(w.slider,LV_OBJ_FLAG_HIDDEN);hide_panel(w);lv_obj_add_flag(w.progress,LV_OBJ_FLAG_HIDDEN);
@@ -8622,7 +8638,7 @@ inline void render_slot(size_t slot) {
   // in the media colours, not the card's.
   if(w.extra_mode=="bedside"){}  // render_bedside paints its own parts
   else if(w.extra_mode=="calm"||w.extra_mode=="flip")paint_face(w,title_color,value_color,icon_color);
-  else for(unsigned i=0;i<w.parts.size() && w.extra_mode!="media" && w.extra_mode!="tall" && w.extra_mode!="cover_tilt" && w.extra_mode!="forecast" && w.extra_mode!="forecast_rows" && w.extra_mode!="week" && w.extra_mode!="favorite" && w.extra_mode!="energy";++i){
+  else for(unsigned i=0;i<w.parts.size() && w.extra_mode!="media" && w.extra_mode!="tall" && w.extra_mode!="cover_tilt" && w.extra_mode!="forecast" && w.extra_mode!="forecast_rows" && w.extra_mode!="week" && w.extra_mode!="favorite" && w.extra_mode!="energy" && w.extra_mode!="calendar_card";++i){
     auto *p=w.parts[i];if(!p)continue;
     bool muted=w.extra_mode=="sunpath" ? i>=1 : w.extra_mode=="calendar" ? i==15||i==17 : w.extra_mode=="digital" ? i==16||i==17 : i==16;
     if(lv_obj_check_type(p,&lv_label_class))set_color(p,LV_STYLE_TEXT_COLOR,muted?value_color:title_color);
@@ -9765,6 +9781,7 @@ inline size_t kept_capacity() {
 inline void drop_card(Widgets &w) {
   end_extra(w);
   if (w.energy) energy_view::release(w);
+  if (w.calendar) calendar_view::release(w);
   if (w.plugin) plugin_host::release(w);
   if (captured_slider && (captured_slider == w.slider || captured_slider == w.control_slider)) { captured_slider = nullptr; slider_changed = false; }
   if (w.tile) lv_obj_delete(w.tile);
@@ -10205,10 +10222,11 @@ inline void tick() {
     auto now=now_time?now_time():esphome::ESPTime{};
     int minute=now.is_valid()?now.day_of_year*1440+now.hour*60+now.minute:-1;
     bool new_minute=minute!=last_clock_minute;last_clock_minute=minute;
+    if(new_minute)calendar_view::minute();
     for(size_t slot=0;slot<grid.slots();++slot){
       auto &w=widgets[slot];if(!w.tile || w.index>=model.count || lv_obj_has_flag(w.tile,LV_OBJ_FLAG_HIDDEN))continue;
       const auto &t=model.tiles[w.index];
-      if(((t.is_clock() || t.is_bedside()) && new_minute) || (t.domain()=="timer" && t.state=="active") || (t.domain()=="sun" && second%60==0))card(w.index);
+      if(((t.is_clock() || t.is_bedside() || t.domain()=="calendar") && new_minute) || (t.domain()=="timer" && t.state=="active") || (t.domain()=="sun" && second%60==0))card(w.index);
       // An alarm's delay counts down on its tile; its heartbeat stops while the screen sleeps and starts when it wakes.
       if(t.domain()=="alarm_control_panel"){if(alarm_left(t))card(w.index);alarm_tile_look(slot,&t);}
       if(t.domain()=="lock")alarm_tile_look(slot,&t);

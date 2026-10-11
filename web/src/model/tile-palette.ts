@@ -70,6 +70,8 @@ export function accent(entity: string, value: Value) {
   if (["select", "input_select"].includes(domain)) return c.INDIGO;
   if (["number", "input_number"].includes(domain)) return c.TEAL;
   if (domain === "weather") return weather[state] || c.AMBER;
+  // A calendar is Home Assistant's active amber while an event runs (tile_controls::accent, firmware 0.56.0).
+  if (domain === "calendar") return c.AMBER;
   if (domain === "sun") return state === "above_horizon" ? c.AMBER : c.INDIGO;
   if (domain === "person") return state === "home" ? c.GREEN : c.BLUE;
   if (domain === "alarm_control_panel") return state === "triggered" ? c.RED : ["arming", "pending", "disarming"].includes(state) ? c.ORANGE : c.GREEN;

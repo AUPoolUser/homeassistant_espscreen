@@ -13,6 +13,7 @@ import ActionPicker from "./ActionPicker.vue";
 import IconPicker from "./IconPicker.vue";
 import { coverPrimary, hasCoverTilt, withCoverTilt } from "../model/tall-controls";
 import ChoiceField from "./ChoiceField.vue";
+import CalendarSection from "./inspector/CalendarSection.vue";
 import FavoriteSection from "./inspector/FavoriteSection.vue";
 import MapSection from "./inspector/MapSection.vue";
 import NameField from "./inspector/NameField.vue";
@@ -98,6 +99,9 @@ const mapCard = computed(() => display.value === "map");
 const mapTile = computed(() => props.tile.entity === "screen.map");
 // The energy card (app 0.4.77) is its diagram: no face and no second line to choose, its sensors are Home Assistant's.
 const energyTile = computed(() => props.tile.entity === "screen.energy");
+// A calendar card (firmware 0.56.0) draws its own head and what its room allows: no face or second line to choose, its
+// choices in a section of their own. As a bedside clock's key it is a key like any other.
+const calendarCard = computed(() => domain.value === "calendar" && !key.value);
 // A favourite (app 0.4.42): what it plays and on which speaker, in its own section.
 const favoriteCard = computed(() => display.value === "favorite" && domain.value === "media_player");
 // How the energy card shows power along a line: running dots, or calm lines that grow with it and an arrow each.
@@ -223,7 +227,7 @@ const backgroundName = computed(() => inv.inventory.backgrounds?.[props.tile.opt
 
     <!-- What the card shows first, then where it stands, what a finger does to it, and last its icon and colour. -->
     <template v-if="!ui.phone || more">
-    <Section v-if="lookShown || (!bedside && !key)" :title="t('editor.tile.sections.look')">
+    <Section v-if="(lookShown || (!bedside && !key)) && !calendarCard" :title="t('editor.tile.sections.look')">
       <p v-if="energyTile" class="hint">{{ t(scr.supports(0, 47, 0) ? "editor.tile.energy.hint" : "editor.tile.energy.needs_firmware") }}</p>
       <PropRow v-if="energyTile" :label="t('editor.tile.energy.flow.label')" icon="flash" :hint="t('editor.tile.energy.flow.hint')">
         <ChoiceField :choices="flowChoices" :value="current('flow', rules.energyFlow[0])" :tile="tile" preview-key="flow" :aria-label="t('editor.tile.energy.flow.label')" @pick="(v) => setTileOption(tile, 'flow', v)" />
@@ -258,6 +262,9 @@ const backgroundName = computed(() => inv.inventory.backgrounds?.[props.tile.opt
       </PropRow>
     </Section>
 
+
+    <!-- A calendar card (firmware 0.56.0): what it shows, its calendars, which events, how far ahead. -->
+    <CalendarSection v-if="calendarCard" :tile="tile" />
 
     <!-- A favourite (app 0.4.42): what it plays, from the player's library, and on which speaker. -->
     <FavoriteSection v-if="lookShown && favoriteCard" :tile="tile" />

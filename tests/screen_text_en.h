@@ -3,7 +3,7 @@
 #pragma once
 #include "components/smart_display/screen_text.h"
 
-static_assert(screen_text::KEYS_HASH == 0x3AA6ABD7u && screen_text::KEY_COUNT == 469,
+static_assert(screen_text::KEYS_HASH == 0x30F2B1D5u && screen_text::KEY_COUNT == 495,
               "screen_text_keys.h does not match screen_manager/translations/en.json: run tools/i18n.py header");
 const char *const screen_text::TABLE[] = {
     ".",
@@ -474,7 +474,33 @@ const char *const screen_text::TABLE[] = {
     "Other",
     "Untracked",
     "No power sensors in Home Assistant's energy settings",
-    "Plugin missing"
+    "Plugin missing",
+    "Free",
+    "Busy",
+    "Starts soon",
+    "Busy",
+    "All day",
+    "Today",
+    "Tomorrow",
+    "Nothing planned",
+    "Nothing else this week",
+    "Until {x}",
+    "Next {x}",
+    "{x} left",
+    "in {x}",
+    "{x} more",
+    "{x} earlier",
+    "{x} later",
+    "{x} more this week",
+    "Up next",
+    "Day",
+    "Week",
+    "Month",
+    "What runs now, then the next ones",
+    "One day, a tap on the strip picks it",
+    "Days side by side, hours down",
+    "A glance at the month, a tap opens a day",
+    "Today"
 };
 const char *const screen_text::LANGUAGE = "en";
 int screen_text::plural_index(int n) { return n == 1 ? 0 : 1; }

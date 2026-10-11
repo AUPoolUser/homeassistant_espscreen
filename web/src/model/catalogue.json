@@ -213,6 +213,40 @@
    "map": null,
    "keypad": null
   },
+  "calendar": {
+   "firmware": "0.56.0",
+   "memory": {
+    "bytes": 1152,
+    "extras": true
+   },
+   "key": true,
+   "features": {
+    "CREATE_EVENT": 1,
+    "DELETE_EVENT": 2,
+    "UPDATE_EVENT": 4
+   },
+   "actions": {
+    "create_event": [
+     [
+      "CREATE_EVENT"
+     ]
+    ],
+    "get_events": []
+   },
+   "displays": [
+    {
+     "key": "standard"
+    }
+   ],
+   "controls": [],
+   "inline": null,
+   "toggle": null,
+   "taps": [],
+   "guards": [],
+   "picture": null,
+   "map": null,
+   "keypad": null
+  },
   "camera": {
    "firmware": "0.2.57",
    "memory": {

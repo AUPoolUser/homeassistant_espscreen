@@ -4,6 +4,7 @@
     "automation",
     "binary_sensor",
     "button",
+    "calendar",
     "camera",
     "climate",
     "cover",
@@ -35,6 +36,7 @@
     "automation",
     "binary_sensor",
     "button",
+    "calendar",
     "climate",
     "counter",
     "cover",
@@ -105,6 +107,9 @@
     "icon"
   ],
   "displays": {
+    "calendar": [
+      "standard"
+    ],
     "camera": [
       "standard",
       "live"
@@ -429,6 +434,7 @@
     "automation",
     "binary_sensor",
     "button",
+    "calendar",
     "climate",
     "cover",
     "fan",
@@ -465,5 +471,24 @@
   "energyFlow": [
     "dots",
     "lines"
-  ]
+  ],
+  "calendar": {
+    "styles": [
+      "events",
+      "busy_free"
+    ],
+    "startViews": [
+      "auto",
+      "up_next",
+      "day",
+      "week",
+      "month"
+    ],
+    "calendars": 5,
+    "words": 8,
+    "ahead": [
+      14,
+      31
+    ]
+  }
 }

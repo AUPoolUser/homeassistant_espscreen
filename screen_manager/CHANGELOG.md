@@ -1,5 +1,11 @@
 ## Unreleased
 
+- **A calendar card.** Put a Home Assistant calendar on a screen, or several calendars on one card in Home Assistant's
+  own colours. The card shows more as it gets bigger: what is on now in one cell, the next event large on a bigger tile,
+  then a list of what follows, and on a large screen the whole week. A tap opens the full screen with the day, the week,
+  the month and every event's details, and on large screens the hours scroll. Filter by calendar, by place (one meeting
+  room), by words in the title, all-day and tentative events, or show only Free, Starts soon and Busy with the titles
+  hidden. The screen needs this firmware.
 - **A new board, experimental: the Elecrow CrowPanel Advanced 10.1-inch ESP32-P4** (V1.1 and V1.2), 1024 x 600 glass
   with GT911 touch, a dimmable backlight, and its speaker and microphone as the screen's audio, so audio plugins such as
   a voice assistant fit it. Built from Elecrow's own ESPHome example and a configuration a community member ran on the

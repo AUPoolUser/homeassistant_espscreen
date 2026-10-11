@@ -11,6 +11,7 @@
 #include "page_protocol.h"
 #include "optimistic.h"
 #include "energy_card.h"
+#include "calendar_card.h"
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -308,6 +309,8 @@ struct Extra {
   std::string map_mark;
   // The energy card's moment (firmware 0.47.0+): its own block, so no other tile's extras grow by it.
   std::shared_ptr<const energy_card::Data> energy;
+  // A calendar card's events (firmware 0.56.0+, calendar_card.h): its own block too, shared with the card that paints it.
+  std::shared_ptr<const calendar_card::Data> calendar;
   uint32_t media_duration = 0, media_position = 0, media_position_at = 0;
   // More of a media player (firmware 0.24.0+, app 0.4.42+): the speaker it plays on and the ones it may (source_list,
   // sixteen at most), shuffle (-1 for a player without it) and repeat ("" without it), the features it reported at its
@@ -383,7 +386,7 @@ struct Extra {
            media_source.empty() && media_repeat.empty() && media_sources.empty() && media_shuffle < 0 && !media_features &&
            speaker_flags.empty() && speaker_volumes.empty() && media_inputs.empty() && media_input.empty() && media_target.empty() &&
            !has_ground && !ground_known && !media_library && fav_kind.empty() && fav_source.empty() && fav_mark.empty() &&
-           fav_glyph.empty() && !fav_playing && !energy && plugin_options.empty() && plugin_state.empty() && plugin_entity.empty();
+           fav_glyph.empty() && !fav_playing && !energy && !calendar && plugin_options.empty() && plugin_state.empty() && plugin_entity.empty();
   }
 };
 // The numbers of a clock text ("0:05:00", "07:45"), at most `max` of them, each after optional white space, up to the
@@ -483,6 +486,11 @@ struct Tile {
   bool overlay = true;
   // The energy card drawn calm: lines that grow with the power and an arrow on each, no running dots ("flow": "lines").
   bool energy_lines = false;
+  // A calendar card's choices (firmware 0.56.0+): "Free or busy" words in its head, minutes that count as starting
+  // soon, and the view its full screen opens on.
+  bool calendar_busy_free = false;
+  uint8_t calendar_soon = 0;
+  std::string calendar_view;
   bool live() const { const auto d = domain(); return display == "live" && (d == "camera" || d == "image"); }
   // A media player's album cover in the icon's place (firmware 0.2.78+): "display": "cover" on a single or double-width
   // tile, while the player has a picture; the tile over the whole page keeps the card's big cover.

@@ -1,0 +1,22 @@
+#pragma once
+// The calendar card on the glass (firmware 0.56.0): calendar_card.h plans what goes where, calendar_paint.h paints it,
+// this file holds the LVGL side. One object per card draws the whole card in its draw event; the full screen a tap
+// opens has three: what stays, the hours that scroll, and a sheet over them (the view key's choice, an event).
+#include "lvgl.h"
+
+namespace runtime_tiles {
+struct Widgets;
+struct Tile;
+}
+
+namespace calendar_view {
+struct View;  // a card's plan and its data
+// Draws the card into the slot's extra layer, `width` x `height` (the card's content).
+void render(runtime_tiles::Widgets &w, const runtime_tiles::Tile &t, int width, int height);
+// The slot shows another card: its plan goes.
+void release(runtime_tiles::Widgets &w);
+// The full screen of the card at `index`, built into `root` (the card layer show_detail cleaned).
+void open(lv_obj_t *root, const runtime_tiles::Tile &t, unsigned index);
+// A new minute: the open full screen follows the clock (its now line, the minutes left), keeping where it is scrolled.
+void minute();
+}  // namespace calendar_view

@@ -586,6 +586,38 @@
     },
     "plugin": {
       "missing": "Plugin mancante"
+    },
+    "calendar": {
+      "free": "Libero",
+      "busy": "Occupato",
+      "starts_soon": "Inizia a breve",
+      "private": "Occupato",
+      "all_day": "Tutto il giorno",
+      "today": "Oggi",
+      "tomorrow": "Domani",
+      "nothing": "Niente in programma",
+      "nothing_more": "Nient'altro questa settimana",
+      "until": "Fino alle {x}",
+      "next": "Prossimo {x}",
+      "left": "Ancora {x}",
+      "in": "Tra {x}",
+      "more": "Altri {x}",
+      "earlier": "{x} prima",
+      "later": "{x} dopo",
+      "more_week": "Altri {x} questa settimana",
+      "views": [
+        "Prossimi",
+        "Giorno",
+        "Settimana",
+        "Mese"
+      ],
+      "view_notes": [
+        "Cosa c'è ora, poi i prossimi",
+        "Un giorno, tocca la striscia per sceglierlo",
+        "Giorni affiancati, ore verso il basso",
+        "Il mese a colpo d'occhio, tocca per aprire un giorno"
+      ],
+      "today_key": "Oggi"
     }
   },
   "addon": {
@@ -1726,7 +1758,8 @@
         "screen": "Schermo",
         "alarm_control_panel": "Allarme",
         "lock": "Serrature",
-        "humidifier": "Umidificatori"
+        "humidifier": "Umidificatori",
+        "calendar": "Calendari"
       },
       "room": "Area",
       "hide_placed": "Nascondi quelle già inserite",
@@ -2149,7 +2182,8 @@
       "entity": "Entità",
       "alarm_control_panel": "Pannello allarme",
       "lock": "Serratura",
-      "humidifier": "Umidificatore"
+      "humidifier": "Umidificatore",
+      "calendar": "Calendario"
     },
     "displays": {
       "standard": "standard",
@@ -2403,6 +2437,64 @@
           "hint": "Dei punti scorrono lungo ogni linea, più veloci quando passa più potenza. Linee e frecce è più calmo: una linea si ispessisce con la potenza e una freccia ne indica la direzione. Uno schermo con un firmware più vecchio mantiene i punti.",
           "dots": "Punti in movimento",
           "lines": "Linee e frecce"
+        }
+      },
+      "calendar": {
+        "title": "Calendario",
+        "needs_firmware": "La scheda calendario richiede il firmware 0.56.0 o successivo: dopo il salvataggio premi Aggiorna sullo schermo.",
+        "show": {
+          "label": "Mostra",
+          "events": "Eventi",
+          "events_hint": "Titoli, cosa viene dopo, la settimana e il mese",
+          "busy_free": "Libero o occupato",
+          "busy_free_hint": "Libero, Inizia a breve o Occupato in grande, la prossima prenotazione e quanto dura"
+        },
+        "calendars": {
+          "label": "Calendari",
+          "hint": "Fino a {n} calendari su una scheda, ognuno nel suo colore di Home Assistant.",
+          "count": "{n} calendario | {n} calendari",
+          "own": "Questo riquadro",
+          "none": "Home Assistant non ha altri calendari."
+        },
+        "filter": {
+          "title": "Quali eventi",
+          "found": "{n} evento | {n} eventi"
+        },
+        "places": {
+          "label": "Luogo",
+          "hint": "Solo eventi in questi luoghi, ad esempio una sala riunioni. I luoghi vengono dagli eventi dei calendari stessi; scrivine un altro per aggiungerlo.",
+          "add": "Aggiungi un luogo"
+        },
+        "words": {
+          "label": "Parole nel titolo",
+          "hint": "Solo eventi con una di queste parole nel titolo, e nessuno con una delle parole da escludere.",
+          "only": "Solo con",
+          "hide": "Escludi",
+          "add": "Aggiungi una parola"
+        },
+        "all_day": "Eventi di tutto il giorno",
+        "tentative": "Eventi provvisori",
+        "tentative_hint": "Eventi non ancora confermati, così come li segna il calendario.",
+        "private": "Nascondi i titoli",
+        "private_hint": "Ogni evento appare come Occupato, senza titolo né luogo: per uno schermo in un corridoio o in una stanza condivisa.",
+        "time": {
+          "title": "Tempo"
+        },
+        "ahead": "Giorni in avanti",
+        "ahead_hint": "Quanti giorni di eventi la scheda elenca a partire da oggi.",
+        "days": "{n} giorno | {n} giorni",
+        "soon": "Inizia a breve",
+        "soon_hint": "Quanto prima di un evento la scheda dice Inizia a breve.",
+        "soon_off": "Disattivato",
+        "minutes": "{n} min | {n} min",
+        "start_view": "Lo schermo intero si apre su",
+        "start_view_hint": "Un tocco sulla scheda apre il suo schermo intero. Automatico mostra la settimana se lo schermo ha spazio, altrimenti il giorno.",
+        "view": {
+          "auto": "Automatico",
+          "up_next": "Prossimi",
+          "day": "Giorno",
+          "week": "Settimana",
+          "month": "Mese"
         }
       }
     },
@@ -3109,7 +3201,8 @@
     },
     "mockup": {
       "home": "Casa",
-      "unknown": "Sconosciuto"
+      "unknown": "Sconosciuto",
+      "calendar_free": "Libero"
     },
     "pages": {
       "mode": "Modalità editor",

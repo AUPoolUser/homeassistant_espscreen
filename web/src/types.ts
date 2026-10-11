@@ -16,6 +16,19 @@ export type TileOptions = {
   background?: string;
   history_hours?: number;
   action?: { action: string; data?: Record<string, unknown> };
+  // A calendar card's choices (firmware 0.56.0, calendar_feed.validate): what it shows, the calendars beside the tile's
+  // own, which events it lets through, how far it looks, when an event starts soon and where its full screen opens.
+  style?: "events" | "busy_free";
+  calendars?: string[];
+  places?: string[];
+  words?: string[];
+  hide_words?: string[];
+  all_day?: boolean;
+  tentative?: boolean;
+  private?: boolean;
+  ahead?: number;
+  soon?: number;
+  start_view?: string;
   [key: string]: unknown;
 };
 // What a favourite plays (app 0.4.42), as Home Assistant's library names it: its content id and type, the title and the
@@ -58,7 +71,11 @@ export type PageTile = {
   placement: { row: number; column: number; columns: number; rows: number };
   appearance: { label: string; presentation?: "single" | "wide" | "tall" | "square" | "full" | `${number}x${number}`; display?: string; icon?: string; background?: string; historyHours?: number; refresh?: number; subtitle?: string; fit?: string; overlay?: string;
     mapEntities?: string[]; mapFraming?: string; mapDistance?: string; mapFollow?: string; mapMarkers?: string; mapNames?: string;
-    mapZones?: string; mapStreets?: string; mapLook?: string; energyFlow?: string };
+    mapZones?: string; mapStreets?: string; mapLook?: string; energyFlow?: string;
+    // A calendar card's choices (firmware 0.56.0): TileOptions' style, calendars, places, words, hide_words, all_day,
+    // tentative, private, ahead, soon and start_view.
+    calendarStyle?: string; calendarEntities?: string[]; calendarPlaces?: string[]; calendarWords?: string[]; calendarHideWords?: string[];
+    calendarAllDay?: boolean; calendarTentative?: boolean; calendarPrivate?: boolean; calendarAhead?: number; calendarSoon?: number; calendarStartView?: string };
   interaction: { tap?: string; inline?: string; controls?: string; action?: TileOptions["action"]; guard?: string; play?: FavoritePlay; speaker?: string; shuffle?: string; repeat?: string };
   children?: ChildTile[];
 };
@@ -255,7 +272,7 @@ export type Inventory = {
   claude_skill?: { path: string; installed: boolean; current: boolean; restart?: boolean };
   icons?: {
     groups: { label: string; icons: IconInfo[] }[];
-    builtin?: Record<string, string>; weather: Record<string, string>; sun: Record<string, string>;
+    builtin?: Record<string, string>; weather: Record<string, string>; sun: Record<string, string>; calendar?: Record<string, string>;
     defaults: Record<string, string>; fallback: string; controls?: Record<string, string>;
   };
   backgrounds?: Record<string, { label: string; color?: string }>;

@@ -373,6 +373,13 @@ inline uint32_t key_on(uint32_t card, uint8_t depth) {
 // A card under a finger (firmware 0.2.95+): its own colour an eighth of the way to black in light and to white in
 // dark, the same share on white, on a pastel and on graphite, so the press reads on every card in both looks.
 inline uint32_t pressed(uint32_t card) { return mix(card, dark ? 0xFFFFFF : 0x000000, 224); }
+// A calendar's own colour (Home Assistant's, from its registry or the frontend's palette) on the calendar card
+// (calendar_card.h): an event's pale block, the words on it, a progress track, and what is past, a step towards the
+// card. The same shares as Apple's and the frontend's events: the colour reads, the words stay dark (light in dark).
+inline uint32_t calendar_block(uint32_t c) { return dark ? mix(c, hex(CARD), 80) : mix(c, 0xFFFFFF, 58); }
+inline uint32_t calendar_ink(uint32_t c) { return dark ? mix(c, 0xFFFFFF, 110) : mix(c, 0x000000, 120); }
+inline uint32_t calendar_track(uint32_t c) { return dark ? mix(c, hex(CARD), 90) : mix(c, 0xFFFFFF, 70); }
+inline uint32_t calendar_past(uint32_t c) { return mix(c, hex(CARD), 130); }
 
 }  // namespace theme
 

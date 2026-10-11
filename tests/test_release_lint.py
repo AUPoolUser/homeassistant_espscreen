@@ -82,10 +82,20 @@ class ReleaseVersionTests(unittest.TestCase):
         self.assertEqual(match.group(1), dotted(headings[0][0]),
                          'Home Assistant offers the update by config.yaml: bump it together with a new CHANGELOG entry')
 
+    def ahead_on_dev(self, shipped):
+        """dev may run the next shared firmware before its release (Max, 11 October: a new tile type needs its number on
+        the bench), while the CHANGELOG opens with `## Unreleased`: exactly the next X.Y.0 after the one shipped."""
+        if not CHANGELOG.read_text(encoding='utf-8').lstrip().startswith('## Unreleased'):
+            return False
+        x, y, _ = (int(n) for n in shipped.split('.'))
+        return FIRMWARE_VERSION == f'{x}.{y + 1}.0'
+
     def test_newest_entry_names_the_shipped_firmware(self):
         version, rest = app_headings()[0]
         firmware = FIRMWARE_IN_HEADING.search(rest)
         if firmware and not firmware.group(2):
+            if self.ahead_on_dev(firmware.group(1)):
+                return
             self.assertEqual(firmware.group(1), FIRMWARE_VERSION,
                              f'CHANGELOG {dotted(version)} names firmware {firmware.group(1)}, core.FIRMWARE_VERSION is {FIRMWARE_VERSION}')
         elif firmware:
@@ -100,6 +110,8 @@ class ReleaseVersionTests(unittest.TestCase):
         X.Y.0) never reads a board fix as a newer core, and a board fix is never mistaken for what another board has."""
         problem, shared = firmware_series(app_headings())
         self.assertIsNone(problem)
+        if self.ahead_on_dev(shared):
+            return
         self.assertEqual(shared, FIRMWARE_VERSION, 'the newest shared firmware in the CHANGELOG is core.FIRMWARE_VERSION')
 
     def test_the_series_rule_on_made_up_histories(self):

@@ -11,6 +11,7 @@ from core import (DOMAINS, HEADER_ONLY_DOMAINS, CAMERA_DOMAINS, HEADER_BUILTIN,
                   TILE_BACKGROUNDS, LIVE_REFRESH, PICTURE_OPTIONS, KEY_HOLDERS, KEY_DOMAINS, BUILTIN,
                   FAVORITE_SHUFFLES, FAVORITE_REPEATS, ENERGY_FLOWS)
 from tile_icons import ICONS
+import calendar_feed
 
 
 def rules():
@@ -34,7 +35,13 @@ def rules():
             # A favourite's own shuffle and repeat (app 0.4.84).
             'favoriteShuffles': list(FAVORITE_SHUFFLES), 'favoriteRepeats': list(FAVORITE_REPEATS),
             # How the energy card shows power along a line, the first the default.
-            'energyFlow': list(ENERGY_FLOWS)}
+            'energyFlow': list(ENERGY_FLOWS),
+            # A calendar card's choices (firmware 0.56.0, calendar_feed.validate): what it shows, the view its full
+            # screen opens on, how many calendars and words it takes and how far it looks, each first or default the one
+            # never stored.
+            'calendar': {'styles': list(calendar_feed.STYLES), 'startViews': list(calendar_feed.START_VIEWS),
+                         'calendars': calendar_feed.MAX_CALENDARS - 1, 'words': calendar_feed.MAX_WORDS,
+                         'ahead': [calendar_feed.AHEAD_DEFAULT, calendar_feed.AHEAD_MAX]}}
 
 
 def output():

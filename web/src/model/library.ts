@@ -13,7 +13,7 @@ export type Entry = { id: string; name: string; area?: string; device?: string; 
 // The domains to filter on; the label of each is editor.library.filters.<domain>, "" for no filter.
 export const FILTERS = [
   "", "light", "climate", "humidifier", "switch", "binary_sensor", "button", "script", "automation", "fan", "cover", "scene", "vacuum", "sensor",
-  "media_player", "remote", "weather", "number", "select", "person", "timer", "screen", "alarm_control_panel", "lock",
+  "media_player", "remote", "weather", "number", "select", "person", "timer", "screen", "alarm_control_panel", "lock", "calendar",
 ];
 // A kind that takes a second domain along: an input helper with its entity, the sun with the weather.
 const ALIAS: Record<string, string> = { switch: "input_boolean", number: "input_number", select: "input_select", weather: "sun", button: "input_button" };
@@ -89,7 +89,7 @@ export function roomCounts(base: readonly Entry[], chosen: string) {
 export function entryTone(e: { id: string; state?: string }) {
   const domain = e.id.split(".")[0];
   if (e.state === "unavailable" || e.state === "unknown") return "gone";
-  if (["light", "switch", "input_boolean", "automation", "remote", "fan", "humidifier"].includes(domain) && e.state === "on") return "on";
+  if (["light", "switch", "input_boolean", "automation", "remote", "fan", "humidifier", "calendar"].includes(domain) && e.state === "on") return "on";
   return "";
 }
 /** The name without its device's name in front, the way Home Assistant shows an entity on its device's card:

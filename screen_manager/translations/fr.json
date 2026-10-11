@@ -586,6 +586,38 @@
     },
     "plugin": {
       "missing": "Plugin absent"
+    },
+    "calendar": {
+      "free": "Libre",
+      "busy": "Occupé",
+      "starts_soon": "Commence bientôt",
+      "private": "Occupé",
+      "all_day": "Toute la journée",
+      "today": "Aujourd'hui",
+      "tomorrow": "Demain",
+      "nothing": "Rien de prévu",
+      "nothing_more": "Plus rien cette semaine",
+      "until": "Jusqu'à {x}",
+      "next": "Prochain {x}",
+      "left": "Encore {x}",
+      "in": "Dans {x}",
+      "more": "{x} de plus",
+      "earlier": "{x} plus tôt",
+      "later": "{x} plus tard",
+      "more_week": "{x} de plus cette semaine",
+      "views": [
+        "À suivre",
+        "Jour",
+        "Semaine",
+        "Mois"
+      ],
+      "view_notes": [
+        "Ce qui se passe maintenant, puis la suite",
+        "Un jour, touchez la bande pour le choisir",
+        "Les jours côte à côte, les heures vers le bas",
+        "Le mois entier, touchez un jour pour l'ouvrir"
+      ],
+      "today_key": "Aujourd'hui"
     }
   },
   "addon": {
@@ -1726,7 +1758,8 @@
         "screen": "Écran",
         "alarm_control_panel": "Alarme",
         "lock": "Serrures",
-        "humidifier": "Humidificateurs"
+        "humidifier": "Humidificateurs",
+        "calendar": "Calendriers"
       },
       "room": "Pièce",
       "hide_placed": "Masquer celles déjà placées",
@@ -2149,7 +2182,8 @@
       "entity": "Entité",
       "alarm_control_panel": "Panneau d’alarme",
       "lock": "Serrure",
-      "humidifier": "Humidificateur"
+      "humidifier": "Humidificateur",
+      "calendar": "Calendrier"
     },
     "displays": {
       "standard": "standard",
@@ -2403,6 +2437,64 @@
           "hint": "Des points parcourent chaque ligne, plus vite quand plus de puissance circule. Lignes et flèches est plus calme : une ligne s'épaissit avec la puissance et une flèche indique son sens. Un écran avec un firmware plus ancien garde les points.",
           "dots": "Points animés",
           "lines": "Lignes et flèches"
+        }
+      },
+      "calendar": {
+        "title": "Calendrier",
+        "needs_firmware": "La carte calendrier nécessite le firmware 0.56.0 ou plus récent : après l'enregistrement, appuyez sur Mettre à jour pour l'écran.",
+        "show": {
+          "label": "Afficher",
+          "events": "Événements",
+          "events_hint": "Les titres, la suite, la semaine et le mois",
+          "busy_free": "Libre ou occupé",
+          "busy_free_hint": "Libre, Commence bientôt ou Occupé en grand, la prochaine réservation et sa durée"
+        },
+        "calendars": {
+          "label": "Calendriers",
+          "hint": "Jusqu'à {n} calendriers sur une carte, chacun dans sa propre couleur de Home Assistant.",
+          "count": "{n} calendrier | {n} calendriers",
+          "own": "Cette tuile",
+          "none": "Home Assistant n'a pas d'autre calendrier."
+        },
+        "filter": {
+          "title": "Quels événements",
+          "found": "{n} événement | {n} événements"
+        },
+        "places": {
+          "label": "Lieu",
+          "hint": "Seulement les événements dans ces lieux, par exemple une salle de réunion. Les lieux viennent des événements des calendriers ; saisissez-en un autre pour l'ajouter.",
+          "add": "Ajouter un lieu"
+        },
+        "words": {
+          "label": "Mots du titre",
+          "hint": "Seulement les événements avec l'un de ces mots dans le titre, et aucun avec l'un des mots à exclure.",
+          "only": "Seulement avec",
+          "hide": "Exclure",
+          "add": "Ajouter un mot"
+        },
+        "all_day": "Événements sur toute la journée",
+        "tentative": "Événements provisoires",
+        "tentative_hint": "Les événements pas encore confirmés, tels que le calendrier les marque.",
+        "private": "Masquer les titres",
+        "private_hint": "Chaque événement apparaît comme Occupé, sans titre ni lieu : pour un écran dans un couloir ou une salle partagée.",
+        "time": {
+          "title": "Temps"
+        },
+        "ahead": "Horizon",
+        "ahead_hint": "Combien de jours d'événements la carte liste à partir d'aujourd'hui.",
+        "days": "{n} jour | {n} jours",
+        "soon": "Commence bientôt",
+        "soon_hint": "Combien de temps avant un événement la carte affiche Commence bientôt.",
+        "soon_off": "Désactivé",
+        "minutes": "{n} min | {n} min",
+        "start_view": "Le plein écran s'ouvre sur",
+        "start_view_hint": "Un appui sur la carte ouvre son plein écran. Automatique montre la semaine quand l'écran a la place, sinon le jour.",
+        "view": {
+          "auto": "Automatique",
+          "up_next": "À suivre",
+          "day": "Jour",
+          "week": "Semaine",
+          "month": "Mois"
         }
       }
     },
@@ -3109,7 +3201,8 @@
     },
     "mockup": {
       "home": "Accueil",
-      "unknown": "Inconnu"
+      "unknown": "Inconnu",
+      "calendar_free": "Libre"
     },
     "pages": {
       "mode": "Mode de l’éditeur",

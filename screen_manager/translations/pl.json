@@ -586,6 +586,38 @@
     },
     "plugin": {
       "missing": "Brak wtyczki"
+    },
+    "calendar": {
+      "free": "Wolne",
+      "busy": "Zajęte",
+      "starts_soon": "Zaraz się zaczyna",
+      "private": "Zajęte",
+      "all_day": "Cały dzień",
+      "today": "Dziś",
+      "tomorrow": "Jutro",
+      "nothing": "Nic nie zaplanowano",
+      "nothing_more": "Nic więcej w tym tygodniu",
+      "until": "Do {x}",
+      "next": "Następne {x}",
+      "left": "Jeszcze {x}",
+      "in": "Za {x}",
+      "more": "{x} więcej",
+      "earlier": "{x} wcześniej",
+      "later": "{x} później",
+      "more_week": "{x} więcej w tym tygodniu",
+      "views": [
+        "Następne",
+        "Dzień",
+        "Tydzień",
+        "Miesiąc"
+      ],
+      "view_notes": [
+        "Co trwa teraz, potem kolejne",
+        "Jeden dzień, dotknij paska, by go wybrać",
+        "Dni obok siebie, godziny w dół",
+        "Miesiąc w skrócie, dotknij, by otworzyć dzień"
+      ],
+      "today_key": "Dziś"
     }
   },
   "addon": {
@@ -1726,7 +1758,8 @@
         "screen": "Ekran",
         "alarm_control_panel": "Alarm",
         "lock": "Zamki",
-        "humidifier": "Nawilżacze"
+        "humidifier": "Nawilżacze",
+        "calendar": "Kalendarze"
       },
       "room": "Obszar",
       "hide_placed": "Ukryj dodane",
@@ -2149,7 +2182,8 @@
       "entity": "Encja",
       "alarm_control_panel": "Panel alarmowy",
       "lock": "Zamek",
-      "humidifier": "Nawilżacz"
+      "humidifier": "Nawilżacz",
+      "calendar": "Kalendarz"
     },
     "displays": {
       "standard": "standardowy",
@@ -2403,6 +2437,64 @@
           "hint": "Kropki biegną wzdłuż każdej linii, tym szybciej, im więcej mocy płynie. Linie i strzałki są spokojniejsze: linia grubieje wraz z mocą, a strzałka pokazuje kierunek. Ekran ze starszym firmware zachowuje kropki.",
           "dots": "Ruchome kropki",
           "lines": "Linie i strzałki"
+        }
+      },
+      "calendar": {
+        "title": "Kalendarz",
+        "needs_firmware": "Karta kalendarza wymaga oprogramowania 0.56.0 lub nowszego: po zapisaniu naciśnij Aktualizuj przy ekranie.",
+        "show": {
+          "label": "Pokaż",
+          "events": "Wydarzenia",
+          "events_hint": "Tytuły, co dalej, tydzień i miesiąc",
+          "busy_free": "Wolne lub zajęte",
+          "busy_free_hint": "Wolne, Zaraz się zaczyna lub Zajęte dużymi literami, następna rezerwacja i jak długo trwa"
+        },
+        "calendars": {
+          "label": "Kalendarze",
+          "hint": "Do {n} kalendarzy na jednej karcie, każdy we własnym kolorze z Home Assistant.",
+          "count": "{n} kalendarz | {n} kalendarze | {n} kalendarzy",
+          "own": "Ten kafelek",
+          "none": "Home Assistant nie ma innych kalendarzy."
+        },
+        "filter": {
+          "title": "Które wydarzenia",
+          "found": "{n} wydarzenie | {n} wydarzenia | {n} wydarzeń"
+        },
+        "places": {
+          "label": "Miejsce",
+          "hint": "Tylko wydarzenia w tych miejscach, np. w jednej sali spotkań. Miejsca pochodzą z wydarzeń samych kalendarzy; wpisz inne, aby je dodać.",
+          "add": "Dodaj miejsce"
+        },
+        "words": {
+          "label": "Słowa w tytule",
+          "hint": "Tylko wydarzenia z jednym z tych słów w tytule i żadne z jednym ze słów do pominięcia.",
+          "only": "Tylko z",
+          "hide": "Pomiń",
+          "add": "Dodaj słowo"
+        },
+        "all_day": "Wydarzenia całodniowe",
+        "tentative": "Wydarzenia wstępne",
+        "tentative_hint": "Wydarzenia jeszcze niepotwierdzone, tak jak oznacza je kalendarz.",
+        "private": "Ukryj tytuły",
+        "private_hint": "Każde wydarzenie wyświetla się jako Zajęte, bez tytułu i miejsca: dla ekranu na korytarzu lub we wspólnym pomieszczeniu.",
+        "time": {
+          "title": "Czas"
+        },
+        "ahead": "Dni naprzód",
+        "ahead_hint": "Ile dni wydarzeń karta pokazuje od dziś.",
+        "days": "{n} dzień | {n} dni | {n} dni",
+        "soon": "Zaraz się zaczyna",
+        "soon_hint": "Ile czasu przed wydarzeniem karta pokazuje Zaraz się zaczyna.",
+        "soon_off": "Wyłączone",
+        "minutes": "{n} min | {n} min | {n} min",
+        "start_view": "Pełny ekran otwiera się na",
+        "start_view_hint": "Dotknięcie karty otwiera jej pełny ekran. Automatycznie pokazuje tydzień, jeśli ekran ma na niego miejsce, a w przeciwnym razie dzień.",
+        "view": {
+          "auto": "Automatycznie",
+          "up_next": "Następne",
+          "day": "Dzień",
+          "week": "Tydzień",
+          "month": "Miesiąc"
         }
       }
     },
@@ -3109,7 +3201,8 @@
     },
     "mockup": {
       "home": "Dom",
-      "unknown": "Nieznany"
+      "unknown": "Nieznany",
+      "calendar_free": "Wolne"
     },
     "pages": {
       "mode": "Tryb edytora",

@@ -586,6 +586,38 @@
     },
     "plugin": {
       "missing": "Plugin ontbreekt"
+    },
+    "calendar": {
+      "free": "Vrij",
+      "busy": "Bezet",
+      "starts_soon": "Begint zo",
+      "private": "Bezet",
+      "all_day": "Hele dag",
+      "today": "Vandaag",
+      "tomorrow": "Morgen",
+      "nothing": "Niets gepland",
+      "nothing_more": "Verder niets deze week",
+      "until": "Tot {x}",
+      "next": "Volgende {x}",
+      "left": "Nog {x}",
+      "in": "Over {x}",
+      "more": "{x} meer",
+      "earlier": "{x} eerder",
+      "later": "{x} later",
+      "more_week": "{x} meer deze week",
+      "views": [
+        "Hierna",
+        "Dag",
+        "Week",
+        "Maand"
+      ],
+      "view_notes": [
+        "Wat nu bezig is, dan wat volgt",
+        "Eén dag, tik op de strook om er een te kiezen",
+        "Dagen naast elkaar, uren onder elkaar",
+        "De maand in één oogopslag, tik om een dag te openen"
+      ],
+      "today_key": "Vandaag"
     }
   },
   "addon": {
@@ -1725,7 +1757,8 @@
         "screen": "Scherm",
         "alarm_control_panel": "Alarm",
         "lock": "Sloten",
-        "humidifier": "Luchtbevochtigers"
+        "humidifier": "Luchtbevochtigers",
+        "calendar": "Agenda's"
       },
       "room": "Ruimte",
       "hide_placed": "Geplaatste verbergen",
@@ -1788,7 +1821,8 @@
       "entity": "Entiteit",
       "alarm_control_panel": "Alarmpaneel",
       "lock": "Slot",
-      "humidifier": "Luchtbevochtiger"
+      "humidifier": "Luchtbevochtiger",
+      "calendar": "Agenda"
     },
     "displays": {
       "standard": "standaard",
@@ -2042,6 +2076,64 @@
           "hint": "Bolletjes lopen over elke lijn, sneller naarmate er meer stroom loopt. Lijnen en pijlen is rustiger: een lijn wordt dikker met het vermogen en een pijl laat zien welke kant het op gaat. Een scherm met oudere firmware houdt de bolletjes.",
           "dots": "Bewegende bolletjes",
           "lines": "Lijnen en pijlen"
+        }
+      },
+      "calendar": {
+        "title": "Agenda",
+        "needs_firmware": "De agendakaart heeft firmware 0.56.0 of nieuwer nodig: druk na het opslaan op Bijwerken bij het scherm.",
+        "show": {
+          "label": "Toon",
+          "events": "Afspraken",
+          "events_hint": "Titels, wat er komt, de week en de maand",
+          "busy_free": "Vrij of bezet",
+          "busy_free_hint": "Groot Vrij, Begint zo of Bezet, de volgende boeking en hoe lang die duurt"
+        },
+        "calendars": {
+          "label": "Agenda's",
+          "hint": "Tot {n} agenda's op één kaart, elk in een eigen kleur uit Home Assistant.",
+          "count": "{n} agenda | {n} agenda's",
+          "own": "Deze tegel",
+          "none": "Home Assistant heeft geen andere agenda's."
+        },
+        "filter": {
+          "title": "Welke afspraken",
+          "found": "{n} afspraak | {n} afspraken"
+        },
+        "places": {
+          "label": "Plaats",
+          "hint": "Alleen afspraken op deze plaatsen, bijvoorbeeld één vergaderruimte. De plaatsen komen uit de afspraken van de agenda's zelf; typ een andere om die toe te voegen.",
+          "add": "Plaats toevoegen"
+        },
+        "words": {
+          "label": "Woorden in de titel",
+          "hint": "Alleen afspraken met een van deze woorden in de titel, en geen met een van de woorden om weg te laten.",
+          "only": "Alleen met",
+          "hide": "Weglaten",
+          "add": "Woord toevoegen"
+        },
+        "all_day": "Afspraken van de hele dag",
+        "tentative": "Voorlopige afspraken",
+        "tentative_hint": "Afspraken die nog niet bevestigd zijn, zoals de agenda ze markeert.",
+        "private": "Titels verbergen",
+        "private_hint": "Elke afspraak staat er als Bezet, zonder titel of plaats: voor een scherm in een gang of een gedeelde ruimte.",
+        "time": {
+          "title": "Tijd"
+        },
+        "ahead": "Vooruitkijken",
+        "ahead_hint": "Hoeveel dagen aan afspraken de kaart vanaf vandaag laat zien.",
+        "days": "{n} dag | {n} dagen",
+        "soon": "Begint zo",
+        "soon_hint": "Hoe lang voor een afspraak de kaart Begint zo zegt.",
+        "soon_off": "Uit",
+        "minutes": "{n} min | {n} min",
+        "start_view": "Volledig scherm opent op",
+        "start_view_hint": "Een tik op de kaart opent het volledige scherm. Automatisch toont de week als het scherm daar ruimte voor heeft, anders de dag.",
+        "view": {
+          "auto": "Automatisch",
+          "up_next": "Hierna",
+          "day": "Dag",
+          "week": "Week",
+          "month": "Maand"
         }
       }
     },
@@ -2748,7 +2840,8 @@
     },
     "mockup": {
       "home": "Thuis",
-      "unknown": "Onbekend"
+      "unknown": "Onbekend",
+      "calendar_free": "Vrij"
     },
     "pages": {
       "mode": "Editormodus",

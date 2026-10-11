@@ -586,6 +586,38 @@
     },
     "plugin": {
       "missing": "Plugin missing"
+    },
+    "calendar": {
+      "free": "Free",
+      "busy": "Busy",
+      "starts_soon": "Starts soon",
+      "private": "Busy",
+      "all_day": "All day",
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "nothing": "Nothing planned",
+      "nothing_more": "Nothing else this week",
+      "until": "Until {x}",
+      "next": "Next {x}",
+      "left": "{x} left",
+      "in": "in {x}",
+      "more": "{x} more",
+      "earlier": "{x} earlier",
+      "later": "{x} later",
+      "more_week": "{x} more this week",
+      "views": [
+        "Up next",
+        "Day",
+        "Week",
+        "Month"
+      ],
+      "view_notes": [
+        "What runs now, then the next ones",
+        "One day, a tap on the strip picks it",
+        "Days side by side, hours down",
+        "A glance at the month, a tap opens a day"
+      ],
+      "today_key": "Today"
     }
   },
   "addon": {
@@ -1725,7 +1757,8 @@
         "screen": "Screen",
         "alarm_control_panel": "Alarm",
         "lock": "Locks",
-        "humidifier": "Humidifiers"
+        "humidifier": "Humidifiers",
+        "calendar": "Calendars"
       },
       "room": "Room",
       "hide_placed": "Hide placed",
@@ -1788,7 +1821,8 @@
       "entity": "Entity",
       "alarm_control_panel": "Alarm panel",
       "lock": "Lock",
-      "humidifier": "Humidifier"
+      "humidifier": "Humidifier",
+      "calendar": "Calendar"
     },
     "displays": {
       "standard": "standard",
@@ -2042,6 +2076,64 @@
           "hint": "Dots run along each line, faster as more power flows. Lines and arrows is calmer: a line grows thicker with the power and an arrow shows which way it goes. A screen with older firmware keeps the dots.",
           "dots": "Moving dots",
           "lines": "Lines and arrows"
+        }
+      },
+      "calendar": {
+        "title": "Calendar",
+        "needs_firmware": "The calendar card needs firmware 0.56.0 or newer: press Update on the screen after saving.",
+        "show": {
+          "label": "Show",
+          "events": "Events",
+          "events_hint": "Titles, what comes next, the week and the month",
+          "busy_free": "Free or busy",
+          "busy_free_hint": "Free, Starts soon or Busy in large letters, the next booking and how long it lasts"
+        },
+        "calendars": {
+          "label": "Calendars",
+          "hint": "Up to {n} calendars on one card, each in its own color from Home Assistant.",
+          "count": "{n} calendar | {n} calendars",
+          "own": "This tile",
+          "none": "Home Assistant has no other calendars."
+        },
+        "filter": {
+          "title": "Which events",
+          "found": "{n} event | {n} events"
+        },
+        "places": {
+          "label": "Place",
+          "hint": "Only events at these places, e.g. one meeting room. The places come from the calendars' own events; type another to add it.",
+          "add": "Add a place"
+        },
+        "words": {
+          "label": "Words in the title",
+          "hint": "Only events with one of these words in their title, and none with one of the words to leave out.",
+          "only": "Only with",
+          "hide": "Leave out",
+          "add": "Add a word"
+        },
+        "all_day": "All-day events",
+        "tentative": "Tentative events",
+        "tentative_hint": "Events that are not confirmed yet, as the calendar marks them.",
+        "private": "Hide titles",
+        "private_hint": "Every event shows as Busy, without its title or place: for a screen in a hallway or a shared room.",
+        "time": {
+          "title": "Time"
+        },
+        "ahead": "Looks ahead",
+        "ahead_hint": "How many days of events the card lists from today.",
+        "days": "{n} day | {n} days",
+        "soon": "Starts soon",
+        "soon_hint": "How long before an event the card says Starts soon.",
+        "soon_off": "Off",
+        "minutes": "{n} min | {n} min",
+        "start_view": "Full screen opens on",
+        "start_view_hint": "A tap on the card opens its full screen. Automatic shows the week where the screen has room for it, else the day.",
+        "view": {
+          "auto": "Automatic",
+          "up_next": "Up next",
+          "day": "Day",
+          "week": "Week",
+          "month": "Month"
         }
       }
     },
@@ -2748,7 +2840,8 @@
     },
     "mockup": {
       "home": "Home",
-      "unknown": "Unknown"
+      "unknown": "Unknown",
+      "calendar_free": "Free"
     },
     "pages": {
       "mode": "Editor mode",

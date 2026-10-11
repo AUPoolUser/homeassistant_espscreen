@@ -66,6 +66,22 @@
    "enum": null,
    "features": {}
   },
+  "calendar": {
+   "actions": {
+    "create_event": [
+     [
+      "CREATE_EVENT"
+     ]
+    ],
+    "get_events": []
+   },
+   "enum": "CalendarEntityFeature",
+   "features": {
+    "CREATE_EVENT": 1,
+    "DELETE_EVENT": 2,
+    "UPDATE_EVENT": 4
+   }
+  },
   "camera": {
    "actions": {
     "disable_motion_detection": [],

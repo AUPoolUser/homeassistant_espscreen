@@ -429,3 +429,68 @@ describe("a plugin's tile (GitHub #224)", () => {
     expect([...PLUGIN_TILE_OPTIONS].sort()).toEqual(listed.sort());
   });
 });
+
+describe("the calendar card (firmware 0.56.0)", () => {
+  const preview = { cal: { d: [2026, 10, 12, 0], c: [[0x4269d0, "Work"], [0xf4bd4a, "Home"]], e: [[600, 660, 0, 0, "Stand-up", "Room A"]], m: 2 },
+    places: ["Room A", "Room B"] };
+  beforeEach(() => {
+    useInventoryStore().inventory.entities.push({ id: "calendar.work", name: "Work", state: "off", area: "" } as any,
+      { id: "calendar.home", name: "Home", state: "on", area: "" } as any);
+    Object.assign(useInventoryStore().inventory.screens[0], { firmware: "0.56.0" });
+  });
+
+  it("keeps no default and no choice of another tile's", () => {
+    expect(canonicalOptions("calendar.work", { style: "events", all_day: true, tentative: true, private: false, ahead: 14, soon: 0, start_view: "auto",
+      calendars: [], places: [], words: [], hide_words: [] })).toEqual({});
+    expect(canonicalOptions("calendar.work", { style: "busy_free", soon: 15, places: ["Room A"], private: true }))
+      .toEqual({ style: "busy_free", soon: 15, places: ["Room A"], private: true });
+    expect(canonicalOptions("light.a", { style: "busy_free", places: ["Room A"], ahead: 3 })).toEqual({});
+  });
+
+  it("sets its choices from its own section, saves them and asks for the card's preview", async () => {
+    const fetch = vi.fn((url: string) => url === "api/calendar/preview" ? Promise.resolve(new Response(JSON.stringify(preview), { status: 200 }))
+      : Promise.reject(new Error("offline")));
+    vi.stubGlobal("fetch", fetch);
+    vi.useFakeTimers();
+    const tile: Tile = { entity: "calendar.work", name: "", slot: 0 };
+    appendTiles(tile);
+    let panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    await vi.runAllTimersAsync();
+    expect(fetch.mock.calls.some(([url]) => url === "api/calendar/preview")).toBe(true);
+    // No face or second line to choose: the card draws its own head.
+    expect(panel.text()).not.toContain(t("editor.tile.sub.label"));
+    expect(panel.text()).toContain(t("editor.tile.calendar.show.busy_free"));
+    // Free or busy turns Starts soon on, in one step.
+    await panel.findAll(".cal-preset")[1].trigger("click");
+    expect(current(tile)!.options).toMatchObject({ style: "busy_free", soon: 15 });
+    panel.unmount();
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    await vi.runAllTimersAsync();
+    // The other calendar goes on the card; the place chips are the preview's.
+    const home = panel.findAll(".cal-list .check-row").find((row) => row.text().includes("Home"))!;
+    await home.trigger("click");
+    expect(current(tile)!.options?.calendars).toEqual(["calendar.home"]);
+    panel.unmount();
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    await vi.runAllTimersAsync();
+    expect(panel.findAll(".cal-dot").map((dot) => dot.attributes("style") ?? "")).toEqual(["background: rgb(66, 105, 208);", "background: rgb(244, 189, 74);"]);
+    await panel.findAll(".tag-chip").find((chip) => chip.text().includes("Room B"))!.trigger("click");
+    expect(current(tile)!.options?.places).toEqual(["Room B"]);
+    panel.unmount();
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    await panel.findAll(".switch-row input, .switch-row button").at(-1)!.trigger("click");
+    await panel.findAll(".tag-input")[1].setValue("Lunch");
+    await panel.findAll(".tag-input")[1].trigger("keydown", { key: "Enter" });
+    expect(current(tile)!.options).toMatchObject({ private: true, words: ["Lunch"] });
+    expect(() => validatePages(doc.document!, doc.documentGrid!)).not.toThrow();
+    const saved = doc.document!.pages.flatMap((page) => page.tiles)[0];
+    expect(saved.appearance).toMatchObject({ calendarStyle: "busy_free", calendarSoon: 15, calendarEntities: ["calendar.home"],
+      calendarPlaces: ["Room B"], calendarPrivate: true, calendarWords: ["Lunch"] });
+    // Back to Events: Starts soon stays as it was chosen.
+    await panel.findAll(".cal-preset")[0].trigger("click");
+    expect(current(tile)!.options?.style).toBeUndefined();
+    expect(current(tile)!.options?.soon).toBe(15);
+    panel.unmount();
+    vi.useRealTimers();
+  });
+});

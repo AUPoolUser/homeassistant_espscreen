@@ -586,6 +586,38 @@
     },
     "plugin": {
       "missing": "Plugin ausente"
+    },
+    "calendar": {
+      "free": "Livre",
+      "busy": "Ocupado",
+      "starts_soon": "Começa em breve",
+      "private": "Ocupado",
+      "all_day": "Todo o dia",
+      "today": "Hoje",
+      "tomorrow": "Amanhã",
+      "nothing": "Nada planeado",
+      "nothing_more": "Mais nada esta semana",
+      "until": "Até {x}",
+      "next": "Seguinte {x}",
+      "left": "Faltam {x}",
+      "in": "Em {x}",
+      "more": "Mais {x}",
+      "earlier": "{x} antes",
+      "later": "{x} depois",
+      "more_week": "Mais {x} esta semana",
+      "views": [
+        "A seguir",
+        "Dia",
+        "Semana",
+        "Mês"
+      ],
+      "view_notes": [
+        "O que decorre agora e o que vem a seguir",
+        "Um dia, toque na faixa para o escolher",
+        "Dias lado a lado, horas para baixo",
+        "O mês num relance, toque para abrir um dia"
+      ],
+      "today_key": "Hoje"
     }
   },
   "addon": {
@@ -1726,7 +1758,8 @@
         "screen": "Ecrã",
         "alarm_control_panel": "Alarme",
         "lock": "Fechaduras",
-        "humidifier": "Humidificadores"
+        "humidifier": "Humidificadores",
+        "calendar": "Calendários"
       },
       "room": "Divisão",
       "hide_placed": "Ocultar adicionadas",
@@ -2149,7 +2182,8 @@
       "entity": "Entidade",
       "alarm_control_panel": "Painel de alarme",
       "lock": "Fechadura",
-      "humidifier": "Humidificador"
+      "humidifier": "Humidificador",
+      "calendar": "Calendário"
     },
     "displays": {
       "standard": "padrão",
@@ -2403,6 +2437,64 @@
           "hint": "Pontos percorrem cada linha, mais depressa quanto mais potência flui. Linhas e setas é mais calmo: uma linha fica mais grossa com a potência e uma seta mostra o sentido. Um ecrã com firmware mais antigo mantém os pontos.",
           "dots": "Pontos em movimento",
           "lines": "Linhas e setas"
+        }
+      },
+      "calendar": {
+        "title": "Calendário",
+        "needs_firmware": "O cartão de calendário precisa do firmware 0.56.0 ou mais recente: depois de guardar, prima Atualizar no ecrã.",
+        "show": {
+          "label": "Mostrar",
+          "events": "Eventos",
+          "events_hint": "Títulos, o que vem a seguir, a semana e o mês",
+          "busy_free": "Livre ou ocupado",
+          "busy_free_hint": "Livre, Começa em breve ou Ocupado em letras grandes, a próxima reserva e quanto dura"
+        },
+        "calendars": {
+          "label": "Calendários",
+          "hint": "Até {n} calendários num cartão, cada um com a sua cor do Home Assistant.",
+          "count": "{n} calendário | {n} calendários",
+          "own": "Este mosaico",
+          "none": "O Home Assistant não tem outros calendários."
+        },
+        "filter": {
+          "title": "Que eventos",
+          "found": "{n} evento | {n} eventos"
+        },
+        "places": {
+          "label": "Local",
+          "hint": "Só eventos nestes locais, por exemplo uma sala de reuniões. Os locais vêm dos próprios eventos dos calendários; escreva outro para o adicionar.",
+          "add": "Adicionar um local"
+        },
+        "words": {
+          "label": "Palavras no título",
+          "hint": "Só eventos com uma destas palavras no título, e nenhum com uma das palavras a omitir.",
+          "only": "Só com",
+          "hide": "Omitir",
+          "add": "Adicionar uma palavra"
+        },
+        "all_day": "Eventos de dia inteiro",
+        "tentative": "Eventos provisórios",
+        "tentative_hint": "Eventos ainda não confirmados, tal como o calendário os marca.",
+        "private": "Ocultar títulos",
+        "private_hint": "Cada evento aparece como Ocupado, sem título nem local: para um ecrã num corredor ou numa sala partilhada.",
+        "time": {
+          "title": "Tempo"
+        },
+        "ahead": "Dias à frente",
+        "ahead_hint": "Quantos dias de eventos o cartão lista a partir de hoje.",
+        "days": "{n} dia | {n} dias",
+        "soon": "Começa em breve",
+        "soon_hint": "Quanto tempo antes de um evento o cartão diz Começa em breve.",
+        "soon_off": "Desligado",
+        "minutes": "{n} min | {n} min",
+        "start_view": "O ecrã inteiro abre em",
+        "start_view_hint": "Um toque no cartão abre o seu ecrã inteiro. Automático mostra a semana quando o ecrã tem espaço para ela, senão o dia.",
+        "view": {
+          "auto": "Automático",
+          "up_next": "A seguir",
+          "day": "Dia",
+          "week": "Semana",
+          "month": "Mês"
         }
       }
     },
@@ -3109,7 +3201,8 @@
     },
     "mockup": {
       "home": "Casa",
-      "unknown": "Desconhecido"
+      "unknown": "Desconhecido",
+      "calendar_free": "Livre"
     },
     "pages": {
       "mode": "Modo do editor",

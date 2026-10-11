@@ -1,0 +1,256 @@
+"""The calendar card's events (firmware 0.56.0): what a calendar tile shows, fetched from Home Assistant, filtered by the
+tile's own choices and packed for the screen (components/smart_display/calendar_card.h reads it as `x.cal`).
+
+Home Assistant is the source: `calendar.get_events` for every calendar of a card in one call (Home Assistant expands
+repeating events itself), the colour Home Assistant gives a calendar (its registry's `options.calendar.color`, else the
+frontend's palette by the calendar's place among all calendars, as its calendar panel colours them), and its own names.
+A date without a time is an all-day event whose end does not count (Home Assistant's rule). docs/CALENDAR.md says more.
+"""
+from __future__ import annotations
+
+import json
+from datetime import date, datetime, time as day_time, timedelta
+
+# ---- The tile's own choices (validated in core.validate_layout; the inspector writes them).
+STYLES = ('events', 'busy_free')
+START_VIEWS = ('auto', 'up_next', 'day', 'week', 'month')
+MAX_CALENDARS = 6
+MAX_WORDS = 8
+AHEAD_DEFAULT, AHEAD_MAX = 14, 31
+# Options the app keeps: the screen never needs them (it gets the events already filtered).
+OWN = ('calendars', 'places', 'words', 'hide_words', 'all_day', 'tentative', 'private', 'ahead')
+
+# The frontend's palette (src/resources/theme/color/color.globals.ts, --color-1 .. --color-54) and the theme colours a
+# calendar's colour picker may store by name (src/common/color/compute-color.ts THEME_COLORS).
+PALETTE = (
+    0x4269D0, 0xF4BD4A, 0xFF725C, 0x6CC5B0, 0xA463F2, 0xFF8AB7, 0x9C6B4E, 0x97BBF5, 0x01AB63, 0x094BAD, 0xC99000, 0xD84F3E,
+    0x49A28F, 0x048732, 0xD96895, 0x8043CE, 0x7599D1, 0x7A4C31, 0x6989F4, 0xFFD444, 0xFF957C, 0x8FE9D3, 0x62CC71, 0xFFADDA,
+    0xC884FF, 0xBADEFF, 0xBF8B6D, 0x927ACC, 0x97EE3F, 0xBF3947, 0x9F5B00, 0xF48758, 0x8CAED6, 0xF2B94F, 0xEFF26E, 0xE43872,
+    0xD9B100, 0x9D7A00, 0x698CFF, 0x00D27E, 0xD06800, 0x009F82, 0xC49200, 0xCBE8FF, 0xFECDDF, 0xC27EB6, 0x8CD2CE, 0xC4B8D9,
+    0xF883B0, 0xA49100, 0xF48800, 0x27D0DF, 0xA04A9B, 0x4269D0)
+THEME_COLORS = {
+    'primary': 0x03A9F4, 'accent': 0xFF9800, 'red': 0xF44336, 'pink': 0xE91E63, 'purple': 0x926BC7, 'deep-purple': 0x6E41AB,
+    'indigo': 0x3F51B5, 'blue': 0x2196F3, 'light-blue': 0x03A9F4, 'cyan': 0x00BCD4, 'teal': 0x009688, 'green': 0x4CAF50,
+    'light-green': 0x8BC34A, 'lime': 0xCDDC39, 'yellow': 0xFFEB3B, 'amber': 0xFFC107, 'orange': 0xFF9800,
+    'deep-orange': 0xFF6F22, 'brown': 0x795548, 'light-grey': 0xBDBDBD, 'grey': 0x9E9E9E, 'dark-grey': 0x606060,
+    'blue-grey': 0x607D8B, 'black': 0x000000, 'white': 0xFFFFFF}
+
+# The flags the screen reads (calendar_card.h).
+ALL_DAY, TENTATIVE, PRIVATE = 1, 2, 4
+# Room for the card's part of the state message: the whole message stays under 4096 bytes (page_delivery.MAX_MESSAGE).
+BUDGET = 2600
+TITLE_BYTES, PLACE_BYTES, NOTES_BYTES = 48, 32, 160
+# How long fetched events stay fresh; a calendar's own state change fetches again at once (server.Manager).
+SECONDS = 120
+
+
+def calendars_of(tile):
+    """The calendars of a card: the tile's own first, then the ones its options add, each once."""
+    out = [tile['entity']]
+    for entity in (tile.get('options') or {}).get('calendars') or []:
+        if isinstance(entity, str) and entity.startswith('calendar.') and entity not in out:
+            out.append(entity)
+    return out[:MAX_CALENDARS]
+
+
+def ahead_of(tile):
+    value = (tile.get('options') or {}).get('ahead', AHEAD_DEFAULT)
+    return value if isinstance(value, int) and 1 <= value <= AHEAD_MAX else AHEAD_DEFAULT
+
+
+def window(today, ahead):
+    """(first day, day after the last) to ask for: from the Monday of this week (the week view shows the days before
+    today), through `ahead` days, and the whole month glance: six weeks from the Monday on or before the 1st."""
+    first = today.replace(day=1)
+    glance = first - timedelta(days=first.weekday())
+    start = min(today - timedelta(days=today.weekday()), glance)
+    end = max(today + timedelta(days=ahead + 1), glance + timedelta(days=42))
+    return start, end
+
+
+def colour_of(entity, entry, every):
+    """Home Assistant's colour for a calendar: its registry's own (a #rrggbb or a theme colour's name), else the palette's
+    at its place among all calendars sorted by id, as the frontend's calendar panel picks it."""
+    chosen = (((entry or {}).get('options') or {}).get('calendar') or {}).get('color')
+    if isinstance(chosen, str):
+        text = chosen.strip().lower()
+        if text in THEME_COLORS:
+            return THEME_COLORS[text]
+        if len(text) == 7 and text.startswith('#'):
+            try:
+                return int(text[1:], 16)
+            except ValueError:
+                pass
+    place = sorted(every).index(entity) if entity in every else 0
+    return PALETTE[place % len(PALETTE)]
+
+
+def moment(value, tz):
+    """(datetime in tz, all_day) of Home Assistant's start or end: a date alone is a whole day, a datetime carries its
+    own zone (Google keeps the event's), turned into Home Assistant's."""
+    if isinstance(value, dict):
+        value = value.get('dateTime') or value.get('date')
+    if not isinstance(value, str) or not value:
+        return None, False
+    if len(value) == 10:
+        try:
+            d = date.fromisoformat(value)
+        except ValueError:
+            return None, False
+        return datetime.combine(d, day_time(0, 0), tzinfo=tz), True
+    try:
+        moment_ = datetime.fromisoformat(value.replace('Z', '+00:00'))
+    except ValueError:
+        return None, False
+    if moment_.tzinfo is None:
+        moment_ = moment_.replace(tzinfo=tz)
+    return moment_.astimezone(tz) if tz else moment_, False
+
+
+def short(text, limit):
+    return str(text or '').replace('\n', ' ').strip().encode('utf-8')[:limit].decode('utf-8', errors='ignore')
+
+
+def matches(text, words):
+    low = (text or '').lower()
+    return any(w.lower() in low for w in words if isinstance(w, str) and w.strip())
+
+
+def card(tile, fetched, states, entries, tz, now):
+    """The `x.cal` of a calendar tile: today, the calendars' colours and names, the events its choices let through as
+    minutes from today 00:00, how many did not fit, the notes of the event of the moment (or the next), and a mask a day
+    for the month glance. `fetched`: {entity: [Home Assistant's events]}; `entries`: the entity registry by id."""
+    options = tile.get('options') or {}
+    now = now.astimezone(tz) if tz else now
+    today = now.date()
+    midnight = datetime.combine(today, day_time(0, 0), tzinfo=now.tzinfo)
+    ahead = ahead_of(tile)
+    start, end = window(today, ahead)
+    calendars = calendars_of(tile)
+    every = [e for e in states if e.startswith('calendar.')]
+    places = [p for p in options.get('places') or [] if isinstance(p, str) and p.strip()]
+    words = [w for w in options.get('words') or [] if isinstance(w, str) and w.strip()]
+    hide = [w for w in options.get('hide_words') or [] if isinstance(w, str) and w.strip()]
+    show_all_day = options.get('all_day', True) is not False
+    show_tentative = options.get('tentative', True) is not False
+    private = options.get('private') is True
+
+    def minutes(at):
+        return int((at - midnight).total_seconds() // 60)
+
+    rows, glance = [], [0] * 42
+    glance_start = today.replace(day=1) - timedelta(days=today.replace(day=1).weekday())
+    for index, entity in enumerate(calendars):
+        for event in fetched.get(entity) or []:
+            if not isinstance(event, dict):
+                continue
+            begin, all_day = moment(event.get('start'), now.tzinfo)
+            finish, _ = moment(event.get('end'), now.tzinfo)
+            if not begin:
+                continue
+            if not finish or finish <= begin:
+                finish = begin + (timedelta(days=1) if all_day else timedelta(minutes=1))
+            title, place = event.get('summary') or '', event.get('location') or ''
+            if places and not matches(place, places):
+                continue
+            if words and not matches(title, words):
+                continue
+            if hide and matches(title, hide):
+                continue
+            if all_day and not show_all_day:
+                continue
+            tentative = event.get('status') == 'tentative'
+            if tentative and not show_tentative:
+                continue
+            # The month glance: a bit for this calendar on every day the event touches.
+            day = max(begin.date(), glance_start)
+            while day < finish.date() + timedelta(days=0 if all_day or finish.time() == day_time(0, 0) else 1) and (day - glance_start).days < 42:
+                glance[(day - glance_start).days] |= 1 << index
+                day += timedelta(days=1)
+            flags = (ALL_DAY if all_day else 0) | (TENTATIVE if tentative else 0) | (PRIVATE if private else 0)
+            rows.append({'s': minutes(begin), 'e': minutes(finish), 'f': flags, 'c': index,
+                         't': '' if private else short(title, TITLE_BYTES), 'p': '' if private else short(place, PLACE_BYTES),
+                         'n': '' if private else short(event.get('description') or '', NOTES_BYTES)})
+    rows.sort(key=lambda r: (r['s'], r['e']))
+    # The detail list: from the Monday of this week through `ahead` days.
+    first_day = -today.weekday()
+    rows = [r for r in rows if r['e'] > first_day * 1440 and r['s'] < (ahead + 1) * 1440]
+    t_now = minutes(now)
+    running = [r for r in rows if not r['f'] & ALL_DAY and r['s'] <= t_now < r['e']]
+    coming = [r for r in rows if r['s'] > t_now]
+    focus = running[0] if running else coming[0] if coming else None
+    names = []
+    for entity in calendars:
+        attributes = (states.get(entity) or {}).get('attributes') or {}
+        names.append([colour_of(entity, entries.get(entity), every), short(attributes.get('friendly_name') or entity, 32)])
+    data = {'d': [today.year, today.month, today.day, today.weekday()], 'r': [first_day, ahead], 'c': names,
+            'e': [], 'm': 0, 'n': focus['n'] if focus else '',
+            'g': [(glance_start - today).days, glance]}
+    # Nearest first: the events around now matter most; what does not fit is counted, never silently cut.
+    order = sorted(range(len(rows)), key=lambda i: abs(rows[i]['s'] - t_now) if rows[i]['e'] > t_now else 10 ** 9 + t_now - rows[i]['e'])
+    kept = set()
+    size = len(json.dumps(data, separators=(',', ':')))
+    for i in order:
+        r = rows[i]
+        item = [r['s'], r['e'], r['f'], r['c'], r['t'], r['p']]
+        cost = len(json.dumps(item, separators=(',', ':'), ensure_ascii=False).encode('utf-8')) + 1
+        if size + cost > BUDGET:
+            continue
+        kept.add(i)
+        size += cost
+    data['e'] = [[r['s'], r['e'], r['f'], r['c'], r['t'], r['p']] for i, r in enumerate(rows) if i in kept]
+    data['m'] = len(rows) - len(kept)
+    return data
+
+
+def validate(options):
+    """The calendar choices of a tile's options, checked and without defaults; ValueError(key) on a wrong one."""
+    out = dict(options)
+    if 'calendars' in out:
+        value = out['calendars']
+        if not isinstance(value, list) or len(value) > MAX_CALENDARS - 1 or \
+                any(not isinstance(e, str) or not e.startswith('calendar.') or len(e) > 128 for e in value):
+            raise ValueError('calendars')
+        out['calendars'] = list(dict.fromkeys(value))
+        if not out['calendars']:
+            del out['calendars']
+    for key in ('places', 'words', 'hide_words'):
+        if key in out:
+            value = out[key]
+            if not isinstance(value, list) or len(value) > MAX_WORDS or any(not isinstance(w, str) or len(w) > 48 for w in value):
+                raise ValueError(key)
+            value = [w.strip() for w in value if w.strip()]
+            if value:
+                out[key] = list(dict.fromkeys(value))
+            else:
+                del out[key]
+    for key, default in (('all_day', True), ('tentative', True), ('private', False)):
+        if key in out:
+            if not isinstance(out[key], bool):
+                raise ValueError(key)
+            if out[key] == default:
+                del out[key]
+    if 'ahead' in out:
+        if not isinstance(out['ahead'], int) or isinstance(out['ahead'], bool) or not 1 <= out['ahead'] <= AHEAD_MAX:
+            raise ValueError('ahead')
+        if out['ahead'] == AHEAD_DEFAULT:
+            del out['ahead']
+    if 'style' in out:
+        if out['style'] not in STYLES:
+            raise ValueError('style')
+        if out['style'] == STYLES[0]:
+            del out['style']
+    if 'soon' in out:
+        if not isinstance(out['soon'], int) or isinstance(out['soon'], bool) or not 0 <= out['soon'] <= 120:
+            raise ValueError('soon')
+        if out['soon'] == 0:
+            del out['soon']
+    if 'start_view' in out:
+        if out['start_view'] not in START_VIEWS:
+            raise ValueError('start_view')
+        if out['start_view'] == START_VIEWS[0]:
+            del out['start_view']
+    return out
+
+
+KEYS = OWN + ('style', 'soon', 'start_view')

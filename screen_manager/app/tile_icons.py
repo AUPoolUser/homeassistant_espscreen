@@ -229,6 +229,9 @@ FIXED = (
     ('chevron-left', 'F0141'),
     ('chevron-right', 'F0142'),
     ('close', 'F0156'),
+    # The calendar card (firmware 0.56.0): the view key's arrow and an event's place on its sheet.
+    ('menu-down', 'F035D'),
+    ('map-marker-outline', 'F07D9'),
     # Back button of every overlay (firmware 0.2.37+).
     ('arrow-left', 'F004D'),
     ('sun-snowflake-variant', 'F1A79'),
@@ -266,6 +269,9 @@ FIXED = (
 # closed blind, a playing speaker, a battery at 40 %, a phone's tracker on the router (app 0.2.67). The firmware fonts carry them, so a tile shows the icon Home Assistant shows; a name missing here, such as
 # one a later Home Assistant adds, keeps the screen's own default. Not pickable in the editor.
 HA_DEFAULTS = (
+    # Home Assistant's calendar icons (homeassistant/components/calendar/icons.json): on while an event runs, off else.
+    ('calendar-blank', 'F00EE'),
+    ('calendar-check', 'F00EF'),
     ('account-arrow-right', 'F0B53'),
     ('air-filter', 'F0D43'),
     ('air-humidifier', 'F1099'),
@@ -432,7 +438,7 @@ FALLBACK = 'power'
 # The large icon font of a card that takes the whole page (firmware 0.2.62+): what the screen draws on its own for a
 # domain, a state or a built-in card, at 64 px on the Guition and 40 px on the CYD. Kept to these so the CYD's flash
 # stays free; a chosen icon outside this set shows at its usual size in the big circle.
-BIG_GLYPHS = tuple(dict.fromkeys(list(DEFAULTS.values()) + list(BUILTIN_TILES.values()) + ['lightbulb-off', 'robot-off', 'remote-off', 'air-humidifier-off', FALLBACK] +
+BIG_GLYPHS = tuple(dict.fromkeys(list(DEFAULTS.values()) + list(BUILTIN_TILES.values()) + ['lightbulb-off', 'robot-off', 'remote-off', 'air-humidifier-off', 'calendar-check', 'calendar-blank', FALLBACK] +
                                  ['weather-sunny', 'weather-night', 'weather-cloudy', 'weather-partly-cloudy', 'weather-rainy',
                                   'weather-pouring', 'weather-snowy', 'weather-snowy-rainy', 'weather-fog', 'weather-hail',
                                   'weather-lightning', 'weather-lightning-rainy', 'weather-windy', 'alert-circle-outline',
@@ -448,7 +454,7 @@ WEATHER = {'sunny': 'weather-sunny', 'clear-night': 'weather-night', 'cloudy': '
            'windy-variant': 'weather-windy', 'exceptional': 'alert-circle-outline'}
 
 # Domains whose icon the screen draws from the state itself: a weather condition, the sun above or below the horizon.
-OWN_ICON_DOMAINS = frozenset(('weather', 'sun', 'screen'))
+OWN_ICON_DOMAINS = frozenset(('weather', 'sun', 'screen', 'calendar'))
 # Home Assistant's icon resources ({'entity_component': ..., 'entity': ...}), set by the app when it reads them; empty keeps
 # the tables of earlier releases.
 HA_ICONS = {}
@@ -557,5 +563,7 @@ def editor():
             'builtin': {entity: GLYPHS[name] for entity, name in {**BUILTIN_TILES, **DIAGRAM_TILES}.items()},
             'weather': {state: GLYPHS[name] for state, name in WEATHER.items()},
             'sun': {'above_horizon': GLYPHS['weather-sunset-down'], 'below_horizon': GLYPHS['weather-sunset-up']},
+            # A calendar draws Home Assistant's icon of its state (firmware 0.56.0, runtime_tiles icon_for).
+            'calendar': {'on': GLYPHS['calendar-check'], 'off': GLYPHS['calendar-blank']},
             # Glyphs of the direct controls on wide cards, so the mockup previews them.
             'controls': {name: GLYPHS[name] for name in CONTROL_GLYPHS}}

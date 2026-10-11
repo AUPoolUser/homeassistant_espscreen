@@ -3,7 +3,8 @@
     python tools/estimate_tile_memory.py                     every type, from tools/tile_memory_examples.json
     python tools/estimate_tile_memory.py light               one type
     python tools/estimate_tile_memory.py --state state.json  an entity of your own: {"entity", "state", "attributes"}
-                                                             (and "forecast"/"hourly" for a weather entity)
+                                                             (and "forecast"/"hourly" for a weather entity, "events"
+                                                             for a calendar: Home Assistant's calendar.get_events)
 
 The add-on's own code builds the state message of the tile (Manager.tile_message with a stand-in Home Assistant), and a
 model of the firmware's storage prices what the screen keeps of it on a board with PSRAM, which is what a type's `memory:
@@ -109,6 +110,24 @@ def from_now(entries):
             for e in entries]
 
 
+def this_week(entries):
+    """Calendar events as an example holds them, moved by whole days so the first starts today: the add-on keeps only the
+    days around now, so fixed dates would price lower every week."""
+    from datetime import date, datetime, timedelta
+    days = [date.fromisoformat(str(e.get('start', ''))[:10]) for e in entries if isinstance(e, dict) and e.get('start')]
+    if not days:
+        return entries
+    shift = date.today() - min(days)
+
+    def moved(value):
+        if not isinstance(value, str) or not value:
+            return value
+        if len(value) == 10:
+            return (date.fromisoformat(value) + shift).isoformat()
+        return (datetime.fromisoformat(value) + shift).isoformat()
+    return [{**e, 'start': moved(e.get('start')), 'end': moved(e.get('end'))} for e in entries]
+
+
 async def messages(examples):
     """The state message the add-on builds for each example, as a screen running the newest firmware gets it."""
     import test_scaling
@@ -125,6 +144,12 @@ async def messages(examples):
     async def forecast(entity, kind='daily'):
         return forecasts.get((entity, kind), [])
     ha.forecast = forecast
+    # A calendar's events (firmware 0.56.0), moved to this week as the add-on would fetch them.
+    calendars = {example['entity']: example['events'] for example in examples if example.get('events')}
+
+    async def events(entities, start, end):
+        return {entity: this_week(calendars.get(entity, [])) for entity in entities}
+    ha.events = events
     with tempfile.TemporaryDirectory() as folder:
         manager = Manager(with_screen_grid(ha), Path(folder) / 'screens.json')
         out = []

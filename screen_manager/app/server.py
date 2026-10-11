@@ -15,6 +15,7 @@ import time
 from datetime import datetime, timedelta, timezone
 import math
 from urllib.parse import urlsplit
+import calendar_feed
 import camera_feed
 import live_feed
 import claude_skill
@@ -815,6 +816,15 @@ class HomeAssistant:
                                     service_data={'type': kind}, target={'entity_id': entity}, return_response=True)
         forecast = ((result or {}).get('response') or {}).get(entity, {}).get('forecast', [])
         return forecast if isinstance(forecast, list) else []
+
+    async def events(self, entities, start, end):
+        """Every event of these calendars from `start` up to `end`, as Home Assistant's calendar.get_events answers
+        (repeating events already written out), by calendar: {entity: [event]}."""
+        result = await self.request('call_service', domain='calendar', service='get_events',
+                                    service_data={'start_date_time': start.isoformat(), 'end_date_time': end.isoformat()},
+                                    target={'entity_id': list(entities)}, return_response=True)
+        response = (result or {}).get('response') or {}
+        return {entity: (response.get(entity) or {}).get('events') or [] for entity in entities}
 
     async def statistics(self, entities, hours):
         """24 samples per entity from the recorder's statistics, all entities in one request.
@@ -2317,6 +2327,9 @@ class Manager:
         # The energy card (app 0.4.77) reads every sensor of the Energy settings.
         if tile['entity'] == ENERGY_TILE:
             return tuple(energy_flow.related_entities(self.energy_prefs()))
+        # A calendar card (firmware 0.56.0) follows every calendar it shows.
+        if tile['entity'].startswith('calendar.'):
+            return tuple(calendar_feed.calendars_of(tile)[1:])
         if tile['entity'].startswith('media_player.'):
             # The speakers of its menu: who it groups with, the speakers that play its library, and the one it follows.
             entity = tile['entity']
@@ -2589,6 +2602,33 @@ class Manager:
             entry=(time.monotonic(),value);store[key]=entry
         return entry[1]
 
+    def calendar_due(self, tile):
+        """A calendar card's events are a few minutes old: it is sent again with fresh ones."""
+        entry = self.forecasts.get(('calendar', self.calendar_key(tile)))
+        return not entry or time.monotonic() - entry[0] > calendar_feed.SECONDS
+
+    def calendar_key(self, tile):
+        """What a card's events depend on: its calendars, their last change in Home Assistant (an edit or an event's
+        start or end fetches again at once), how far it looks and today."""
+        calendars = calendar_feed.calendars_of(tile)
+        changed = tuple((self.ha.states.get(e) or {}).get('last_updated', '') for e in calendars)
+        tz = getattr(self.ha, 'time_zone', None) or timezone.utc
+        return (tuple(calendars), changed, calendar_feed.ahead_of(tile), datetime.now(tz).date().isoformat())
+
+    async def calendar_extras(self, tile):
+        """The `x.cal` of a calendar tile: Home Assistant's events of its calendars, filtered and packed for the screen."""
+        tz = getattr(self.ha, 'time_zone', None) or timezone.utc
+        now = datetime.now(tz)
+        start, end = calendar_feed.window(now.date(), calendar_feed.ahead_of(tile))
+        calendars = calendar_feed.calendars_of(tile)
+        async def fetch():
+            if not hasattr(self.ha, 'events'):
+                return {}
+            begin = datetime.combine(start, datetime.min.time(), tzinfo=tz)
+            return await self.ha.events(calendars, begin, datetime.combine(end, datetime.min.time(), tzinfo=tz))
+        fetched = await self.cached(self.forecasts, ('calendar', self.calendar_key(tile)), calendar_feed.SECONDS, fetch)
+        return calendar_feed.card(tile, fetched if isinstance(fetched, dict) else {}, self.ha.states, self.registry_index(), tz, now)
+
     def forecast_due(self, entity):
         entry = self.forecasts.get(entity)
         hourly = self.forecasts.get((entity, 'hourly'))
@@ -2649,6 +2689,8 @@ class Manager:
                      icon_of=row_icon if light else None,device_name=self.device_name_of(tile['entity']) if light else None,week=week)
         if tile['entity'].startswith('vacuum.'):
             ha_catalogue.chip_words(extra,tile['entity'],self.ha.states,device,getattr(self.ha,'state_words',None))
+        if tile['entity'].startswith('calendar.'):
+            extra = {**(extra or {}), 'cal': await self.calendar_extras(tile)}
         message=state_message(index,tile,states,extra,
                               precision=header_bar.precision_of(entry) if tile['entity'].startswith('sensor.') else None,entry=entry,
                               units=getattr(self.ha,'units',None),week=week)
@@ -2840,6 +2882,8 @@ class Manager:
         for i, tile in enumerate(tiles):
             reuse = not full and i < len(previous['states']) and tile['entity'] not in dirty and dirty.isdisjoint(self.related_entities(tile))
             if reuse and tile['entity'].startswith('weather.') and self.forecast_due(tile['entity']):
+                reuse = False
+            if reuse and tile['entity'].startswith('calendar.') and self.calendar_due(tile):
                 reuse = False
             # A screen on this route has no hello, and none of the flags a newer option needs.
             states.append(previous['states'][i] if reuse else await self.tile_message(i, tile, features=frozenset(), inbox=inbox))
@@ -4639,6 +4683,23 @@ def create_app(manager, development=False):
             raise ValueError(t('addon.errors.extras.request'))
         return web.json_response(await entity_settings.set_extra(manager, request.match_info['inbox'], data.get('entity'),
                                                                  data.get('value')))
+    async def calendar_preview(request):
+        """A calendar card as the screen would get it, for the editor (firmware 0.56.0): its events after the tile's
+        filters, and every place its calendars' events name, most used first, for the place filter's choices."""
+        data = await request.json()
+        tile = data.get('tile') if isinstance(data, dict) else None
+        if not isinstance(tile, dict) or not str(tile.get('entity', '')).startswith('calendar.'):
+            raise ValueError(t('addon.errors.invalid_input'))
+        try:
+            options = calendar_feed.validate(tile.get('options') or {})
+        except ValueError:
+            options = {}
+        tile = {'entity': tile['entity'], 'options': options}
+        card = await manager.calendar_extras(tile)
+        every = await manager.calendar_extras({'entity': tile['entity'], 'options': {k: v for k, v in options.items() if k in ('calendars', 'ahead')}})
+        places = Counter(row[5] for row in every['e'] if row[5])
+        return web.json_response({'cal': card, 'places': [place for place, _ in places.most_common(24)]})
+    app.router.add_post('/api/calendar/preview', calendar_preview)
     app.router.add_get('/api/screens/{inbox}/extras', extras)
     app.router.add_post('/api/screens/{inbox}/extras', extra)
     app.router.add_get('/', index)

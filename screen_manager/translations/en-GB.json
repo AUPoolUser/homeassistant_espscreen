@@ -280,6 +280,11 @@
         "distance": {
           "neighbourhood": "Neighbourhood"
         }
+      },
+      "calendar": {
+        "calendars": {
+          "hint": "Up to {n} calendars on one card, each in its own colour from Home Assistant."
+        }
       }
     },
     "plugins": {

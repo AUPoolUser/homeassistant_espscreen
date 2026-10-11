@@ -1,0 +1,10 @@
+# Calendar. Home Assistant: homeassistant/components/calendar.
+# Home Assistant's own facts for it (flags, actions) come from its source: catalogue/_ha.json (tools/read_ha_source.py).
+# docs/CATALOGUE.md says what every key means; the card itself: docs/CALENDAR.md.
+# One card that shows more as it gets more room (now, up next, agenda, columns, week) and a full screen a tap opens
+# (up next, day, week, month). Its events come from the app (calendar/event/subscribe), filtered per card, in extras.
+domain: calendar
+memory: {bytes: 1152, extras: true}
+firmware: 0.56.0   # the first firmware that draws this type
+displays:
+  standard: {}

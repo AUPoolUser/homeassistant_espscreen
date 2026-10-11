@@ -15,6 +15,9 @@ export function fields(value: any, allowed: string[], required = allowed) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(k => !allowed.includes(k)) ||
       required.some(k => !(k in value))) fail();
 }
+// A calendar card's choices (firmware 0.56.0), as the page document names them.
+const CALENDAR_FIELDS = ['calendarStyle', 'calendarEntities', 'calendarPlaces', 'calendarWords', 'calendarHideWords', 'calendarAllDay',
+  'calendarTentative', 'calendarPrivate', 'calendarAhead', 'calendarSoon', 'calendarStartView'] as const;
 const entity = (value: any, domains: string[]) => typeof value === 'string' && value.length <= 120 &&
   matches(/^[a-z0-9_]+\.[a-z0-9_]+$/, value) && domains.includes(value.split('.')[0]);
 const icon = (value: any, none = false) => value === 'auto' || (none && value === 'none') || rules.icons.includes(value);
@@ -70,7 +73,8 @@ export function validatePageShape(layout: PageLayout, plugins = false) {
       fields(tile, ['id', 'content', 'placement', 'appearance', 'interaction', 'children'], ['id', 'content', 'placement', 'appearance', 'interaction']);
       fields(tile.placement, ['row', 'column', 'columns', 'rows']);
       fields(tile.appearance, ['label', 'presentation', 'display', 'icon', 'background', 'historyHours', 'refresh', 'subtitle', 'fit', 'overlay',
-        'mapEntities', 'mapFraming', 'mapDistance', 'mapFollow', 'mapMarkers', 'mapNames', 'mapZones', 'mapStreets', 'mapLook', 'energyFlow'], ['label']);
+        'mapEntities', 'mapFraming', 'mapDistance', 'mapFollow', 'mapMarkers', 'mapNames', 'mapZones', 'mapStreets', 'mapLook', 'energyFlow',
+        ...CALENDAR_FIELDS], ['label']);
       fields(tile.interaction, ['tap', 'inline', 'controls', 'action', 'guard', 'play', 'speaker', 'shuffle', 'repeat'], []);
       const content = tile.content;
       fields(content, ['kind', 'entityId', 'name', 'target', 'plugin', 'tile', 'options'], ['kind']);
@@ -143,6 +147,25 @@ export function validateCardOptions(tile: PageTile, entityId: string, size: stri
     if (value !== undefined && (a.display !== 'map' || !choices.includes(value) || value === choices[0])) fail('normalization');
   // How the energy card shows power along a line: the energy card's own, the default (dots) never stored.
   if (a.energyFlow !== undefined && (entityId !== 'screen.energy' || !rules.energyFlow.includes(a.energyFlow) || a.energyFlow === rules.energyFlow[0])) fail('normalization');
+  // A calendar card (firmware 0.56.0), as calendar_feed.validate checks it: its own choices, a default never stored.
+  if (CALENDAR_FIELDS.some((key) => a[key] !== undefined)) {
+    if (domain !== 'calendar') fail('normalization');
+    const cal = rules.calendar;
+    if (a.calendarStyle !== undefined && (!cal.styles.includes(a.calendarStyle) || a.calendarStyle === cal.styles[0])) fail('normalization');
+    if (a.calendarStartView !== undefined && (!cal.startViews.includes(a.calendarStartView) || a.calendarStartView === cal.startViews[0])) fail('normalization');
+    for (const [list, most, test] of [[a.calendarEntities, cal.calendars, (v: string) => matches(/^calendar\.[a-z0-9_]+$/, v) && v !== entityId && bytes(v) <= 128],
+      [a.calendarPlaces, cal.words, (v: string) => bytes(v) <= 48], [a.calendarWords, cal.words, (v: string) => bytes(v) <= 48],
+      [a.calendarHideWords, cal.words, (v: string) => bytes(v) <= 48]] as [unknown, number, (v: string) => boolean][]) {
+      if (list === undefined) continue;
+      if (!Array.isArray(list) || !list.length || list.length > most || new Set(list).size !== list.length ||
+          list.some((v) => typeof v !== 'string' || !v.trim() || v !== v.trim() || !test(v))) fail('normalization');
+    }
+    for (const [value, fallback] of [[a.calendarAllDay, true], [a.calendarTentative, true], [a.calendarPrivate, false]] as [unknown, boolean][])
+      if (value !== undefined && (typeof value !== 'boolean' || value === fallback)) fail('normalization');
+    const whole = (value: unknown, least: number, most: number) => typeof value === 'number' && Number.isInteger(value) && value >= least && value <= most;
+    if (a.calendarAhead !== undefined && (!whole(a.calendarAhead, 1, cal.ahead[1]) || a.calendarAhead === cal.ahead[0])) fail('normalization');
+    if (a.calendarSoon !== undefined && (!whole(a.calendarSoon, 1, 120))) fail('normalization');
+  }
   // A favourite (app 0.4.42): what it plays and its speaker, and its own shuffle and repeat (app 0.4.84), with the
   // favourite alone.
   if ((i.play !== undefined || i.speaker !== undefined || i.shuffle !== undefined || i.repeat !== undefined) && a.display !== 'favorite') fail('normalization');

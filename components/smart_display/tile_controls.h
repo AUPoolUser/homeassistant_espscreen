@@ -190,6 +190,8 @@ inline uint32_t accent(const Tile &t) {
   if (d == "select" || d == "input_select") return INDIGO;
   if (d == "number" || d == "input_number") return TEAL;
   if (d == "weather") return weather_color(t.state);
+  // A calendar is Home Assistant's active amber while an event runs (inactive is grey, as every tile).
+  if (d == "calendar") return AMBER;
   if (d == "sun") return t.state == "above_horizon" ? AMBER : INDIGO;
   // At home green; in another zone blue (--state-person-active-color).
   if (d == "person") return t.state == "home" ? GREEN : BLUE;
@@ -900,6 +902,8 @@ inline bool runtime_card_domain(const std::string &d) {
   return d == "sensor" || d == "binary_sensor" || d == "weather" || d == "number" || d == "input_number" || d == "select" ||
          d == "input_select" || d == "media_player" || d == "vacuum" || d == "cover" || d == "sun" || d == "person" ||
          d == "timer" || d == "climate" || d == "humidifier" || d == "alarm_control_panel" ||
+         // A calendar opens its full screen: the day, the week, the month (firmware 0.56.0+).
+         d == "calendar" ||
          // A remote opens its card, as Home Assistant's tile card opens its dialog: the power key and its activities
          // (firmware 0.22.0+). The tap option `toggle` switches it instead.
          d == "remote";

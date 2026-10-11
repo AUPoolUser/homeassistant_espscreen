@@ -666,6 +666,10 @@ std::string receive(const std::string &payload) {
     tile.refresh = refresh == 0 || (refresh >= 5 && refresh <= 3600) ? refresh : 15;
     tile.overlay = string(options["overlay"], 8) != "none";
     tile.energy_lines = string(options["flow"], 8) == "lines";
+    // A calendar card's choices (firmware 0.56.0+): its look, when an event "starts soon", its full screen's first view.
+    tile.calendar_busy_free = string(options["style"], 12) == "busy_free";
+    tile.calendar_soon = options["soon"].is<int>() ? (uint8_t) std::clamp(options["soon"].as<int>(), 0, 120) : 0;
+    tile.calendar_view = string(options["start_view"], 8);
     tile.inline_control = string(options["inline"]); if (tile.inline_control.empty()) tile.inline_control="none";
     // What the second line says (firmware 0.2.90+); "auto" is the line the screen works out itself, as before.
     tile.subtitle = string(options["sub"], 96); if (tile.subtitle.empty()) tile.subtitle="auto";
@@ -991,6 +995,40 @@ std::string receive(const std::string &payload) {
       e->rest = std::max(0.f, number(extra["o"], 0));
       e->home_name = string(extra["n"], 32);
       next.energy = std::move(e);
+    }
+    // A calendar card (firmware 0.56.0+, calendar_card.h): today, the calendars' colours and names, the events the app
+    // filtered for this card (minutes from today 00:00), how many it left out, the notes of the event of the moment, and
+    // a mask a day for the month's glance. A board without PSRAM keeps 24 events (catalogue/calendar.yaml prices them).
+    if (tile.domain() == "calendar" && extra["cal"].is<JsonObject>()) {
+      JsonVariant c = extra["cal"];
+      auto d = std::make_shared<calendar_card::Data>();
+      if (c["d"].is<JsonArray>()) {
+        d->year = c["d"][0] | 0; d->month = std::clamp(c["d"][1] | 1, 1, 12); d->day = std::clamp(c["d"][2] | 1, 1, 31);
+        d->weekday = std::clamp(c["d"][3] | 0, 0, 6);
+      }
+      if (c["r"].is<JsonArray>()) { d->from = std::clamp(c["r"][0] | 0, -62, 0); d->to = std::clamp(c["r"][1] | 7, 0, 62); }
+      if (c["c"].is<JsonArray>()) for (JsonVariant k : c["c"].as<JsonArray>()) {
+        if (d->colors.size() == 8) break;
+        d->colors.push_back(k[0].is<uint32_t>() ? (k[0].as<uint32_t>() & 0xFFFFFF) : 0);
+        d->names.push_back(string(k[1], 32));
+      }
+      const size_t most = has_psram() ? 80 : 24;
+      if (c["e"].is<JsonArray>()) for (JsonVariant e : c["e"].as<JsonArray>()) {
+        if (d->events.size() == most) break;
+        calendar_card::Event ev;
+        ev.start = e[0] | 0; ev.end = e[1] | 0; ev.flags = (uint8_t) (e[2] | 0); ev.cal = (uint8_t) std::clamp(e[3] | 0, 0, 7);
+        ev.title = string(e[4], 64); ev.place = string(e[5], 40);
+        if (ev.end <= ev.start) ev.end = ev.start + 1;
+        d->events.push_back(std::move(ev));
+      }
+      std::stable_sort(d->events.begin(), d->events.end(), [](const calendar_card::Event &a, const calendar_card::Event &b) { return a.start < b.start; });
+      d->left_out = std::max(0, c["m"] | 0);
+      d->notes = string(c["n"], 200);
+      if (c["g"].is<JsonArray>()) {
+        d->glance_from = std::clamp(c["g"][0] | 0, -62, 0);
+        if (c["g"][1].is<JsonArray>()) for (JsonVariant mask : c["g"][1].as<JsonArray>()) { if (d->glance.size() == 62) break; d->glance.push_back((uint8_t) (mask | 0)); }
+      }
+      next.calendar = std::move(d);
     }
     // An alarm panel (app 0.3.8+, firmware 0.3.3+): how it takes codes, who changed it, and a delay's end.
     if (tile.domain() == "alarm_control_panel") {

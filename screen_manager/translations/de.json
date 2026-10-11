@@ -586,6 +586,38 @@
     },
     "plugin": {
       "missing": "Plugin fehlt"
+    },
+    "calendar": {
+      "free": "Frei",
+      "busy": "Belegt",
+      "starts_soon": "Beginnt gleich",
+      "private": "Belegt",
+      "all_day": "Ganztägig",
+      "today": "Heute",
+      "tomorrow": "Morgen",
+      "nothing": "Nichts geplant",
+      "nothing_more": "Diese Woche nichts mehr",
+      "until": "Bis {x}",
+      "next": "Nächster {x}",
+      "left": "Noch {x}",
+      "in": "In {x}",
+      "more": "{x} weitere",
+      "earlier": "{x} früher",
+      "later": "{x} später",
+      "more_week": "{x} weitere diese Woche",
+      "views": [
+        "Demnächst",
+        "Tag",
+        "Woche",
+        "Monat"
+      ],
+      "view_notes": [
+        "Was gerade läuft, dann die nächsten Termine",
+        "Ein Tag, ein Tippen auf die Leiste wählt ihn",
+        "Tage nebeneinander, Stunden nach unten",
+        "Der Monat auf einen Blick, ein Tippen öffnet einen Tag"
+      ],
+      "today_key": "Heute"
     }
   },
   "addon": {
@@ -1726,7 +1758,8 @@
         "screen": "Bildschirm",
         "alarm_control_panel": "Alarm",
         "lock": "Schlösser",
-        "humidifier": "Luftbefeuchter"
+        "humidifier": "Luftbefeuchter",
+        "calendar": "Kalender"
       },
       "room": "Bereich",
       "hide_placed": "Platzierte ausblenden",
@@ -2149,7 +2182,8 @@
       "entity": "Entität",
       "alarm_control_panel": "Alarmanlage",
       "lock": "Schloss",
-      "humidifier": "Luftbefeuchter"
+      "humidifier": "Luftbefeuchter",
+      "calendar": "Kalender"
     },
     "displays": {
       "standard": "Standard",
@@ -2403,6 +2437,64 @@
           "hint": "Punkte laufen über jede Linie, schneller, je mehr Leistung fließt. Linien und Pfeile ist ruhiger: Eine Linie wird mit der Leistung dicker und ein Pfeil zeigt, in welche Richtung sie fließt. Ein Bildschirm mit älterer Firmware behält die Punkte.",
           "dots": "Bewegte Punkte",
           "lines": "Linien und Pfeile"
+        }
+      },
+      "calendar": {
+        "title": "Kalender",
+        "needs_firmware": "Die Kalenderkarte braucht Firmware 0.56.0 oder neuer: Nach dem Speichern beim Bildschirm auf Aktualisieren drücken.",
+        "show": {
+          "label": "Anzeige",
+          "events": "Termine",
+          "events_hint": "Titel, was als Nächstes kommt, die Woche und der Monat",
+          "busy_free": "Frei oder belegt",
+          "busy_free_hint": "Frei, Beginnt gleich oder Belegt in großer Schrift, die nächste Buchung und wie lange sie dauert"
+        },
+        "calendars": {
+          "label": "Kalender",
+          "hint": "Bis zu {n} Kalender auf einer Karte, jeder in seiner eigenen Farbe aus Home Assistant.",
+          "count": "{n} Kalender | {n} Kalender",
+          "own": "Diese Kachel",
+          "none": "Home Assistant hat keine weiteren Kalender."
+        },
+        "filter": {
+          "title": "Welche Termine",
+          "found": "{n} Termin | {n} Termine"
+        },
+        "places": {
+          "label": "Ort",
+          "hint": "Nur Termine an diesen Orten, z. B. in einem Besprechungsraum. Die Orte stammen aus den Terminen der Kalender selbst; einen anderen eintippen, um ihn hinzuzufügen.",
+          "add": "Ort hinzufügen"
+        },
+        "words": {
+          "label": "Wörter im Titel",
+          "hint": "Nur Termine mit einem dieser Wörter im Titel und keine mit einem der auszulassenden Wörter.",
+          "only": "Nur mit",
+          "hide": "Auslassen",
+          "add": "Wort hinzufügen"
+        },
+        "all_day": "Ganztägige Termine",
+        "tentative": "Vorläufige Termine",
+        "tentative_hint": "Termine, die noch nicht bestätigt sind, so wie der Kalender sie kennzeichnet.",
+        "private": "Titel ausblenden",
+        "private_hint": "Jeder Termin erscheint als Belegt, ohne Titel und Ort: für einen Bildschirm im Flur oder in einem gemeinsamen Raum.",
+        "time": {
+          "title": "Zeit"
+        },
+        "ahead": "Vorausschau",
+        "ahead_hint": "Wie viele Tage an Terminen die Karte ab heute zeigt.",
+        "days": "{n} Tag | {n} Tage",
+        "soon": "Beginnt gleich",
+        "soon_hint": "Wie lange vor einem Termin die Karte Beginnt gleich zeigt.",
+        "soon_off": "Aus",
+        "minutes": "{n} Min. | {n} Min.",
+        "start_view": "Vollbild öffnet mit",
+        "start_view_hint": "Ein Tippen auf die Karte öffnet ihr Vollbild. Automatisch zeigt die Woche, wo der Bildschirm Platz dafür hat, sonst den Tag.",
+        "view": {
+          "auto": "Automatisch",
+          "up_next": "Demnächst",
+          "day": "Tag",
+          "week": "Woche",
+          "month": "Monat"
         }
       }
     },
@@ -3109,7 +3201,8 @@
     },
     "mockup": {
       "home": "Zuhause",
-      "unknown": "Unbekannt"
+      "unknown": "Unbekannt",
+      "calendar_free": "Frei"
     },
     "pages": {
       "mode": "Editormodus",

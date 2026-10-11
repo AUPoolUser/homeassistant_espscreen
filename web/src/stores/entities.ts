@@ -51,6 +51,7 @@ export const useEntitiesStore = defineStore("entities", () => {
     if (entity?.icon) return entity.icon;
     if (domain === "weather") return icons.weather[entity?.state || ""] || icons.weather.partlycloudy;
     if (domain === "sun") return icons.sun[entity?.state || ""] || icons.sun.below_horizon;
+    if (domain === "calendar" && icons.calendar) return icons.calendar[entity?.state === "on" ? "on" : "off"];
     return icons.defaults[domain] || icons.fallback;
   }
   const tileIconCp = (tile: Tile) => iconNamed(tile.options?.icon)?.cp || automaticIcon(tile.entity);

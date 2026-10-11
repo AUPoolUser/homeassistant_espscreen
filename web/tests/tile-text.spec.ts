@@ -146,3 +146,11 @@ describe("the values a card stands large", () => {
     expect(sameLive({ state: "on", a: {} }, { state: "off", a: {} })).toBe(false);
   });
 });
+
+describe("a calendar's line (firmware 0.56.0)", () => {
+  it("names the event of the moment and says Free while none runs", () => {
+    expect(stateText("calendar.work", { state: "on", a: { message: "Stand-up" } }, {}, en)).toBe("Stand-up");
+    expect(stateText("calendar.work", { state: "off", a: { message: "Lunch" } }, {}, en)).toBe("Free");
+    expect(stateText("calendar.work", { state: "unavailable" }, {}, en)).toBe("Unavailable");
+  });
+});

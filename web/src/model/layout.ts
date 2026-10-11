@@ -342,6 +342,8 @@ export const domains: Record<string, [string, string, string]> = {
   image: ["◧", "#3d4a57", "#e6ebf0"],
   alarm_control_panel: ["⛨", "#2f7d32", "#e1f2e2"],
   lock: ["⚿", "#2f7d32", "#e1f2e2"],
+  // A calendar: Home Assistant's active amber, as while an event runs (firmware 0.56.0).
+  calendar: ["▦", "#ad7600", "#fff3d3"],
 };
 // [name, sign, colour, background] of an entity's domain.
 export function domainInfo(id: string): [string, string, string, string] {

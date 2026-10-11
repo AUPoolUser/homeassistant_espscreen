@@ -19,7 +19,10 @@ import { PLUGIN_TILE, PLUGIN_TILE_OPTIONS } from "./plugins";
 const APPEARANCE = { display: "display", icon: "icon", background: "background", historyHours: "history_hours", refresh: "refresh", subtitle: "sub", fit: "fit", overlay: "overlay",
   mapEntities: "map", mapFraming: "framing", mapDistance: "distance",
   mapFollow: "follow", mapMarkers: "markers", mapNames: "names", mapZones: "zones", mapStreets: "streets", mapLook: "look",
-  energyFlow: "flow" } as const;
+  energyFlow: "flow",
+  calendarStyle: "style", calendarEntities: "calendars", calendarPlaces: "places", calendarWords: "words", calendarHideWords: "hide_words",
+  calendarAllDay: "all_day", calendarTentative: "tentative", calendarPrivate: "private", calendarAhead: "ahead", calendarSoon: "soon",
+  calendarStartView: "start_view" } as const;
 const INTERACTION = ["tap", "inline", "controls", "action", "play", "speaker", "shuffle", "repeat"] as const;
 const PICTURE_OWN = ["refresh", ...Object.keys(rules.picture)];
 // A map card's own choices (app 0.4.33); its name on the picture is the live picture's `overlay`.
@@ -28,13 +31,20 @@ const MAP_OWN = ["map", "framing", "distance", "follow", "markers", "names", "zo
 // The map tile of the screen's own cards (app 0.4.36): a map and nothing else.
 const MAP_TILE = "screen.map";
 
+// A calendar card's own choices (firmware 0.56.0, calendar_feed.validate) and what each means unstored; a list is no
+// list when it is empty.
+export const CALENDAR_DEFAULTS: Record<string, unknown> = { style: rules.calendar.styles[0], calendars: [], places: [], words: [], hide_words: [],
+  all_day: true, tentative: true, private: false, ahead: rules.calendar.ahead[0], soon: 0, start_view: rules.calendar.startViews[0] };
+export const CALENDAR_OWN = Object.keys(CALENDAR_DEFAULTS);
+
 // What a choice that asks a second step stands for while the inspector tries it: Perform action asks which action,
 // a value of the entity which value, words of your own the words. The step itself is checked when it is taken.
 const SAMPLE_ACTION = { action: "homeassistant.turn_on" };
 // The value an option means when it is not stored, where the add-on drops the stored one (core.validate_layout).
 export const DEFAULTS: Record<string, unknown> = { sub: "auto", fit: rules.picture.fit[0], overlay: rules.picture.overlay[0],
   framing: MAP?.framing[0], distance: MAP?.distance[0], follow: MAP?.follow[0], markers: MAP?.markers[0], names: MAP?.names[0],
-  zones: MAP?.zones[0], streets: MAP?.streets[0], look: MAP?.look[0], flow: rules.energyFlow[0] };
+  zones: MAP?.zones[0], streets: MAP?.streets[0], look: MAP?.look[0], flow: rules.energyFlow[0],
+  ...Object.fromEntries(Object.entries(CALENDAR_DEFAULTS).filter(([key]) => !["places", "words", "hide_words", "calendars"].includes(key))) };
 
 const pageTile = (entity: string) => /^screen\.page_\d+$/.test(entity);
 
@@ -62,6 +72,9 @@ export function canonicalOptions(entity: string, options: TileOptions = {}, key 
   if (entity !== MAP_TILE) delete out.follow;
   // How power shows along a line is the energy card's own (catalogue/screen.yaml `energy`).
   if (entity !== "screen.energy") delete out.flow;
+  // A calendar card keeps its choices (firmware 0.56.0); no other tile has them, and an empty list is none.
+  if (!entity.startsWith("calendar.")) for (const field of CALENDAR_OWN) delete out[field];
+  for (const field of ["calendars", "places", "words", "hide_words"]) if (Array.isArray(out[field]) && !(out[field] as unknown[]).length) delete out[field];
   for (const [key, value] of Object.entries(DEFAULTS)) if (out[key] === value) delete out[key];
   // A Go to page tile has a name, an icon, a colour and a width, nothing else.
   if (pageTile(entity)) for (const key of ["display", "inline", "controls", "history_hours"]) delete out[key];

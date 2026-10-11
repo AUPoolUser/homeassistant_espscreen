@@ -586,6 +586,38 @@
     },
     "plugin": {
       "missing": "Hiányzó bővítmény"
+    },
+    "calendar": {
+      "free": "Szabad",
+      "busy": "Foglalt",
+      "starts_soon": "Hamarosan kezdődik",
+      "private": "Foglalt",
+      "all_day": "Egész nap",
+      "today": "Ma",
+      "tomorrow": "Holnap",
+      "nothing": "Nincs tervezve semmi",
+      "nothing_more": "A héten nincs több",
+      "until": "{x}-ig",
+      "next": "Következő: {x}",
+      "left": "Még {x}",
+      "in": "{x} múlva",
+      "more": "{x} további",
+      "earlier": "{x} korábbi",
+      "later": "{x} későbbi",
+      "more_week": "{x} további a héten",
+      "views": [
+        "Következő",
+        "Nap",
+        "Hét",
+        "Hónap"
+      ],
+      "view_notes": [
+        "Ami most zajlik, aztán a következők",
+        "Egy nap, a sávra koppintva választható",
+        "Napok egymás mellett, órák lefelé",
+        "A hónap egy pillantásra, koppints egy nap megnyitásához"
+      ],
+      "today_key": "Ma"
     }
   },
   "addon": {
@@ -1726,7 +1758,8 @@
         "screen": "Kijelző",
         "alarm_control_panel": "Riasztó",
         "lock": "Zárak",
-        "humidifier": "Párásítók"
+        "humidifier": "Párásítók",
+        "calendar": "Naptárak"
       },
       "room": "Helyiség",
       "hide_placed": "Elhelyezettek elrejtése",
@@ -2149,7 +2182,8 @@
       "entity": "Entitás",
       "alarm_control_panel": "Riasztópanel",
       "lock": "Zár",
-      "humidifier": "Párásító"
+      "humidifier": "Párásító",
+      "calendar": "Naptár"
     },
     "displays": {
       "standard": "normál",
@@ -2403,6 +2437,64 @@
           "hint": "Pontok futnak végig minden vonalon, annál gyorsabban, minél több teljesítmény áramlik. A vonalak és nyilak nyugodtabb: a vonal a teljesítménnyel vastagodik, és egy nyíl mutatja az irányt. A régebbi firmware-rel futó kijelző megtartja a pontokat.",
           "dots": "Mozgó pontok",
           "lines": "Vonalak és nyilak"
+        }
+      },
+      "calendar": {
+        "title": "Naptár",
+        "needs_firmware": "A naptárkártyához 0.56.0 vagy újabb firmware kell: mentés után nyomd meg a Frissítés gombot a kijelzőnél.",
+        "show": {
+          "label": "Megjelenítés",
+          "events": "Események",
+          "events_hint": "Címek, ami következik, a hét és a hónap",
+          "busy_free": "Szabad vagy foglalt",
+          "busy_free_hint": "Szabad, Hamarosan kezdődik vagy Foglalt nagy betűkkel, a következő foglalás és a hossza"
+        },
+        "calendars": {
+          "label": "Naptárak",
+          "hint": "Legfeljebb {n} naptár egy kártyán, mindegyik a saját Home Assistant-színével.",
+          "count": "{n} naptár | {n} naptár",
+          "own": "Ez a csempe",
+          "none": "A Home Assistantben nincs más naptár."
+        },
+        "filter": {
+          "title": "Mely események",
+          "found": "{n} esemény | {n} esemény"
+        },
+        "places": {
+          "label": "Hely",
+          "hint": "Csak az ezeken a helyeken tartott események, például egy tárgyalóban. A helyek a naptárak saját eseményeiből származnak; írj be egy másikat a hozzáadásához.",
+          "add": "Hely hozzáadása"
+        },
+        "words": {
+          "label": "Szavak a címben",
+          "hint": "Csak azok az események, amelyek címében szerepel egy ezek közül a szavak közül, és egy sem a kihagyandó szavak közül.",
+          "only": "Csak ezzel",
+          "hide": "Kihagyás",
+          "add": "Szó hozzáadása"
+        },
+        "all_day": "Egész napos események",
+        "tentative": "Feltételes események",
+        "tentative_hint": "Még meg nem erősített események, ahogy a naptár jelöli őket.",
+        "private": "Címek elrejtése",
+        "private_hint": "Minden esemény Foglaltként jelenik meg, cím és hely nélkül: folyosón vagy közös helyiségben lévő kijelzőhöz.",
+        "time": {
+          "title": "Idő"
+        },
+        "ahead": "Előretekintés",
+        "ahead_hint": "Hány nap eseményeit sorolja fel a kártya mától.",
+        "days": "{n} nap | {n} nap",
+        "soon": "Hamarosan kezdődik",
+        "soon_hint": "Mennyivel egy esemény előtt írja ki a kártya, hogy Hamarosan kezdődik.",
+        "soon_off": "Ki",
+        "minutes": "{n} perc | {n} perc",
+        "start_view": "A teljes képernyő nézete",
+        "start_view_hint": "A kártyára koppintva megnyílik a teljes képernyője. Az Automatikus a hetet mutatja, ha elfér a kijelzőn, különben a napot.",
+        "view": {
+          "auto": "Automatikus",
+          "up_next": "Következő",
+          "day": "Nap",
+          "week": "Hét",
+          "month": "Hónap"
         }
       }
     },
@@ -3109,7 +3201,8 @@
     },
     "mockup": {
       "home": "Kezdőlap",
-      "unknown": "Ismeretlen"
+      "unknown": "Ismeretlen",
+      "calendar_free": "Szabad"
     },
     "pages": {
       "mode": "Szerkesztő mód",
