@@ -196,6 +196,8 @@ LINT_KEEP = {
     'Error: layout', 'Error: invalid layout', 'Error: incomplete layout', 'Error: insufficient layout memory',
     'Error: outdated tile or configuration in state',
     # Only a log line or the rate limiter's reason shows these.
+    # The live view's log of what lies over a live tile (runtime_tiles.h, drawn_over).
+    'the top layer', 'the system layer', 'something on the page', 'another screen',
     # The picture loader's log of a picture's steps (picture_loader.h, note()).
     'not wanted now', 'asks again', 'breaks off for the glass', 'load failed',
     'history range', 'card button ', 'header navigation', 'media key ', 'screensaver play', 'screensaver mute', 'let go', 'too short (', 'already handled in this contact',
