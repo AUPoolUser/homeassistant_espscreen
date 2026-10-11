@@ -136,7 +136,7 @@ lv_obj_add_style(root, style_page, (lv_state_t)(LV_PART_MAIN));
   lv_obj_add_style(tile_scroll, _lv_theme_style_obj_main_default, (lv_state_t)(LV_PART_MAIN));
   lv_obj_add_style(tile_scroll, _lv_theme_style_obj_main_pressed, (lv_state_t)(LV_STATE_PRESSED));
   lv_obj_set_layout(tile_scroll, LV_LAYOUT_GRID);
-  lv_obj_set_style_pad_row(tile_scroll, 13, LV_STATE_DEFAULT);
+  lv_obj_set_style_pad_row(tile_scroll, 12, LV_STATE_DEFAULT);
   lv_obj_set_style_pad_column(tile_scroll, 12, LV_STATE_DEFAULT);
   static const lv_coord_t tile_scroll_row_dsc[] = {LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
   lv_obj_set_style_grid_row_dsc_array(tile_scroll, tile_scroll_row_dsc, LV_STATE_DEFAULT);
