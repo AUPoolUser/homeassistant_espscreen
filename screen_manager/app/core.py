@@ -166,7 +166,7 @@ def our_ref(value):
 # The shared firmware of this app release: packages/core.yaml's SCREEN_FIRMWARE_VERSION, what every board builds
 # unless its own board file went ahead with a fix for that board alone (firmware_target, docs/BOARD_RELEASES.md). The
 # middle number is the core: the feature gates below name a shared X.Y.0, so a feature always ships with a new core.
-FIRMWARE_VERSION = '0.54.0'
+FIRMWARE_VERSION = '0.55.0'
 # The Auto standby switch a screen offers Home Assistant automations.
 AUTO_STANDBY_MIN_FIRMWARE = '0.2.41'
 # The settings page the screen opens itself, and the screen.settings tile that opens it.
@@ -1209,7 +1209,9 @@ def validate_header(data, most=HEADER_MAX_ITEMS):
                 raise ValueError(t('addon.errors.top_bar.unknown_setting'))
             if not plugin_tile(item.get('item')) or item.get('content', 'all') not in PLUGIN_ITEM_CONTENTS:
                 raise ValueError(t('addon.errors.top_bar.invalid_setting'))
-            clean = {'type': 'plugin', 'item': item['item'], 'content': item.get('content', 'all')}
+            # Its icon alone is the one choice kept: an item without `content` shows all, and stays one an app before
+            # 0.4.87 reads, so a backup of the app from before still starts.
+            clean = {'type': 'plugin', 'item': item['item'], **({'content': 'icon'} if item.get('content') == 'icon' else {})}
         elif kind == 'entity':
             if set(item) - {'type', 'entity', 'content', 'icon', 'show'}:
                 raise ValueError(t('addon.errors.top_bar.unknown_setting'))

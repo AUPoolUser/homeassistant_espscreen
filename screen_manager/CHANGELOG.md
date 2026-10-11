@@ -1,4 +1,4 @@
-## Unreleased
+## 0.4.87 (firmware 0.55.0)
 
 - **Two new boards, experimental.** The Guition JC8048W550C_I, a 5-inch ESP32-S3 with 800 x 480 RGB glass and GT911
   touch, by [@BSkando](https://github.com/BSkando) (#230), and the Guition JC4880P443, a 4.3-inch ESP32-P4 with
