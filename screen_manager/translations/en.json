@@ -2159,7 +2159,8 @@
           "place_hint": "Written into the booking as its place, for example the room's name.",
           "place_add": "Add a place",
           "name": "Title",
-          "name_hint": "The booking's title in the calendar."
+          "name_hint": "The booking's title in the calendar.",
+          "name_placeholder": "Booked on the screen"
         }
       }
     },

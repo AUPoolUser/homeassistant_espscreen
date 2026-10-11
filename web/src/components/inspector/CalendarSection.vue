@@ -153,7 +153,7 @@ const viewChoices = computed(() => rules.calendar.startViews.map((view) => [view
           :placeholder="t('editor.tile.calendar.book.place_add')" :label="t('editor.tile.calendar.book.place')" @change="(values) => set('book_place', values[0] ?? '')" />
       </PropRow>
       <PropRow :label="t('editor.tile.calendar.book.name')" icon="format-title" :hint="t('editor.tile.calendar.book.name_hint')" stack>
-        <input class="cal-book-title" :value="titleDraft ?? current<string>('book_title')" :placeholder="t('screen.calendar.booked')" :maxlength="rules.calendar.bookText"
+        <input class="cal-book-title" :value="titleDraft ?? current<string>('book_title')" :placeholder="t('editor.tile.calendar.book.name_placeholder')" :maxlength="rules.calendar.bookText"
           autocomplete="off" @input="titleDraft = ($event.target as HTMLInputElement).value" @blur="setTitle(($event.target as HTMLInputElement).value)"
           @keydown.enter="($event.target as HTMLInputElement).blur()" :aria-label="t('editor.tile.calendar.book.name')" />
       </PropRow>

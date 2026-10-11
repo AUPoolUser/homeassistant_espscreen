@@ -2520,7 +2520,8 @@
           "place_hint": "Écrit comme lieu de la réservation, par exemple le nom de la salle.",
           "place_add": "Ajouter un lieu",
           "name": "Titre",
-          "name_hint": "Le titre de la réservation dans le calendrier."
+          "name_hint": "Le titre de la réservation dans le calendrier.",
+          "name_placeholder": "Réservé sur l'écran"
         }
       }
     },

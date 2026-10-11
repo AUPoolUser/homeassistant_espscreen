@@ -2520,7 +2520,8 @@
           "place_hint": "Scritto come luogo della prenotazione, per esempio il nome della sala.",
           "place_add": "Aggiungi un luogo",
           "name": "Titolo",
-          "name_hint": "Il titolo della prenotazione nel calendario."
+          "name_hint": "Il titolo della prenotazione nel calendario.",
+          "name_placeholder": "Prenotato sullo schermo"
         }
       }
     },

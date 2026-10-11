@@ -2520,7 +2520,8 @@
           "place_hint": "Wird als Ort in die Buchung geschrieben, etwa der Name des Raums.",
           "place_add": "Ort hinzufügen",
           "name": "Titel",
-          "name_hint": "Der Titel der Buchung im Kalender."
+          "name_hint": "Der Titel der Buchung im Kalender.",
+          "name_placeholder": "Am Bildschirm gebucht"
         }
       }
     },

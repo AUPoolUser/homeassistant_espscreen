@@ -2520,7 +2520,8 @@
           "place_hint": "A foglalás helyeként kerül be, például a terem neve.",
           "place_add": "Hely hozzáadása",
           "name": "Cím",
-          "name_hint": "A foglalás címe a naptárban."
+          "name_hint": "A foglalás címe a naptárban.",
+          "name_placeholder": "A kijelzőn foglalva"
         }
       }
     },

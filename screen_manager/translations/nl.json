@@ -2159,7 +2159,8 @@
           "place_hint": "Komt als plaats in de boeking, bijvoorbeeld de naam van de ruimte.",
           "place_add": "Plaats toevoegen",
           "name": "Titel",
-          "name_hint": "De titel van de boeking in de agenda."
+          "name_hint": "De titel van de boeking in de agenda.",
+          "name_placeholder": "Geboekt op het scherm"
         }
       }
     },
