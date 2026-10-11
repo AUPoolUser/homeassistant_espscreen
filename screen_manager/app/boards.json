@@ -38,7 +38,8 @@
   "features": [
    "speaker",
    "microphone",
-   "media_player"
+   "media_player",
+   "bluetooth"
   ],
   "firmware": "0.55.0",
   "fonts": {
@@ -539,7 +540,9 @@
   "columns": 4,
   "dimmable": true,
   "dpi": 170,
-  "features": [],
+  "features": [
+   "bluetooth"
+  ],
   "firmware": "0.55.0",
   "fonts": {
    "headline": 27,
@@ -656,7 +659,9 @@
   "columns": 4,
   "dimmable": true,
   "dpi": 170,
-  "features": [],
+  "features": [
+   "bluetooth"
+  ],
   "firmware": "0.55.0",
   "fonts": {
    "headline": 27,
@@ -890,7 +895,9 @@
   "columns": 3,
   "dimmable": true,
   "dpi": 217,
-  "features": [],
+  "features": [
+   "bluetooth"
+  ],
   "firmware": "0.55.0",
   "fonts": {
    "headline": 34,
@@ -1007,7 +1014,9 @@
   "columns": 5,
   "dimmable": true,
   "dpi": 149,
-  "features": [],
+  "features": [
+   "bluetooth"
+  ],
   "firmware": "0.55.0",
   "fonts": {
    "headline": 24,
@@ -1124,7 +1133,9 @@
   "columns": 5,
   "dimmable": true,
   "dpi": 149,
-  "features": [],
+  "features": [
+   "bluetooth"
+  ],
   "firmware": "0.55.0",
   "fonts": {
    "headline": 24,
@@ -1241,7 +1252,9 @@
   "columns": 5,
   "dimmable": true,
   "dpi": 149,
-  "features": [],
+  "features": [
+   "bluetooth"
+  ],
   "firmware": "0.55.0",
   "fonts": {
    "headline": 24,
@@ -1483,7 +1496,8 @@
    "speaker",
    "microphone",
    "media_player",
-   "camera_sensor"
+   "camera_sensor",
+   "bluetooth"
   ],
   "firmware": "0.55.0",
   "fonts": {
@@ -1725,7 +1739,8 @@
    "speaker",
    "microphone",
    "media_player",
-   "camera_sensor"
+   "camera_sensor",
+   "bluetooth"
   ],
   "firmware": "0.55.0",
   "fonts": {
@@ -2521,7 +2536,8 @@
   "features": [
    "speaker",
    "microphone",
-   "media_player"
+   "media_player",
+   "bluetooth"
   ],
   "firmware": "0.55.0",
   "fonts": {
@@ -2645,7 +2661,8 @@
   "features": [
    "speaker",
    "microphone",
-   "media_player"
+   "media_player",
+   "bluetooth"
   ],
   "firmware": "0.55.0",
   "fonts": {
@@ -3146,7 +3163,9 @@
   "columns": 4,
   "dimmable": true,
   "dpi": 170,
-  "features": [],
+  "features": [
+   "bluetooth"
+  ],
   "firmware": "0.55.0",
   "fonts": {
    "headline": 27,
@@ -3263,7 +3282,9 @@
   "columns": 4,
   "dimmable": true,
   "dpi": 170,
-  "features": [],
+  "features": [
+   "bluetooth"
+  ],
   "firmware": "0.55.0",
   "fonts": {
    "headline": 27,
@@ -3497,7 +3518,9 @@
   "columns": 3,
   "dimmable": true,
   "dpi": 217,
-  "features": [],
+  "features": [
+   "bluetooth"
+  ],
   "firmware": "0.55.0",
   "fonts": {
    "headline": 34,
@@ -3614,7 +3637,9 @@
   "columns": 5,
   "dimmable": true,
   "dpi": 149,
-  "features": [],
+  "features": [
+   "bluetooth"
+  ],
   "firmware": "0.55.0",
   "fonts": {
    "headline": 24,
@@ -3731,7 +3756,9 @@
   "columns": 5,
   "dimmable": true,
   "dpi": 149,
-  "features": [],
+  "features": [
+   "bluetooth"
+  ],
   "firmware": "0.55.0",
   "fonts": {
    "headline": 24,
@@ -3848,7 +3875,9 @@
   "columns": 5,
   "dimmable": true,
   "dpi": 149,
-  "features": [],
+  "features": [
+   "bluetooth"
+  ],
   "firmware": "0.55.0",
   "fonts": {
    "headline": 24,
@@ -4088,7 +4117,8 @@
   "features": [
    "speaker",
    "microphone",
-   "media_player"
+   "media_player",
+   "bluetooth"
   ],
   "firmware": "0.55.0",
   "fonts": {
@@ -4589,7 +4619,9 @@
   "columns": 4,
   "dimmable": true,
   "dpi": 170,
-  "features": [],
+  "features": [
+   "bluetooth"
+  ],
   "firmware": "0.55.0",
   "fonts": {
    "headline": 27,
@@ -4706,7 +4738,9 @@
   "columns": 4,
   "dimmable": true,
   "dpi": 170,
-  "features": [],
+  "features": [
+   "bluetooth"
+  ],
   "firmware": "0.55.0",
   "fonts": {
    "headline": 27,
@@ -4940,7 +4974,9 @@
   "columns": 3,
   "dimmable": true,
   "dpi": 217,
-  "features": [],
+  "features": [
+   "bluetooth"
+  ],
   "firmware": "0.55.0",
   "fonts": {
    "headline": 34,
@@ -5057,7 +5093,9 @@
   "columns": 5,
   "dimmable": true,
   "dpi": 149,
-  "features": [],
+  "features": [
+   "bluetooth"
+  ],
   "firmware": "0.55.0",
   "fonts": {
    "headline": 24,
@@ -5174,7 +5212,9 @@
   "columns": 5,
   "dimmable": true,
   "dpi": 149,
-  "features": [],
+  "features": [
+   "bluetooth"
+  ],
   "firmware": "0.55.0",
   "fonts": {
    "headline": 24,
@@ -5291,7 +5331,9 @@
   "columns": 5,
   "dimmable": true,
   "dpi": 149,
-  "features": [],
+  "features": [
+   "bluetooth"
+  ],
   "firmware": "0.55.0",
   "fonts": {
    "headline": 24,
@@ -5533,7 +5575,8 @@
    "speaker",
    "microphone",
    "media_player",
-   "camera_sensor"
+   "camera_sensor",
+   "bluetooth"
   ],
   "firmware": "0.55.0",
   "fonts": {
@@ -5775,7 +5818,8 @@
    "speaker",
    "microphone",
    "media_player",
-   "camera_sensor"
+   "camera_sensor",
+   "bluetooth"
   ],
   "firmware": "0.55.0",
   "fonts": {
@@ -6571,7 +6615,8 @@
   "features": [
    "speaker",
    "microphone",
-   "media_player"
+   "media_player",
+   "bluetooth"
   ],
   "firmware": "0.55.0",
   "fonts": {
@@ -6697,7 +6742,8 @@
    "speaker",
    "microphone",
    "media_player",
-   "camera_sensor"
+   "camera_sensor",
+   "bluetooth"
   ],
   "firmware": "0.55.0",
   "fonts": {
@@ -6939,7 +6985,8 @@
    "speaker",
    "microphone",
    "media_player",
-   "camera_sensor"
+   "camera_sensor",
+   "bluetooth"
   ],
   "firmware": "0.55.0",
   "fonts": {
@@ -7735,7 +7782,8 @@
   "features": [
    "speaker",
    "microphone",
-   "media_player"
+   "media_player",
+   "bluetooth"
   ],
   "firmware": "0.55.0",
   "fonts": {
