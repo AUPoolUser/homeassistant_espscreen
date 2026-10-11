@@ -617,7 +617,11 @@
         "Dias lado a lado, horas para baixo",
         "O mês num relance, toque para abrir um dia"
       ],
-      "today_key": "Hoje"
+      "today_key": "Hoje",
+      "booking": "A reservar…",
+      "calendars": "Calendários",
+      "also": "+{x} agora",
+      "booked": "Reservado no ecrã"
     }
   },
   "addon": {
@@ -2447,7 +2451,9 @@
           "events": "Eventos",
           "events_hint": "Títulos, o que vem a seguir, a semana e o mês",
           "busy_free": "Livre ou ocupado",
-          "busy_free_hint": "Livre, Começa em breve ou Ocupado em letras grandes, a próxima reserva e quanto dura"
+          "busy_free_hint": "Livre, Começa em breve ou Ocupado em letras grandes, a próxima reserva e quanto dura",
+          "room": "Estado e reserva",
+          "room_hint": "Livre ou Ocupado em grande, a verde ou vermelho, até quando, e teclas que reservam a sala agora"
         },
         "calendars": {
           "label": "Calendários",
@@ -2495,6 +2501,26 @@
           "day": "Dia",
           "week": "Semana",
           "month": "Mês"
+        },
+        "week_start": "A semana começa",
+        "week_start_hint": "Hoje mantém à vista os próximos dias; segunda-feira mostra a semana do calendário.",
+        "week_start_today": "Hoje",
+        "week_start_monday": "Segunda-feira",
+        "hours": "Horas",
+        "hours_hint": "As horas que a semana mostra. Automático segue os eventos, pelo menos das oito às oito; o que fica de fora é contado.",
+        "hours_auto": "Automático",
+        "week_numbers": "Números das semanas",
+        "week_numbers_hint": "No mês, à esquerda de cada semana.",
+        "book": {
+          "title": "Reserva",
+          "on": "Reservar em",
+          "on_hint": "O calendário onde entra uma reserva feita no ecrã. Só calendários que aceitam novos eventos do Home Assistant, como Local Calendar, Google e CalDAV.",
+          "none": "Nenhum calendário deste cartão aceita novos eventos do Home Assistant, por isso o cartão não mostra teclas de reserva.",
+          "place": "Local",
+          "place_hint": "Escrito como local da reserva, por exemplo o nome da sala.",
+          "place_add": "Adicionar um local",
+          "name": "Título",
+          "name_hint": "O título da reserva no calendário."
         }
       }
     },

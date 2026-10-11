@@ -16,6 +16,11 @@ The card picks its view from the room it gets, never from the board it runs on:
 | A wide card | Columns | Today and the next days side by side. |
 | A large card (four days of 16 mm and six readable hours) | Week | Days as columns, hours as rows, a red line at now, and a tag such as "1 earlier" on a day with events outside the hours shown. |
 
+Events of a day or more stand with the all-day events above the hours, and an event over midnight stands in the hours of
+both days; its times name their days ("Wed 22:00 – Thu 06:00"). More than three rows of all-day events show two, and a
+third that counts the rest per day ("+4"). Two events at the same time show "+1 now" beside the bar of the one shown.
+When nothing is planned in the days the card looks ahead, it shows the first event after them ("Next Wed 4 Nov").
+
 The round icon follows Home Assistant's own icons for a calendar: a calendar with a check mark in amber while an event
 with times runs, an empty calendar in grey while none does. An all-day event alone does not count as busy.
 
@@ -29,16 +34,18 @@ on show (Up next, Day, Week or Month), Today, and back and forward. A narrow scr
 - **Day**: a strip of the week's days with a dot per calendar that has something that day; a tap on a day shows it.
   On tall glass the day is a timeline you can scroll, else a list of blocks in the calendars' colours.
 - **Month**: the month at a glance. Large cells show the first titles, small cells a dot per calendar. On wide glass
-  the chosen day's events stand beside the month.
+  the chosen day's events stand beside the month, on square glass under it.
+- **Calendars**: the view key's choice lists the card's calendars under the views when it has more than one. A tap
+  shows or hides a calendar on the full screen until it closes.
 - **An event**: a tap opens a sheet with its title, calendar, day, times, place and notes.
 
 ## The card's choices
 
 Set in the editor's inspector for the tile:
 
-- **Show**: "Events" (titles, what comes next, the week, the month) or "Free or busy" (a large Free, Starts soon or
-  Busy, the next booking and how long until it, titles optional). Both work everywhere: a family calendar at home or a
-  sign beside a meeting room.
+- **Show**: "Events" (titles, what comes next, the week, the month), "Free or busy" (a large Free, Starts soon or
+  Busy, the next booking and how long until it, titles optional), or "Status and booking" (see below). They work
+  everywhere: a family calendar at home or a sign beside a meeting room.
 - **Calendars**: the calendars on the card. The tile's own is first; up to five more can join it.
 - **Place**: only events at these places, for example one meeting room. The choices are the places your calendars'
   events name.
@@ -47,6 +54,27 @@ Set in the editor's inspector for the tile:
 - **Looks ahead**: how many days the list and the week hold (1 to 31, 14 by default).
 - **Starts soon**: how many minutes before an event the card says Starts soon (off by default).
 - **Full screen opens on**: Auto, Up next, Day, Week or Month.
+- **Week starts**: today (the coming days) or Monday (the calendar week).
+- **Hours**: the hours a week shows, Automatic (the events' own, at least eight to eight) or fixed, such as 8 to 18.
+  Events outside them are counted.
+- **Week numbers**: ISO week numbers at the left of the month.
+
+## Status and booking
+
+A sign for a meeting room. The card shows the room's state in one large word, Free in green or Busy in red, until
+when, and what is on or comes next. On a free room, keys book it from now: 15 min, 30 min, 1 h, or until the next
+meeting, as many as fit before it. A large card keeps the room's day beside the sign; a single cell keeps the round icon
+with Free or Busy.
+
+A key books with Home Assistant's `calendar.create_event` and says "Booking..." until the events come back with the
+booking. The inspector's Booking section chooses:
+
+- **Book on**: the calendar the booking goes into, the tile's own by default, or Off. Only calendars that take new
+  events from Home Assistant can be chosen, such as Local Calendar, Google and CalDAV; with none, the card shows no keys.
+- **Place**: written into the booking as its place, for example the room's name.
+- **Title**: the booking's title in the calendar ("Booked on the screen" when left empty).
+
+The screen must be allowed to perform Home Assistant actions, as for every control on it.
 
 The app does the filtering: the screen only gets the events it shows.
 
@@ -73,4 +101,4 @@ events, one with PSRAM up to 80.
 | Fetching, filtering and packing the events | `screen_manager/app/calendar_feed.py` |
 | The type | `catalogue/calendar.yaml` |
 | Tests | `tests/test_calendar_card.cpp`, `tests/test_calendar_feed.py` |
-| A study of every view on every board, in host LVGL | `tools/render/calendar_firmware.py` |
+| A study of every view on every board, in host LVGL (`CAL_EDGE=1` the edge cases, `CAL_FEATURES=1` the newer choices) | `tools/render/calendar_firmware.py` |

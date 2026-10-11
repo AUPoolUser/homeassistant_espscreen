@@ -617,7 +617,11 @@
         "Dagen naast elkaar, uren onder elkaar",
         "De maand in één oogopslag, tik om een dag te openen"
       ],
-      "today_key": "Vandaag"
+      "today_key": "Vandaag",
+      "booking": "Boeken…",
+      "calendars": "Agenda's",
+      "also": "+{x} nu",
+      "booked": "Geboekt op het scherm"
     }
   },
   "addon": {
@@ -2086,7 +2090,9 @@
           "events": "Afspraken",
           "events_hint": "Titels, wat er komt, de week en de maand",
           "busy_free": "Vrij of bezet",
-          "busy_free_hint": "Groot Vrij, Begint zo of Bezet, de volgende boeking en hoe lang die duurt"
+          "busy_free_hint": "Groot Vrij, Begint zo of Bezet, de volgende boeking en hoe lang die duurt",
+          "room": "Status en boeken",
+          "room_hint": "Groot Vrij of Bezet in groen of rood, tot wanneer, en knoppen die de ruimte nu boeken"
         },
         "calendars": {
           "label": "Agenda's",
@@ -2134,6 +2140,26 @@
           "day": "Dag",
           "week": "Week",
           "month": "Maand"
+        },
+        "week_start": "Week begint",
+        "week_start_hint": "Vandaag houdt de komende dagen in beeld; maandag toont de kalenderweek.",
+        "week_start_today": "Vandaag",
+        "week_start_monday": "Maandag",
+        "hours": "Uren",
+        "hours_hint": "De uren die de week toont. Automatisch volgt de afspraken, minstens acht tot acht; wat erbuiten valt wordt geteld.",
+        "hours_auto": "Automatisch",
+        "week_numbers": "Weeknummers",
+        "week_numbers_hint": "In de maand, links van elke week.",
+        "book": {
+          "title": "Boeken",
+          "on": "Boeken in",
+          "on_hint": "De agenda waar een boeking vanaf het scherm in komt. Alleen agenda's die nieuwe afspraken van Home Assistant aannemen, zoals Local Calendar, Google en CalDAV.",
+          "none": "Geen van de agenda's van deze kaart neemt nieuwe afspraken van Home Assistant aan, dus de kaart toont geen boekknoppen.",
+          "place": "Plaats",
+          "place_hint": "Komt als plaats in de boeking, bijvoorbeeld de naam van de ruimte.",
+          "place_add": "Plaats toevoegen",
+          "name": "Titel",
+          "name_hint": "De titel van de boeking in de agenda."
         }
       }
     },

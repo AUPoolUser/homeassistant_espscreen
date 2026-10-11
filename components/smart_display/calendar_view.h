@@ -17,6 +17,8 @@ void render(runtime_tiles::Widgets &w, const runtime_tiles::Tile &t, int width, 
 void release(runtime_tiles::Widgets &w);
 // The full screen of the card at `index`, built into `root` (the card layer show_detail cleaned).
 void open(lv_obj_t *root, const runtime_tiles::Tile &t, unsigned index);
+// A tap on the card: true when it was a room's booking key (the card then books), else the card's own tap goes on.
+bool card_tap(runtime_tiles::Widgets &w, const runtime_tiles::Tile &t);
 // A new minute: the open full screen follows the clock (its now line, the minutes left), keeping where it is scrolled.
 void minute();
 }  // namespace calendar_view

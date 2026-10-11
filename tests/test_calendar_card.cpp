@@ -130,6 +130,35 @@ int main() {
   // Overlapping events stand side by side.
   const auto lanes = lanes_of(d, 2);
   assert(lanes.size() == 2 && lanes[0].lanes == 2 && lanes[1].lane == 1);
+  // Over midnight: a night shift stands in the hours of both days, a conference of three days with the all-day ones,
+  // and their times name their days.
+  {
+    Data e = demo();
+    const Words wd = words();
+    Event shift; shift.start = 1320; shift.end = 1440 + 360; shift.title = "Night shift"; e.events.push_back(shift);
+    Event conf; conf.start = -1440 + 540; conf.end = 1440 + 1020; conf.title = "Conference"; e.events.push_back(conf);
+    const int si = (int) e.events.size() - 2, ci = (int) e.events.size() - 1;
+    auto has = [&](int day, int i) { for (auto &ln : lanes_of(e, day)) if (ln.index == i) return true; return false; };
+    assert(has(0, si) && has(1, si) && !has(0, ci) && !has(1, ci));
+    assert(banded(conf) && !banded(shift) && start_in(shift, 1) == 0 && end_in(shift, 1) == 360);
+    assert(span_of(wd, e, shift) == "Wed 22:00 – Thu 06:00" && span_of(wd, e, e.events[3]) == "08:15 – 08:45");
+    // Running since yesterday, it is listed under today; its head says until which day.
+    assert(shown_day(conf, 0) == 0);
+    Data only = e; only.events = {conf};
+    assert(head_words(only, Moment{0, 600}, Options{}, wd, "Family").brief == "Until Tomorrow 17:00");
+    // More all-day events than three rows: two rows and a third that counts the rest per day, opening that day.
+    Data busy = demo();
+    for (int k = 0; k < 6; ++k) { Event a; a.start = 0; a.end = 1440; a.flags = ALL_DAY; a.title = "Holiday"; busy.events.push_back(a); }
+    const Measure m = measure(BOARDS[3]);
+    Scene sc; Pen p{sc, m};
+    WeekShape ws; ws.d0 = 0; ws.days = 7; ws.gw = 60; ws.cw = 160;
+    const int rows = all_day_rows(p, 0, 0, ws, busy, wd);
+    assert(rows == 3 * allday_h(m));
+    bool plus = false, opens = false;
+    for (auto &t : sc.texts) plus |= t.s == "+5";
+    for (auto &h : sc.hits) opens |= h.kind == HIT_DAY && h.arg == 0;
+    assert(plus && opens);
+  }
   printf("calendar card: ok\n");
   return 0;
 }

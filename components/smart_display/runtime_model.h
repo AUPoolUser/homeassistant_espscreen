@@ -491,6 +491,8 @@ struct Tile {
   bool calendar_busy_free = false;
   uint8_t calendar_soon = 0;
   std::string calendar_view;
+  bool calendar_room = false, calendar_monday = false, calendar_week_numbers = false;
+  uint8_t calendar_hours_from = 0, calendar_hours_to = 0;
   bool live() const { const auto d = domain(); return display == "live" && (d == "camera" || d == "image"); }
   // A media player's album cover in the icon's place (firmware 0.2.78+): "display": "cover" on a single or double-width
   // tile, while the player has a picture; the tile over the whole page keeps the card's big cover.

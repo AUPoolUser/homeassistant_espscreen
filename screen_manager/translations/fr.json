@@ -617,7 +617,11 @@
         "Les jours côte à côte, les heures vers le bas",
         "Le mois entier, touchez un jour pour l'ouvrir"
       ],
-      "today_key": "Aujourd'hui"
+      "today_key": "Aujourd'hui",
+      "booking": "Réservation…",
+      "calendars": "Calendriers",
+      "also": "+{x} maintenant",
+      "booked": "Réservé sur l'écran"
     }
   },
   "addon": {
@@ -2447,7 +2451,9 @@
           "events": "Événements",
           "events_hint": "Les titres, la suite, la semaine et le mois",
           "busy_free": "Libre ou occupé",
-          "busy_free_hint": "Libre, Commence bientôt ou Occupé en grand, la prochaine réservation et sa durée"
+          "busy_free_hint": "Libre, Commence bientôt ou Occupé en grand, la prochaine réservation et sa durée",
+          "room": "État et réservation",
+          "room_hint": "Libre ou Occupé en grand, en vert ou en rouge, jusqu'à quand, et des touches qui réservent la salle maintenant"
         },
         "calendars": {
           "label": "Calendriers",
@@ -2495,6 +2501,26 @@
           "day": "Jour",
           "week": "Semaine",
           "month": "Mois"
+        },
+        "week_start": "La semaine commence",
+        "week_start_hint": "Aujourd'hui garde les prochains jours en vue ; lundi montre la semaine du calendrier.",
+        "week_start_today": "Aujourd'hui",
+        "week_start_monday": "Lundi",
+        "hours": "Heures",
+        "hours_hint": "Les heures que montre la semaine. Automatique suit les événements, au moins de huit à huit ; ce qui tombe en dehors est compté.",
+        "hours_auto": "Automatique",
+        "week_numbers": "Numéros de semaine",
+        "week_numbers_hint": "Dans le mois, à gauche de chaque semaine.",
+        "book": {
+          "title": "Réservation",
+          "on": "Réserver dans",
+          "on_hint": "Le calendrier qui reçoit une réservation faite sur l'écran. Seulement les calendriers qui acceptent de nouveaux événements de Home Assistant, comme Local Calendar, Google et CalDAV.",
+          "none": "Aucun calendrier de cette carte n'accepte de nouveaux événements de Home Assistant : la carte ne montre donc pas de touches de réservation.",
+          "place": "Lieu",
+          "place_hint": "Écrit comme lieu de la réservation, par exemple le nom de la salle.",
+          "place_add": "Ajouter un lieu",
+          "name": "Titre",
+          "name_hint": "Le titre de la réservation dans le calendrier."
         }
       }
     },

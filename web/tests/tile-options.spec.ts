@@ -478,7 +478,8 @@ describe("the calendar card (firmware 0.56.0)", () => {
     expect(current(tile)!.options?.places).toEqual(["Room B"]);
     panel.unmount();
     panel = mount(TileInspector, { props: { tile: current(tile)! } });
-    await panel.findAll(".switch-row input, .switch-row button").at(-1)!.trigger("click");
+    const hide = panel.findAll(".switch-row").find((row) => row.text().includes(t("editor.tile.calendar.private")))!;
+    await hide.findAll("input, button").at(-1)!.trigger("click");
     await panel.findAll(".tag-input")[1].setValue("Lunch");
     await panel.findAll(".tag-input")[1].trigger("keydown", { key: "Enter" });
     expect(current(tile)!.options).toMatchObject({ private: true, words: ["Lunch"] });

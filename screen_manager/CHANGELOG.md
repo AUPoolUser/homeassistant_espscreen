@@ -5,7 +5,11 @@
   then a list of what follows, and on a large screen the whole week. A tap opens the full screen with the day, the week,
   the month and every event's details, and on large screens the hours scroll. Filter by calendar, by place (one meeting
   room), by words in the title, all-day and tentative events, or show only Free, Starts soon and Busy with the titles
-  hidden. The screen needs this firmware.
+  hidden. "Status and booking" turns a card into a meeting room's sign: Free or Busy in large letters in green or red,
+  until when, the room's day beside it on a large card, and keys that book the room now (15 min, 30 min, 1 h or until
+  the next meeting) in a calendar that takes new events, with the place and title you choose. A week can start on
+  Monday, show fixed hours (8 to 18) and the month its week numbers; the full screen shows or hides each calendar from
+  its view key. The screen needs this firmware.
 - **A new board, experimental: the Elecrow CrowPanel Advanced 10.1-inch ESP32-P4** (V1.1 and V1.2), 1024 x 600 glass
   with GT911 touch, a dimmable backlight, and its speaker and microphone as the screen's audio, so audio plugins such as
   a voice assistant fit it. Built from Elecrow's own ESPHome example and a configuration a community member ran on the

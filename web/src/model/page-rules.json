@@ -475,7 +475,8 @@
   "calendar": {
     "styles": [
       "events",
-      "busy_free"
+      "busy_free",
+      "room"
     ],
     "startViews": [
       "auto",
@@ -489,6 +490,11 @@
     "ahead": [
       14,
       31
-    ]
+    ],
+    "weekStarts": [
+      "today",
+      "monday"
+    ],
+    "bookText": 48
   }
 }

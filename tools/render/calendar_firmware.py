@@ -2,7 +2,9 @@
 
 Host-only design study: no firmware files, storage or device configuration change. Run with ESPHome's Python, e.g.
 uv run --no-project --python 3.13 --with esphome==2026.9.0 --with pillow python tools/render/calendar_card.py
-Needs SDL2 and Pillow. CAL_BOARDS=cyd,guition limits the boards.
+Needs SDL2 and Pillow. CAL_BOARDS=cyd,guition limits the boards; CAL_EDGE=1 renders the edge cases instead, CAL_FEATURES=1
+the newer choices (Status and booking, the week from Monday and its hours, week numbers, the calendars in the view key's
+choice). Each mode builds its own program: never pass --no-build after another mode.
 """
 import json, os, subprocess, sys
 from pathlib import Path
@@ -25,13 +27,37 @@ def renders(cols,rows):
         if (c,r) in spans: out.append((f'{c}x{r}-free',c,r,FREE,False,0))
     for c,r in ((1,1),(2,2),(cols,rows)):
         if (c,r) in spans: out.append((f'{c}x{r}-busy-dark',c,r,BUSY,True,0))
+    if os.environ.get('CAL_FEATURES'):
+        # The newer choices (calendar_firmware.h render): 9000 + 10 x case + view (0 a card, 1-4 a full view, 5 the view
+        # key's choice with a calendar hidden): 1 a free room, 2 a busy one, 4 the calendars in the choice, 5 a week from
+        # Monday at 8 to 18, 6 the month's week numbers, 7 two events at once, 8 nothing until three weeks ahead.
+        out=[]
+        for c,r in ((1,1),(2,1),(2,2),(cols,rows)):
+            if (c,r) in spans:
+                out.append((f'room-free-{c}x{r}',c,r,12*60+40,False,9010))
+                out.append((f'room-busy-{c}x{r}',c,r,BUSY,False,9020))
+        out+=[('room-busy-dark-2x2',2,2,BUSY,True,9020),('calendars-choice',0,0,BUSY,False,9045),('week-monday',0,0,BUSY,False,9053),
+              ('month-numbers',0,0,BUSY,False,9064),('also-2x2',2,2,14*60+20,False,9070),('beyond-2x2',2,2,BUSY,False,9080),
+              ('beyond-upnext',0,0,BUSY,False,9081),('beyond-1x1',1,1,BUSY,False,9080)]
+        if (cols,rows) in spans: out.append((f'week-monday-{cols}x{rows}',cols,rows,BUSY,False,9050))
+        return list(dict.fromkeys(out))
+    if os.environ.get('CAL_EDGE'):
+        # Edge cases (calendar_firmware.h edge()): per case the tiles and the full screen's views, at 14:10 (case 5: 14:05).
+        out=[]
+        for k in range(1,7):
+            minute=14*60+5 if k==5 else BUSY
+            for c,r in ((1,1),(2,2),(cols,rows)):
+                if (c,r) in spans: out.append((f'edge{k}-{c}x{r}',c,r,minute,False,1000*k))
+            for name,mode in (('week',3),('day',2),('month',4),('event',23)):
+                out.append((f'edge{k}-{name}',0,0,minute,False,1000*k+mode))
+        return out
     out+=[('full-upnext',0,0,BUSY,False,1),('full-day',0,0,BUSY,False,2),('full-week',0,0,BUSY,False,3),('full-week-dark',0,0,BUSY,True,3),
           ('full-month',0,0,BUSY,False,4),('full-viewkey',0,0,BUSY,False,13),('full-event',0,0,BUSY,False,23)]
     return list(dict.fromkeys(out))
 
 def project():
     shapes=json.loads((ROOT/'screen_manager/app/boards.json').read_text())
-    chars=''.join(dict.fromkeys(''.join(chr(i) for i in range(32,127))+'°·–'))
+    chars=''.join(dict.fromkeys(''.join(chr(i) for i in range(32,127))+''.join(chr(i) for i in range(0xC0,0x100))+'°·–'))
     icons=''.join(chr(i) for i in (0xF00ED,0xF00EE,0xF00EF,0xF035D,0xF012C,0xF0156,0xF0141,0xF0142,0xF07D9,0xF0150,0xF02DC,0xF0335,0xF050F))
     entries=(('label','LABEL','Roboto-700.ttf'),('sub','SUBLABEL','Roboto-400.ttf'),('sub_big','SUBLABEL_BIG','Roboto-400.ttf'),
              ('headline','HEADLINE','Roboto-500.ttf'),('value','WATCH_VALUE','Roboto-500.ttf'),('digits','CLOCK_DIGITS','Roboto-500.ttf'),

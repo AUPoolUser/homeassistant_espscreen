@@ -617,7 +617,11 @@
         "Días uno junto a otro, horas hacia abajo",
         "El mes de un vistazo, toca para abrir un día"
       ],
-      "today_key": "Hoy"
+      "today_key": "Hoy",
+      "booking": "Reservando…",
+      "calendars": "Calendarios",
+      "also": "+{x} ahora",
+      "booked": "Reservado en la pantalla"
     }
   },
   "addon": {
@@ -2447,7 +2451,9 @@
           "events": "Eventos",
           "events_hint": "Títulos, lo que viene, la semana y el mes",
           "busy_free": "Libre u ocupado",
-          "busy_free_hint": "Libre, Empieza pronto u Ocupado en letra grande, la próxima reserva y cuánto dura"
+          "busy_free_hint": "Libre, Empieza pronto u Ocupado en letra grande, la próxima reserva y cuánto dura",
+          "room": "Estado y reserva",
+          "room_hint": "Libre u Ocupado en grande, en verde o rojo, hasta cuándo, y botones que reservan la sala ahora"
         },
         "calendars": {
           "label": "Calendarios",
@@ -2495,6 +2501,26 @@
           "day": "Día",
           "week": "Semana",
           "month": "Mes"
+        },
+        "week_start": "La semana empieza",
+        "week_start_hint": "Hoy mantiene a la vista los próximos días; lunes muestra la semana del calendario.",
+        "week_start_today": "Hoy",
+        "week_start_monday": "Lunes",
+        "hours": "Horas",
+        "hours_hint": "Las horas que muestra la semana. Automático sigue los eventos, al menos de ocho a ocho; lo que queda fuera se cuenta.",
+        "hours_auto": "Automático",
+        "week_numbers": "Números de semana",
+        "week_numbers_hint": "En el mes, a la izquierda de cada semana.",
+        "book": {
+          "title": "Reserva",
+          "on": "Reservar en",
+          "on_hint": "El calendario donde va una reserva hecha en la pantalla. Solo calendarios que aceptan eventos nuevos de Home Assistant, como Local Calendar, Google y CalDAV.",
+          "none": "Ninguno de los calendarios de esta tarjeta acepta eventos nuevos de Home Assistant, así que la tarjeta no muestra botones de reserva.",
+          "place": "Lugar",
+          "place_hint": "Se escribe como lugar de la reserva, por ejemplo el nombre de la sala.",
+          "place_add": "Añadir un lugar",
+          "name": "Título",
+          "name_hint": "El título de la reserva en el calendario."
         }
       }
     },

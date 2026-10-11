@@ -617,7 +617,11 @@
         "Napok egymás mellett, órák lefelé",
         "A hónap egy pillantásra, koppints egy nap megnyitásához"
       ],
-      "today_key": "Ma"
+      "today_key": "Ma",
+      "booking": "Foglalás…",
+      "calendars": "Naptárak",
+      "also": "+{x} most",
+      "booked": "A kijelzőn foglalva"
     }
   },
   "addon": {
@@ -2447,7 +2451,9 @@
           "events": "Események",
           "events_hint": "Címek, ami következik, a hét és a hónap",
           "busy_free": "Szabad vagy foglalt",
-          "busy_free_hint": "Szabad, Hamarosan kezdődik vagy Foglalt nagy betűkkel, a következő foglalás és a hossza"
+          "busy_free_hint": "Szabad, Hamarosan kezdődik vagy Foglalt nagy betűkkel, a következő foglalás és a hossza",
+          "room": "Állapot és foglalás",
+          "room_hint": "Szabad vagy Foglalt nagy betűkkel, zölden vagy pirosan, meddig, és gombok, amelyek most lefoglalják a termet"
         },
         "calendars": {
           "label": "Naptárak",
@@ -2495,6 +2501,26 @@
           "day": "Nap",
           "week": "Hét",
           "month": "Hónap"
+        },
+        "week_start": "A hét kezdete",
+        "week_start_hint": "A Ma a következő napokat tartja szem előtt; a Hétfő a naptári hetet mutatja.",
+        "week_start_today": "Ma",
+        "week_start_monday": "Hétfő",
+        "hours": "Órák",
+        "hours_hint": "Az órák, amelyeket a hét mutat. Az Automatikus az eseményeket követi, legalább nyolctól nyolcig; ami kívül esik, azt megszámolja.",
+        "hours_auto": "Automatikus",
+        "week_numbers": "Hetek száma",
+        "week_numbers_hint": "A hónapban, minden hét bal oldalán.",
+        "book": {
+          "title": "Foglalás",
+          "on": "Foglalás ide",
+          "on_hint": "A naptár, amelybe a kijelzőről indított foglalás kerül. Csak olyan naptárak, amelyek új eseményt fogadnak a Home Assistanttől, például Local Calendar, Google és CalDAV.",
+          "none": "A kártya egyik naptára sem fogad új eseményt a Home Assistanttől, ezért a kártyán nincsenek foglalási gombok.",
+          "place": "Hely",
+          "place_hint": "A foglalás helyeként kerül be, például a terem neve.",
+          "place_add": "Hely hozzáadása",
+          "name": "Cím",
+          "name_hint": "A foglalás címe a naptárban."
         }
       }
     },

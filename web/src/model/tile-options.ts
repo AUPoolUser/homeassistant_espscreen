@@ -22,7 +22,8 @@ const APPEARANCE = { display: "display", icon: "icon", background: "background",
   energyFlow: "flow",
   calendarStyle: "style", calendarEntities: "calendars", calendarPlaces: "places", calendarWords: "words", calendarHideWords: "hide_words",
   calendarAllDay: "all_day", calendarTentative: "tentative", calendarPrivate: "private", calendarAhead: "ahead", calendarSoon: "soon",
-  calendarStartView: "start_view" } as const;
+  calendarStartView: "start_view", calendarWeekStart: "week_start", calendarHours: "hours", calendarWeekNumbers: "week_numbers",
+  calendarBookOn: "book_on", calendarBookPlace: "book_place", calendarBookTitle: "book_title" } as const;
 const INTERACTION = ["tap", "inline", "controls", "action", "play", "speaker", "shuffle", "repeat"] as const;
 const PICTURE_OWN = ["refresh", ...Object.keys(rules.picture)];
 // A map card's own choices (app 0.4.33); its name on the picture is the live picture's `overlay`.
@@ -34,7 +35,8 @@ const MAP_TILE = "screen.map";
 // A calendar card's own choices (firmware 0.56.0, calendar_feed.validate) and what each means unstored; a list is no
 // list when it is empty.
 export const CALENDAR_DEFAULTS: Record<string, unknown> = { style: rules.calendar.styles[0], calendars: [], places: [], words: [], hide_words: [],
-  all_day: true, tentative: true, private: false, ahead: rules.calendar.ahead[0], soon: 0, start_view: rules.calendar.startViews[0] };
+  all_day: true, tentative: true, private: false, ahead: rules.calendar.ahead[0], soon: 0, start_view: rules.calendar.startViews[0],
+  week_start: rules.calendar.weekStarts[0], hours: null, week_numbers: false, book_on: "", book_place: "", book_title: "" };
 export const CALENDAR_OWN = Object.keys(CALENDAR_DEFAULTS);
 
 // What a choice that asks a second step stands for while the inspector tries it: Perform action asks which action,
@@ -75,6 +77,8 @@ export function canonicalOptions(entity: string, options: TileOptions = {}, key 
   // A calendar card keeps its choices (firmware 0.56.0); no other tile has them, and an empty list is none.
   if (!entity.startsWith("calendar.")) for (const field of CALENDAR_OWN) delete out[field];
   for (const field of ["calendars", "places", "words", "hide_words"]) if (Array.isArray(out[field]) && !(out[field] as unknown[]).length) delete out[field];
+  // The week's and the booking's choices are stored only when they differ from what nothing means (calendar_feed.validate).
+  for (const field of ["week_start", "hours", "week_numbers", "book_on", "book_place", "book_title"]) if (out[field] === CALENDAR_DEFAULTS[field] || out[field] === null) delete out[field];
   for (const [key, value] of Object.entries(DEFAULTS)) if (out[key] === value) delete out[key];
   // A Go to page tile has a name, an icon, a colour and a width, nothing else.
   if (pageTile(entity)) for (const key of ["display", "inline", "controls", "history_hours"]) delete out[key];

@@ -34,6 +34,8 @@ APPEARANCE = {
     "calendarStyle": "style", "calendarEntities": "calendars", "calendarPlaces": "places", "calendarWords": "words",
     "calendarHideWords": "hide_words", "calendarAllDay": "all_day", "calendarTentative": "tentative",
     "calendarPrivate": "private", "calendarAhead": "ahead", "calendarSoon": "soon", "calendarStartView": "start_view",
+    "calendarWeekStart": "week_start", "calendarHours": "hours", "calendarWeekNumbers": "week_numbers",
+    "calendarBookOn": "book_on", "calendarBookPlace": "book_place", "calendarBookTitle": "book_title",
 }
 # A favourite (app 0.4.42) keeps what it plays (`play`, Home Assistant's own ids) and on which speaker (`speaker`), and
 # since app 0.4.84 its own shuffle and repeat.

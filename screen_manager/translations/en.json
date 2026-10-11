@@ -617,7 +617,11 @@
         "Days side by side, hours down",
         "A glance at the month, a tap opens a day"
       ],
-      "today_key": "Today"
+      "today_key": "Today",
+      "booking": "Booking…",
+      "calendars": "Calendars",
+      "also": "+{x} now",
+      "booked": "Booked on the screen"
     }
   },
   "addon": {
@@ -2086,7 +2090,9 @@
           "events": "Events",
           "events_hint": "Titles, what comes next, the week and the month",
           "busy_free": "Free or busy",
-          "busy_free_hint": "Free, Starts soon or Busy in large letters, the next booking and how long it lasts"
+          "busy_free_hint": "Free, Starts soon or Busy in large letters, the next booking and how long it lasts",
+          "room": "Status and booking",
+          "room_hint": "Free or Busy in large letters in green or red, until when, and keys that book the room now"
         },
         "calendars": {
           "label": "Calendars",
@@ -2134,6 +2140,26 @@
           "day": "Day",
           "week": "Week",
           "month": "Month"
+        },
+        "week_start": "Week starts",
+        "week_start_hint": "Today keeps the coming days in view; Monday shows the calendar week.",
+        "week_start_today": "Today",
+        "week_start_monday": "Monday",
+        "hours": "Hours",
+        "hours_hint": "The hours the week shows. Automatic follows the events, at least eight to eight; what falls outside is counted.",
+        "hours_auto": "Automatic",
+        "week_numbers": "Week numbers",
+        "week_numbers_hint": "In the month, at the left of each week.",
+        "book": {
+          "title": "Booking",
+          "on": "Book on",
+          "on_hint": "The calendar a booking from the screen goes into. Only calendars that take new events from Home Assistant, such as Local Calendar, Google and CalDAV.",
+          "none": "None of this card's calendars takes new events from Home Assistant, so the card shows no booking keys.",
+          "place": "Place",
+          "place_hint": "Written into the booking as its place, for example the room's name.",
+          "place_add": "Add a place",
+          "name": "Title",
+          "name_hint": "The booking's title in the calendar."
         }
       }
     },

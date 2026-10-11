@@ -617,7 +617,11 @@
         "Tage nebeneinander, Stunden nach unten",
         "Der Monat auf einen Blick, ein Tippen öffnet einen Tag"
       ],
-      "today_key": "Heute"
+      "today_key": "Heute",
+      "booking": "Wird gebucht…",
+      "calendars": "Kalender",
+      "also": "+{x} jetzt",
+      "booked": "Am Bildschirm gebucht"
     }
   },
   "addon": {
@@ -2447,7 +2451,9 @@
           "events": "Termine",
           "events_hint": "Titel, was als Nächstes kommt, die Woche und der Monat",
           "busy_free": "Frei oder belegt",
-          "busy_free_hint": "Frei, Beginnt gleich oder Belegt in großer Schrift, die nächste Buchung und wie lange sie dauert"
+          "busy_free_hint": "Frei, Beginnt gleich oder Belegt in großer Schrift, die nächste Buchung und wie lange sie dauert",
+          "room": "Status und Buchen",
+          "room_hint": "Frei oder Belegt groß in Grün oder Rot, bis wann, und Tasten, die den Raum jetzt buchen"
         },
         "calendars": {
           "label": "Kalender",
@@ -2495,6 +2501,26 @@
           "day": "Tag",
           "week": "Woche",
           "month": "Monat"
+        },
+        "week_start": "Woche beginnt",
+        "week_start_hint": "Heute hält die kommenden Tage im Blick; Montag zeigt die Kalenderwoche.",
+        "week_start_today": "Heute",
+        "week_start_monday": "Montag",
+        "hours": "Stunden",
+        "hours_hint": "Die Stunden, die die Woche zeigt. Automatisch folgt den Terminen, mindestens acht bis acht; was außerhalb liegt, wird gezählt.",
+        "hours_auto": "Automatisch",
+        "week_numbers": "Kalenderwochen",
+        "week_numbers_hint": "Im Monat, links neben jeder Woche.",
+        "book": {
+          "title": "Buchen",
+          "on": "Buchen in",
+          "on_hint": "Der Kalender, in den eine Buchung vom Bildschirm kommt. Nur Kalender, die neue Termine von Home Assistant annehmen, etwa Local Calendar, Google und CalDAV.",
+          "none": "Keiner der Kalender dieser Karte nimmt neue Termine von Home Assistant an, daher zeigt die Karte keine Buchungstasten.",
+          "place": "Ort",
+          "place_hint": "Wird als Ort in die Buchung geschrieben, etwa der Name des Raums.",
+          "place_add": "Ort hinzufügen",
+          "name": "Titel",
+          "name_hint": "Der Titel der Buchung im Kalender."
         }
       }
     },

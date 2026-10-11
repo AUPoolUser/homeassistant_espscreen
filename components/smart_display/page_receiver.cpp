@@ -670,6 +670,15 @@ std::string receive(const std::string &payload) {
     tile.calendar_busy_free = string(options["style"], 12) == "busy_free";
     tile.calendar_soon = options["soon"].is<int>() ? (uint8_t) std::clamp(options["soon"].as<int>(), 0, 120) : 0;
     tile.calendar_view = string(options["start_view"], 8);
+    // ... and (dev) "Status and booking", a week from Monday, fixed hours in the week and the month's week numbers.
+    tile.calendar_room = string(options["style"], 12) == "room";
+    tile.calendar_monday = string(options["week_start"], 8) == "monday";
+    tile.calendar_hours_from = tile.calendar_hours_to = 0;
+    if (options["hours"].is<JsonArray>()) {
+      const int a = options["hours"][0] | 0, b = options["hours"][1] | 0;
+      if (a >= 0 && b <= 24 && b - a >= 4) { tile.calendar_hours_from = (uint8_t) a; tile.calendar_hours_to = (uint8_t) b; }
+    }
+    tile.calendar_week_numbers = options["week_numbers"].is<bool>() && options["week_numbers"].as<bool>();
     tile.inline_control = string(options["inline"]); if (tile.inline_control.empty()) tile.inline_control="none";
     // What the second line says (firmware 0.2.90+); "auto" is the line the screen works out itself, as before.
     tile.subtitle = string(options["sub"], 96); if (tile.subtitle.empty()) tile.subtitle="auto";
@@ -1027,6 +1036,11 @@ std::string receive(const std::string &payload) {
       if (c["g"].is<JsonArray>()) {
         d->glance_from = std::clamp(c["g"][0] | 0, -62, 0);
         if (c["g"][1].is<JsonArray>()) for (JsonVariant mask : c["g"][1].as<JsonArray>()) { if (d->glance.size() == 62) break; d->glance.push_back((uint8_t) (mask | 0)); }
+      }
+      if (c["b"].is<JsonArray>()) {
+        d->book_on = string(c["b"][0], 128);
+        if (d->book_on.rfind("calendar.", 0) != 0) d->book_on.clear();
+        d->book_place = string(c["b"][1], 48); d->book_title = string(c["b"][2], 48);
       }
       next.calendar = std::move(d);
     }

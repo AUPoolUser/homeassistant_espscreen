@@ -44,6 +44,14 @@ class Card(unittest.TestCase):
         self.assertEqual((design[0], design[1]), (13 * 60 + 30, 15 * 60))
         self.assertEqual(design[5], 'Room A')
 
+    def test_minutes_are_wall_clock_across_a_change_of_summer_time(self):
+        # The night of 25 October the clocks go back an hour: 09:00 the next morning is still 1440 + 540, as the
+        # screen's own clock counts (Python subtracts two times of one zone by their wall clocks).
+        now = datetime(2026, 10, 24, 12, 0, tzinfo=TZ)
+        events = {'calendar.x': [{'start': '2026-10-25T09:00:00+01:00', 'end': '2026-10-25T10:00:00+01:00', 'summary': 'a'}]}
+        data = cf.card({'entity': 'calendar.x', 'options': {}}, events, {'calendar.x': {'attributes': {}}}, {}, TZ, now)
+        self.assertEqual(data['e'][0][:2], [1440 + 540, 1440 + 600])
+
     def test_calendars_of_the_card_and_their_colours(self):
         data = card(calendars=['calendar.family', 'calendar.rooms'])
         names = [name for _, name in data['c']]
@@ -90,18 +98,48 @@ class Card(unittest.TestCase):
         self.assertEqual(len(data['e']) + data['m'], 80)
 
 
+class Room(unittest.TestCase):
+    """ "Status and booking": the calendar a key books on, only one that takes new events (Home Assistant's CREATE_EVENT)."""
+    def states(self, features):
+        return {**DATA['states'], 'calendar.rooms': {'state': 'off', 'attributes': {'friendly_name': 'Rooms', 'supported_features': features}}}
+
+    def test_books_on_its_own_calendar_with_place_and_title(self):
+        tile = {'entity': 'calendar.rooms', 'options': {'style': 'room', 'book_place': 'Room 2', 'book_title': 'Walk-in'}}
+        data = cf.card(tile, DATA['events'], self.states(7), {}, TZ, NOW)
+        self.assertEqual(data['b'], ['calendar.rooms', 'Room 2', 'Walk-in'])
+
+    def test_no_booking_where_home_assistant_takes_no_events(self):
+        tile = {'entity': 'calendar.rooms', 'options': {'style': 'room'}}
+        self.assertNotIn('b', cf.card(tile, DATA['events'], self.states(0), {}, TZ, NOW))
+        self.assertNotIn('b', cf.card({**tile, 'options': {'style': 'room', 'book_on': 'none'}}, DATA['events'], self.states(1), {}, TZ, NOW))
+        self.assertNotIn('b', cf.card({**tile, 'options': {'style': 'busy_free'}}, DATA['events'], self.states(1), {}, TZ, NOW))
+
+    def test_the_next_beyond_the_days_it_looks(self):
+        # Nothing in the days the card covers: the first event after them comes along, so the card can say when.
+        events = {'calendar.x': [{'start': '2026-11-04T09:00:00+01:00', 'end': '2026-11-04T10:00:00+01:00', 'summary': 'Dentist'}]}
+        data = cf.card({'entity': 'calendar.x', 'options': {'ahead': 7}}, events, {'calendar.x': {'attributes': {}}}, {}, TZ, NOW)
+        self.assertEqual([row[4] for row in data['e']], ['Dentist'])
+
+
 class Validate(unittest.TestCase):
     def test_defaults_are_not_stored(self):
         self.assertEqual(cf.validate({'all_day': True, 'tentative': True, 'private': False, 'ahead': 14, 'style': 'events',
-                                      'soon': 0, 'start_view': 'auto', 'places': [' ', '']}), {})
+                                      'soon': 0, 'start_view': 'auto', 'places': [' ', ''], 'week_start': 'today', 'hours': None,
+                                      'week_numbers': False, 'book_on': '', 'book_place': ' ', 'book_title': ''}), {})
 
     def test_choices(self):
         self.assertEqual(cf.validate({'calendars': ['calendar.a', 'calendar.a'], 'places': [' Room A '], 'soon': 15, 'style': 'busy_free'}),
                          {'calendars': ['calendar.a'], 'places': ['Room A'], 'soon': 15, 'style': 'busy_free'})
+        self.assertEqual(cf.validate({'style': 'room', 'week_start': 'monday', 'hours': [8, 18], 'week_numbers': True,
+                                      'book_on': 'calendar.rooms', 'book_place': ' Room 2 ', 'book_title': 'Walk-in'}),
+                         {'style': 'room', 'week_start': 'monday', 'hours': [8, 18], 'week_numbers': True,
+                          'book_on': 'calendar.rooms', 'book_place': 'Room 2', 'book_title': 'Walk-in'})
 
     def test_refuses(self):
         for options in ({'calendars': ['light.a']}, {'ahead': 0}, {'ahead': 40}, {'soon': 200}, {'style': 'x'},
-                        {'start_view': 'year'}, {'all_day': 'yes'}, {'places': 'Room A'}):
+                        {'start_view': 'year'}, {'all_day': 'yes'}, {'places': 'Room A'}, {'week_start': 'sunday'},
+                        {'hours': [18, 8]}, {'hours': [8, 10]}, {'hours': [8, 25]}, {'hours': '8-18'}, {'week_numbers': 'yes'},
+                        {'book_on': 'light.a'}, {'book_title': 'x' * 49}):
             with self.assertRaises(ValueError):
                 cf.validate(options)
 

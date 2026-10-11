@@ -1406,7 +1406,11 @@ def tile_options(data, current=None):
         elif name in ('calendars', 'places', 'words', 'hide_words'):
             # A calendar card's lists (firmware 0.56.0): a list, or words split at commas as people write them.
             options[name] = [str(v).strip() for v in (value if isinstance(value, list) else str(value).split(','))]
-        elif name in ('all_day', 'tentative', 'private'):
+        elif name == 'hours':
+            # A calendar week's hours: two numbers, as a list or written "8-18".
+            parts = value if isinstance(value, list) else re.split(r'\s*[-–,]\s*', str(value).strip())
+            options[name] = [int(p) if str(p).strip().isdigit() else p for p in parts]
+        elif name in ('all_day', 'tentative', 'private', 'week_numbers'):
             options[name] = value if isinstance(value, bool) else loose(value) in ('true', 'yes', 'on', '1')
         elif name in ('ahead', 'soon'):
             options[name] = int(value) if str(value).strip().isdigit() else value

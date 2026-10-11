@@ -12,13 +12,18 @@ import json
 from datetime import date, datetime, time as day_time, timedelta
 
 # ---- The tile's own choices (validated in core.validate_layout; the inspector writes them).
-STYLES = ('events', 'busy_free')
+STYLES = ('events', 'busy_free', 'room')
+WEEK_STARTS = ('today', 'monday')
+BOOK_TEXT = 48
+CREATE_EVENT = 1  # CalendarEntityFeature.CREATE_EVENT: the calendar takes new events (calendar.create_event)
 START_VIEWS = ('auto', 'up_next', 'day', 'week', 'month')
 MAX_CALENDARS = 6
 MAX_WORDS = 8
 AHEAD_DEFAULT, AHEAD_MAX = 14, 31
 # Options the app keeps: the screen never needs them (it gets the events already filtered).
-OWN = ('calendars', 'places', 'words', 'hide_words', 'all_day', 'tentative', 'private', 'ahead')
+# "Status and booking" books on `book_on` (the tile's own calendar unless chosen; "none" books nowhere), with the place
+# and the title it names: the app sends them with the events, for a calendar that takes new events.
+OWN = ('calendars', 'places', 'words', 'hide_words', 'all_day', 'tentative', 'private', 'ahead', 'book_on', 'book_place', 'book_title')
 
 # The frontend's palette (src/resources/theme/color/color.globals.ts, --color-1 .. --color-54) and the theme colours a
 # calendar's colour picker may store by name (src/common/color/compute-color.ts THEME_COLORS).
@@ -174,8 +179,15 @@ def card(tile, fetched, states, entries, tz, now):
     rows.sort(key=lambda r: (r['s'], r['e']))
     # The detail list: from the Monday of this week through `ahead` days.
     first_day = -today.weekday()
+    every_row = rows
     rows = [r for r in rows if r['e'] > first_day * 1440 and r['s'] < (ahead + 1) * 1440]
     t_now = minutes(now)
+    # Nothing on or ahead in those days: the first event after them, so the card says when the next one is ("Next Wed
+    # 4 Nov") instead of only that nothing is planned.
+    if not any(r['e'] > t_now for r in rows):
+        later = [r for r in every_row if r['s'] >= (ahead + 1) * 1440]
+        if later:
+            rows.append(later[0])
     running = [r for r in rows if not r['f'] & ALL_DAY and r['s'] <= t_now < r['e']]
     coming = [r for r in rows if r['s'] > t_now]
     focus = running[0] if running else coming[0] if coming else None
@@ -186,6 +198,9 @@ def card(tile, fetched, states, entries, tz, now):
     data = {'d': [today.year, today.month, today.day, today.weekday()], 'r': [first_day, ahead], 'c': names,
             'e': [], 'm': 0, 'n': focus['n'] if focus else '',
             'g': [(glance_start - today).days, glance]}
+    book = booking(tile, states)
+    if book:
+        data['b'] = book
     # Nearest first: the events around now matter most; what does not fit is counted, never silently cut.
     order = sorted(range(len(rows)), key=lambda i: abs(rows[i]['s'] - t_now) if rows[i]['e'] > t_now else 10 ** 9 + t_now - rows[i]['e'])
     kept = set()
@@ -201,6 +216,21 @@ def card(tile, fetched, states, entries, tz, now):
     data['e'] = [[r['s'], r['e'], r['f'], r['c'], r['t'], r['p']] for i, r in enumerate(rows) if i in kept]
     data['m'] = len(rows) - len(kept)
     return data
+
+
+def booking(tile, states):
+    """[calendar, place, title] a room's card books with, or None: only "Status and booking", only a calendar that takes
+    new events (Home Assistant's CREATE_EVENT), the tile's own unless another is chosen."""
+    options = tile.get('options') or {}
+    if options.get('style') != 'room':
+        return None
+    entity = options.get('book_on') or tile.get('entity') or ''
+    if entity == 'none' or not entity.startswith('calendar.'):
+        return None
+    features = ((states.get(entity) or {}).get('attributes') or {}).get('supported_features') or 0
+    if not isinstance(features, int) or not features & CREATE_EVENT:
+        return None
+    return [entity, short(options.get('book_place'), BOOK_TEXT), short(options.get('book_title'), BOOK_TEXT)]
 
 
 def validate(options):
@@ -250,7 +280,37 @@ def validate(options):
             raise ValueError('start_view')
         if out['start_view'] == START_VIEWS[0]:
             del out['start_view']
+    if 'week_start' in out:
+        if out['week_start'] not in WEEK_STARTS:
+            raise ValueError('week_start')
+        if out['week_start'] == WEEK_STARTS[0]:
+            del out['week_start']
+    if 'hours' in out:
+        value = out['hours']
+        if value is None:
+            del out['hours']
+        elif not isinstance(value, list) or len(value) != 2 or any(not isinstance(h, int) or isinstance(h, bool) for h in value) \
+                or not 0 <= value[0] < value[1] <= 24 or value[1] - value[0] < 4:
+            raise ValueError('hours')
+    if 'week_numbers' in out:
+        if not isinstance(out['week_numbers'], bool):
+            raise ValueError('week_numbers')
+        if not out['week_numbers']:
+            del out['week_numbers']
+    if 'book_on' in out:
+        value = out['book_on']
+        if not isinstance(value, str) or len(value) > 128 or (value != 'none' and not value.startswith('calendar.') and value):
+            raise ValueError('book_on')
+        if not value:
+            del out['book_on']
+    for key in ('book_place', 'book_title'):
+        if key in out:
+            if not isinstance(out[key], str) or len(out[key]) > BOOK_TEXT:
+                raise ValueError(key)
+            out[key] = out[key].strip()
+            if not out[key]:
+                del out[key]
     return out
 
 
-KEYS = OWN + ('style', 'soon', 'start_view')
+KEYS = OWN + ('style', 'soon', 'start_view', 'week_start', 'hours', 'week_numbers')

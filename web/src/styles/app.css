@@ -616,7 +616,7 @@ button.insp-sec-head:hover h3 { color: var(--ink); }
 .favorite-chosen .help { flex: 1; }
 /* A calendar card (firmware 0.56.0): what it shows as two cards side by side, its calendars with their own colours, and
    its places and words as chips that are lit while chosen. */
-.cal-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+.cal-presets { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 8px; width: 100%; }
 .cal-preset { display: grid; gap: 4px; align-content: start; padding: 10px 11px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); text-align: left; transition: border-color 0.12s, background 0.12s; }
 .cal-preset:hover:not([aria-pressed="true"]) { background: var(--surface-2); }
 .cal-preset[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent) inset; }
@@ -633,6 +633,7 @@ button.insp-sec-head:hover h3 { color: var(--ink); }
 .cal-list small { flex: none; }
 .cal-words { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 10px; row-gap: 8px; width: 100%; }
 .cal-words-label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.cal-book-title { width: 100%; font-size: 13.5px; height: 34px; }
 .tag-field { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; }
 .tag-chip { display: inline-flex; align-items: center; gap: 4px; height: 28px; max-width: 100%; padding: 0 10px 0 7px; border-radius: 999px; font-size: 12.5px; font-weight: 500; color: var(--ink-2); background: var(--surface); border: 1px dashed var(--line-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tag-chip .ui-icon { font-size: 14px; color: var(--muted); flex: none; }

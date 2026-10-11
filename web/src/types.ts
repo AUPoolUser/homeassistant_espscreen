@@ -18,7 +18,7 @@ export type TileOptions = {
   action?: { action: string; data?: Record<string, unknown> };
   // A calendar card's choices (firmware 0.56.0, calendar_feed.validate): what it shows, the calendars beside the tile's
   // own, which events it lets through, how far it looks, when an event starts soon and where its full screen opens.
-  style?: "events" | "busy_free";
+  style?: "events" | "busy_free" | "room";
   calendars?: string[];
   places?: string[];
   words?: string[];
@@ -29,6 +29,13 @@ export type TileOptions = {
   ahead?: number;
   soon?: number;
   start_view?: string;
+  // ... and the week's first day, its hours, the month's week numbers, and where "Status and booking" books.
+  week_start?: string;
+  hours?: [number, number];
+  week_numbers?: boolean;
+  book_on?: string;
+  book_place?: string;
+  book_title?: string;
   [key: string]: unknown;
 };
 // What a favourite plays (app 0.4.42), as Home Assistant's library names it: its content id and type, the title and the
@@ -75,7 +82,8 @@ export type PageTile = {
     // A calendar card's choices (firmware 0.56.0): TileOptions' style, calendars, places, words, hide_words, all_day,
     // tentative, private, ahead, soon and start_view.
     calendarStyle?: string; calendarEntities?: string[]; calendarPlaces?: string[]; calendarWords?: string[]; calendarHideWords?: string[];
-    calendarAllDay?: boolean; calendarTentative?: boolean; calendarPrivate?: boolean; calendarAhead?: number; calendarSoon?: number; calendarStartView?: string };
+    calendarAllDay?: boolean; calendarTentative?: boolean; calendarPrivate?: boolean; calendarAhead?: number; calendarSoon?: number; calendarStartView?: string;
+    calendarWeekStart?: string; calendarHours?: [number, number]; calendarWeekNumbers?: boolean; calendarBookOn?: string; calendarBookPlace?: string; calendarBookTitle?: string };
   interaction: { tap?: string; inline?: string; controls?: string; action?: TileOptions["action"]; guard?: string; play?: FavoritePlay; speaker?: string; shuffle?: string; repeat?: string };
   children?: ChildTile[];
 };

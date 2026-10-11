@@ -448,6 +448,10 @@ constexpr uint16_t calendar_earlier = 483;
 constexpr uint16_t calendar_later = 484;
 constexpr uint16_t calendar_more_week = 485;
 constexpr uint16_t calendar_today_key = 494;
+constexpr uint16_t calendar_booking = 495;
+constexpr uint16_t calendar_calendars = 496;
+constexpr uint16_t calendar_also = 497;
+constexpr uint16_t calendar_booked = 498;
 constexpr uint16_t date_weekdays = 18;
 constexpr uint16_t date_weekdays_count = 7;
 constexpr uint16_t date_weekdays_short = 25;
@@ -463,6 +467,6 @@ constexpr uint16_t calendar_views_count = 4;
 constexpr uint16_t calendar_view_notes = 490;
 constexpr uint16_t calendar_view_notes_count = 4;
 }  // namespace txt
-constexpr uint16_t KEY_COUNT = 495;
-constexpr uint32_t KEYS_HASH = 0x30F2B1D5u;
+constexpr uint16_t KEY_COUNT = 499;
+constexpr uint32_t KEYS_HASH = 0xC44C3710u;
 }  // namespace screen_text

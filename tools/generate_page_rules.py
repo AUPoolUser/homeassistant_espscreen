@@ -41,7 +41,8 @@ def rules():
             # never stored.
             'calendar': {'styles': list(calendar_feed.STYLES), 'startViews': list(calendar_feed.START_VIEWS),
                          'calendars': calendar_feed.MAX_CALENDARS - 1, 'words': calendar_feed.MAX_WORDS,
-                         'ahead': [calendar_feed.AHEAD_DEFAULT, calendar_feed.AHEAD_MAX]}}
+                         'ahead': [calendar_feed.AHEAD_DEFAULT, calendar_feed.AHEAD_MAX],
+                         'weekStarts': list(calendar_feed.WEEK_STARTS), 'bookText': calendar_feed.BOOK_TEXT}}
 
 
 def output():

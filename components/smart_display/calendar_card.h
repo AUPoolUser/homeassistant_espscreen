@@ -45,16 +45,31 @@ struct Data {
   std::string notes;                              // the description of the event of the moment, or the next one
   int glance_from = 0;                            // the month glance: its first day, from today
   std::vector<uint8_t> glance;                    // one mask per day from there: bit n = calendar n has something
+  // "Status and booking" with booking on (the app sends it only for a calendar that takes new events): the calendar a
+  // key books on, the place and the title the booking gets.
+  std::string book_on, book_place, book_title;
 };
 inline bool all_day(const Event &e) { return e.flags & ALL_DAY; }
 inline int day_of(int minute) { return minute >= 0 ? minute / 1440 : -((-minute + 1439) / 1440); }
 inline bool on_day(const Event &e, int d) { return e.start < (d + 1) * 1440 && e.end > d * 1440; }
+// A timed event of a day or more stands with the all-day ones in a week (as in Apple's and Google's calendars); a shorter
+// one over midnight stands in both days' hours.
+inline bool banded(const Event &e) { return all_day(e) || e.end - e.start >= 1440; }
+// Where a timed event lies in the hours of `day`: its minutes from that midnight, cut to the day.
+inline int start_in(const Event &e, int day) { return std::max(e.start - day * 1440, 0); }
+inline int end_in(const Event &e, int day) { return std::min(e.end - day * 1440, 1440); }
 
 // ---- The card's own choices (the tile's options, from the inspector).
 struct Options {
   bool busy_free = false;  // "Free or busy": the head says Free, Starts soon or Busy, the title second
   int soon = 0;            // minutes before an event that the head calls "Starts soon" (0: never)
   std::string start_view;  // the full screen's first view: "", "up_next", "day", "week", "month"
+  bool from_monday = false;  // a week from its Monday instead of from today
+  int hours_from = 0, hours_to = 0;  // the hours a week shows (0, 0: the events' own, eight to eight at least)
+  bool week_numbers = false;  // the month's weeks numbered (ISO 8601, as most of Europe counts them)
+  bool room = false;      // "Status and booking": the room's state in one large word, green or red (a door's sign)
+  bool book = false;      // ... with keys that book it now (the app sends it only for a calendar that takes new events)
+  int booking = -1;       // the end (minutes of the day) of a booking on its way: its key says so until the events come
 };
 
 // ---- What the card says, in the screen's language (calendar_view.cpp fills it from the screen's texts).
@@ -65,6 +80,9 @@ struct Words {
   std::array<std::string, 12> months, months_short;
   std::array<std::string, 4> views, view_notes;  // Up next, Day, Week, Month and a line under each in the choice
   std::string today_key;
+  std::string booking;  // a booking on its way ("Booking...")
+  std::string calendars;  // the heading of the calendars in the view choice
+  std::string also;  // "+{x} now": how many more events run at the same time (empty: not said)
   std::function<std::string(int)> clock;          // a minute of the day as the screen writes times
   std::function<std::string(int)> duration;       // minutes as the screen writes a span ("50 min", "2 h 10 min")
 };
@@ -75,7 +93,8 @@ inline std::string with(const std::string &pattern, const std::string &value) {
 inline std::string span(const Words &w, int a, int b) { return w.clock((a % 1440 + 1440) % 1440) + " – " + w.clock((b % 1440 + 1440) % 1440); }
 inline std::string plain_duration(int minutes) {
   char b[24];
-  if (minutes < 60) snprintf(b, sizeof b, "%d min", minutes);
+  if (minutes >= 1440 && minutes % 1440 == 0) snprintf(b, sizeof b, "%d d", minutes / 1440);
+  else if (minutes < 60) snprintf(b, sizeof b, "%d min", minutes);
   else if (minutes % 60) snprintf(b, sizeof b, "%d h %d", minutes / 60, minutes % 60);
   else snprintf(b, sizeof b, "%d h", minutes / 60);
   return b;
@@ -92,12 +111,16 @@ enum Role : uint8_t {
   CAL_KEY_PAST, CAL_BLOCK_PAST, CAL_INK_PAST, ROLES
 };
 struct Paint { Role role = INK; uint8_t cal = 0; };
+// Two colours a calendar never has: the room's free and busy (Home Assistant's green and red, calendar_paint.h).
+constexpr uint8_t FREE_COLOUR = 254, BUSY_COLOUR = 255;
 inline Paint cal(Role r, uint8_t c) { return Paint{r, c}; }
 // `cw` > 0: drawn only inside (cx, cy, cw, ch), so a rounded shape can be cut to a strip of itself (the card's edge).
 struct Box { int x = 0, y = 0, w = 0, h = 0, radius = 0; Paint paint; uint8_t opa = 255; int border = 0; Paint line; int cx = 0, cy = 0, cw = 0, ch = 0; };
 enum Align : uint8_t { LEFT, CENTRE, RIGHT };
 struct Text { int x = 0, y = 0, w = 0; Face face = SMALL; Paint paint; Align align = LEFT; std::string s; };
-enum HitKind : uint8_t { HIT_NONE, HIT_EVENT, HIT_DAY, HIT_VIEW_KEY, HIT_TODAY, HIT_PREV, HIT_NEXT, HIT_CLOSE, HIT_VIEW, HIT_SHEET, HIT_SCRIM };
+enum HitKind : uint8_t { HIT_NONE, HIT_EVENT, HIT_DAY, HIT_VIEW_KEY, HIT_TODAY, HIT_PREV, HIT_NEXT, HIT_CLOSE, HIT_VIEW, HIT_SHEET, HIT_SCRIM,
+                         HIT_BOOK,       // a room's key that books it now: arg the minutes, the booking's end as minutes of the day
+                         HIT_CALENDAR }; // a calendar's key in the view choice: arg the calendar, shown or hidden
 struct Hit { int x = 0, y = 0, w = 0, h = 0; HitKind kind = HIT_NONE; int arg = 0; };
 struct Scene {
   std::vector<Box> boxes;
@@ -205,7 +228,7 @@ inline void event_block(Pen &p, int x, int y, int w, int h, const Event &e, bool
 
 // ---- What is on now.
 struct Moment { int day = 0, minute = 0; int at() const { return day * 1440 + minute; } };
-struct Status { int now = -1, next = -1; bool soon = false; };
+struct Status { int now = -1, next = -1, also = 0; bool soon = false; };
 // A timed event that runs now wins over an all-day one (Home Assistant's state picks the earliest start, so a day-long
 // event would hide the meeting); the next is the first that starts after now.
 inline Status status(const Data &d, Moment t, const Options &o) {
@@ -214,7 +237,7 @@ inline Status status(const Data &d, Moment t, const Options &o) {
   for (size_t i = 0; i < d.events.size(); ++i) {
     const auto &e = d.events[i];
     if (all_day(e)) continue;
-    if (e.start <= T && T < e.end) { if (s.now < 0) s.now = (int) i; }
+    if (e.start <= T && T < e.end) { if (s.now < 0) s.now = (int) i; else ++s.also; }
     else if (e.start > T && (s.next < 0 || e.start < d.events[s.next].start)) s.next = (int) i;
   }
   if (s.next < 0)
@@ -240,17 +263,33 @@ inline std::string short_day(const Words &w, const Data &d, int day, int today) 
   if (day == today) return w.today;
   if (day == today + 1) return w.tomorrow;
   const Date dt = date_of(d, day);
-  return w.days[dt.weekday] + " " + std::to_string(dt.day);
+  // A week or more away the day names its month too ("Wed 4 Nov"): "Wed 4" would read as this week's.
+  const bool far = std::abs(day - today) >= 7 && !w.months_short[dt.month - 1].empty();
+  return w.days[dt.weekday] + " " + std::to_string(dt.day) + (far ? " " + w.months_short[dt.month - 1] : "");
 }
 inline std::string long_day(const Words &w, const Data &d, int day) {
   const Date dt = date_of(d, day);
   return w.days_long[dt.weekday] + " " + std::to_string(dt.day) + " " + w.months[dt.month - 1];
 }
-inline std::string when(const Words &w, const Data &d, const Event &e, int today) {
-  const int day = day_of(e.start);
-  return day == today ? w.clock(((e.start % 1440) + 1440) % 1440) : short_day(w, d, day, today) + " " + w.clock(((e.start % 1440) + 1440) % 1440);
+inline std::string at_time(const Words &w, const Data &d, int minute, int today, bool end = false) {
+  const int day = day_of(end ? minute - 1 : minute), clock = ((minute % 1440) + 1440) % 1440;
+  return day == today ? w.clock(clock) : short_day(w, d, day, today) + " " + w.clock(clock);
+}
+inline std::string when(const Words &w, const Data &d, const Event &e, int today) { return at_time(w, d, e.start, today); }
+// An event's times; one over midnight names its days ("Wed 22:00 – Thu 06:00").
+inline std::string span_of(const Words &w, const Data &d, const Event &e) {
+  const int a = day_of(e.start), z = day_of(e.end - 1);
+  if (a == z) return span(w, e.start, e.end);
+  return w.days[date_of(d, a).weekday] + " " + w.clock(((e.start % 1440) + 1440) % 1440) + " – " +
+         w.days[date_of(d, z).weekday] + " " + w.clock(((e.end % 1440) + 1440) % 1440);
 }
 
+// How long a running event still goes: the time left ("50 min left", a night shift's "7 h left"); more than half a day
+// on another day reads better as the day and time it ends ("Until Thu 17:00" over "26 h 50 left").
+inline bool far_end(const Event &e, Moment t) { return day_of(e.end - 1) != t.day && e.end - t.at() > 720; }
+inline std::string left_of(const Words &w, const Data &d, const Event &e, Moment t) {
+  return far_end(e, t) ? with(w.until, at_time(w, d, e.end, t.day, true)) : with(w.left, dur(w, e.end - t.at()));
+}
 // The head's two lines on a small card: what runs (or Free), and until when or what comes next.
 // `brief`: the second line when the whole one does not fit, the one thing it must say (until when, when the next starts).
 struct HeadWords { std::string first, second, brief; bool on = false; };
@@ -260,9 +299,9 @@ inline HeadWords head_words(const Data &d, Moment t, const Options &o, const Wor
   h.on = s.now >= 0;
   if (s.now >= 0) {
     const auto &e = d.events[s.now];
-    const std::string until = with(w.until, w.clock(e.end % 1440)), left = with(w.left, dur(w, e.end - t.at()));
+    const std::string until = with(w.until, at_time(w, d, e.end, t.day, true)), left = far_end(e, t) ? "" : with(w.left, dur(w, e.end - t.at()));
     if (o.busy_free) { h.first = w.busy; h.second = until + " · " + title_of(e, w); }
-    else { h.first = title_of(e, w); h.second = until + " · " + left; }
+    else { h.first = title_of(e, w); h.second = left.empty() ? until : until + " · " + left; }
     h.brief = until;
   } else if (s.next >= 0) {
     const auto &e = d.events[s.next];
@@ -323,14 +362,16 @@ inline void up_next(Pen &p, int x, int y, int w, int h, const Data &d, Moment t,
   const int bar = P(4, 3), tx = x + mp + bar + P(10, 6), W = x + w - mp - tx;
   p.box(x + mp, y + mp, bar, h - 2 * mp, cal(CAL_KEY, e.cal), bar / 2);
   std::string left_words, right_words;
-  if (running) { left_words = all_day(e) ? wd.all_day : span(wd, e.start, e.end); right_words = with(wd.left, dur(wd, e.end - t.at())); }
+  if (running) { left_words = all_day(e) ? wd.all_day : span_of(wd, d, e); right_words = left_of(wd, d, e, t); }
   else {
-    const std::string at = all_day(e) ? wd.all_day : span(wd, e.start, e.end);
+    const std::string at = all_day(e) ? wd.all_day : span_of(wd, d, e);
     left_words = (o.busy_free && s.soon ? wd.starts_soon : wd.next.substr(0, wd.next.find("{x}"))) ;
     while (!left_words.empty() && left_words.back() == ' ') left_words.pop_back();
     const int day = day_of(e.start);
     left_words += (left_words.empty() ? "" : " · ") + (day == t.day ? at : short_day(wd, d, day, t.day) + " " + at);
-    right_words = with(wd.in, dur(wd, std::max(1, e.start - t.at())));
+    // Days away, the days count ("in 3 d"), not the hours of them.
+    const int days = day_of(e.start) - t.day;
+    right_words = with(wd.in, e.start - t.at() > 720 && days > 0 ? dur(wd, days * 1440) : dur(wd, std::max(1, e.start - t.at())));
   }
   const int rw = m.width(mf, right_words) + 2, lw = W - rw - P(8, 4);
   const bool both = m.width(mf, left_words) <= lw;
@@ -349,15 +390,19 @@ inline void up_next(Pen &p, int x, int y, int w, int h, const Data &d, Moment t,
   p.para(tx, top + std::max(0, (room - lines * L(m, face)) / 2), W, face, ink, title, lines);
   if (running) {
     const int bh = P(6, 4), by = y + h - mp - bh, done = std::clamp(1000 * (t.at() - e.start) / std::max(1, e.end - e.start), 0, 1000);
-    p.box(tx, by, W, bh, cal(CAL_TRACK, e.cal), bh / 2);
-    p.box(tx, by, std::max(bh, W * done / 1000), bh, cal(CAL_KEY, e.cal), bh / 2);
+    // More than one event at a time: the bar leaves room at its end for how many more run now (a tap opens the day).
+    const std::string also = s.also && !wd.also.empty() ? with(wd.also, std::to_string(s.also)) : "";
+    const int aw = also.empty() ? 0 : m.width(mf, also) + P(12, 6), bw = W - aw;
+    p.box(tx, by, bw, bh, cal(CAL_TRACK, e.cal), bh / 2);
+    p.box(tx, by, std::max(bh, bw * done / 1000), bh, cal(CAL_KEY, e.cal), bh / 2);
+    if (aw) p.text(tx + bw, by + bh / 2 - L(m, mf) / 2, aw, mf, soft, also, RIGHT);
   }
 }
 
 // ---- The rows of what follows.
 inline int event_row(const Measure &m) { return L(m, title_face()) + P(2, 1) + L(m, meta_face()); }
 inline int row_of(const Measure &m, const Event &e) { return all_day(e) ? L(m, title_face()) : event_row(m); }
-inline int shown_day(const Event &e, int today) { return all_day(e) ? std::max(day_of(e.start), today) : day_of(e.start); }
+inline int shown_day(const Event &e, int today) { return std::max(day_of(e.start), today); }
 inline std::vector<int> coming(const Data &d, Moment t, const Status &s, int from = -9999, int to = 9999) {
   std::vector<int> out;
   const int T = t.at();
@@ -377,7 +422,7 @@ inline std::vector<int> coming(const Data &d, Moment t, const Status &s, int fro
   });
   return out;
 }
-inline void event_line(Pen &p, int x, int y, int w, const Event &e, int index, const Words &wd, bool past = false) {
+inline void event_line(Pen &p, int x, int y, int w, const Data &d, const Event &e, int index, const Words &wd, bool past = false) {
   const auto &m = p.m;
   const int bar = P(4, 3), h = row_of(m, e), tx = x + bar + P(10, 6), tw = w - (tx - x);
   p.box(x, y, bar, h, cal(past ? CAL_KEY_PAST : CAL_KEY, e.cal), bar / 2);
@@ -389,9 +434,8 @@ inline void event_line(Pen &p, int x, int y, int w, const Event &e, int index, c
     return;
   }
   p.text(tx, y, tw, title_face(), Paint{past ? MUTED : INK}, title_of(e, wd));
-  const std::string with_place = span(wd, e.start, e.end) + (e.place.empty() ? "" : " · " + e.place);
-  p.text(tx, y + L(m, title_face()) + P(2, 1), tw, meta_face(), Paint{MUTED},
-         m.width(meta_face(), with_place) <= tw ? with_place : span(wd, e.start, e.end));
+  const std::string times = span_of(wd, d, e), with_place = times + (e.place.empty() ? "" : " · " + e.place);
+  p.text(tx, y + L(m, title_face()) + P(2, 1), tw, meta_face(), Paint{MUTED}, m.width(meta_face(), with_place) <= tw ? with_place : times);
 }
 // The list module: a grey block of rows grouped by day. Wide enough (70 mm), the date stands in a column at the left;
 // narrow, a quiet day word heads each day. At most `cap` rows; the last line says how many more there are.
@@ -444,7 +488,7 @@ inline void list(Pen &p, int x, int y, int w, int h, const Data &d, Moment t, co
       } else { p.text(x + mp, yy, W, SMALL, Paint{MUTED}, short_day(wd, d, dd, t.day)); yy += caption_h; }
       day = dd;
     } else yy += P(6, 2);
-    event_line(p, x + mp + (date_column ? date_w : 0), yy, W - (date_column ? date_w : 0), e, items[k], wd);
+    event_line(p, x + mp + (date_column ? date_w : 0), yy, W - (date_column ? date_w : 0), d, e, items[k], wd);
     yy += row_h(k, nd);
   }
   const int rest = (int) items.size() - show + d.left_out;
@@ -471,7 +515,7 @@ inline void columns(Pen &p, int x, int y, int w, int h, const Data &d, Moment t,
       const int rh = row_of(m, d.events[items[i]]);
       const bool more_after = i < cnt - 1;
       if (yy + rh > y + h - mp || (more_after && yy + rh + P(8, 4) + L(m, meta_face()) > y + h - mp)) break;
-      event_line(p, cx + mp, yy, W, d.events[items[i]], items[i], wd);
+      event_line(p, cx + mp, yy, W, d, d.events[items[i]], items[i], wd);
       yy += rh + P(10, 4);
     }
     if (i < cnt) p.text(cx + mp, std::min(yy, y + h - mp - L(m, meta_face())), W, meta_face(), Paint{MUTED}, with(wd.more, std::to_string(cnt - i)));
@@ -480,7 +524,12 @@ inline void columns(Pen &p, int x, int y, int w, int h, const Data &d, Moment t,
 }
 
 // ---- The week: days as columns, hours as rows.
-inline int gutter(const Measure &m) { return m.width(SMALL, "00:00") + P(10, 4); }
+// The hour column: as wide as the screen's longest hour ("00:00", or "10 PM" on a 12-hour clock).
+inline int gutter(const Measure &m, const Words *wd = nullptr) {
+  int w = m.width(SMALL, "00:00");
+  for (int h = 0; wd && wd->clock && h < 24; ++h) w = std::max(w, m.width(SMALL, wd->clock(h * 60)));
+  return w + P(10, 4);
+}
 // A day's head ("Wed 30") needs about six characters; the 16 mm a column needs for a title are more on every board.
 inline int day_min(const Measure &m) { return std::max(ui::mm(16), m.width(SMALL, "000 00") + P(10, 6)); }
 inline int fit_days(const Measure &m, int w) { return std::clamp((w - gutter(m)) / std::max(1, day_min(m)), 1, 7); }
@@ -495,20 +544,20 @@ inline bool week_fits(const Measure &m, int w, int h, bool card = true) {
 struct Lane { int index, lane, lanes; };
 inline std::vector<Lane> lanes_of(const Data &d, int day) {
   std::vector<int> evs;
-  for (size_t i = 0; i < d.events.size(); ++i) if (!all_day(d.events[i]) && day_of(d.events[i].start) == day) evs.push_back((int) i);
-  std::stable_sort(evs.begin(), evs.end(), [&](int a, int b) { return d.events[a].start < d.events[b].start; });
+  for (size_t i = 0; i < d.events.size(); ++i) if (!banded(d.events[i]) && on_day(d.events[i], day)) evs.push_back((int) i);
+  std::stable_sort(evs.begin(), evs.end(), [&](int a, int b) { return start_in(d.events[a], day) < start_in(d.events[b], day); });
   std::vector<Lane> out;
   std::vector<int> ends;
   size_t cluster = 0;
   int cluster_end = -1;
   auto close = [&]() { const int n = std::max(1, (int) ends.size()); for (size_t i = cluster; i < out.size(); ++i) out[i].lanes = n; ends.clear(); cluster = out.size(); };
   for (int i : evs) {
-    const auto &e = d.events[i];
-    if (e.start >= cluster_end && !out.empty()) close();
+    const int a = start_in(d.events[i], day), z = end_in(d.events[i], day);
+    if (a >= cluster_end && !out.empty()) close();
     int lane = -1;
-    for (int k = 0; k < (int) ends.size(); ++k) if (ends[k] <= e.start) { lane = k; break; }
+    for (int k = 0; k < (int) ends.size(); ++k) if (ends[k] <= a) { lane = k; break; }
     if (lane < 0) { lane = (int) ends.size(); ends.push_back(0); }
-    ends[lane] = e.end; cluster_end = std::max(cluster_end, e.end);
+    ends[lane] = z; cluster_end = std::max(cluster_end, z);
     out.push_back({i, lane, 1});
   }
   close();
@@ -557,15 +606,18 @@ inline int week_heads(Pen &p, int x, int y, const WeekShape &ws, const Data &d, 
   }
   return hh;
 }
-// All-day events in rows under the heads, spanning their days, stacked where they share one.
+// All-day events (and timed ones of a day or more) in rows under the heads, spanning their days, stacked where they
+// share one. Three rows at most: when more are stacked, the third says per day how many more there are, and a tap on it
+// opens that day, which lists them all (Apple's "+2").
 inline int all_day_rows(Pen &p, int x, int y, const WeekShape &ws, const Data &d, const Words &wd) {
   const auto &m = p.m;
-  const int ah = allday_h(m);
+  const int ah = allday_h(m), most = 3;
   std::vector<std::array<bool, 7>> used;
-  int rows = 0;
+  std::vector<std::array<int, 3>> placed;  // event, first day, end day (exclusive), with its lane in `lane_of`
+  std::vector<int> lane_of;
   for (size_t i = 0; i < d.events.size(); ++i) {
     const auto &e = d.events[i];
-    if (!all_day(e)) continue;
+    if (!banded(e)) continue;
     const int a = std::max(day_of(e.start), ws.d0), z = std::min(day_of(e.end - 1) + 1, ws.d0 + ws.days);
     if (a >= z) continue;
     int lane = 0;
@@ -575,15 +627,29 @@ inline int all_day_rows(Pen &p, int x, int y, const WeekShape &ws, const Data &d
       for (int k = a; k < z; ++k) free = free && !used[lane][k - ws.d0];
       if (free) break;
     }
-    if (lane >= 3) continue;  // three rows at most; the day and the sheet have the rest
     for (int k = a; k < z; ++k) used[lane][k - ws.d0] = true;
-    rows = std::max(rows, lane + 1);
+    placed.push_back({(int) i, a, z});
+    lane_of.push_back(lane);
+  }
+  const int lanes = (int) used.size(), shown = lanes > most ? most - 1 : lanes;
+  std::array<int, 7> hidden{};
+  for (size_t j = 0; j < placed.size(); ++j) {
+    const auto &e = d.events[placed[j][0]];
+    const int a = placed[j][1], z = placed[j][2], lane = lane_of[j];
+    if (lane >= shown) { for (int k = a; k < z; ++k) ++hidden[k - ws.d0]; continue; }
     const int bx = x + ws.gw + (a - ws.d0) * ws.cw + P(2, 1), bw = (z - a) * ws.cw - P(4, 2);
     event_block(p, bx, y + lane * ah + P(2, 1), bw, ah - P(4, 2), e, false, P(6, 3));
     p.text(bx + P(8, 4), y + lane * ah + (ah - L(m, SMALL)) / 2, bw - P(16, 8), SMALL, cal(CAL_INK, e.cal), title_of(e, wd));
-    p.hit(bx, y + lane * ah, bw, ah, HIT_EVENT, (int) i);
+    p.hit(bx, y + lane * ah, bw, ah, HIT_EVENT, placed[j][0]);
   }
-  return rows * ah;
+  if (shown < lanes)
+    for (int k = 0; k < ws.days; ++k) {
+      if (!hidden[k]) continue;
+      const int cx = x + ws.gw + k * ws.cw, ty = y + shown * ah;
+      p.text(cx + P(8, 4), ty + (ah - L(m, SMALL)) / 2, ws.cw - P(12, 6), SMALL, Paint{MUTED}, "+" + std::to_string(hidden[k]));
+      p.hit(cx, ty, ws.cw, ah, HIT_DAY, ws.d0 + k);
+    }
+  return std::min(lanes, most) * ah;
 }
 // The hours and their events, from h0 to h1 at hour_h a row, from y. `x` is the left of the hour column.
 inline void week_grid(Pen &p, int x, int y, const WeekShape &ws, const Data &d, Moment t, const Words &wd, bool tags, int tag_top, int tag_foot) {
@@ -597,7 +663,12 @@ inline void week_grid(Pen &p, int x, int y, const WeekShape &ws, const Data &d, 
     p.box(gx, std::min(ly, y + gh - 1), gridw, 1, Paint{GRID});
     const bool near = now_shown && std::abs(ly - ny) < L(m, SMALL);
     if (near || h == ws.h1) continue;
-    if (ws.bare) { if (h % 3 == 0) p.text(x, ly - L(m, SMALL) / 2, ws.gw - P(6, 3), SMALL, Paint{MUTED}, std::to_string(h), RIGHT); continue; }
+    if (ws.bare) {
+      // Only the number of the hour; on a 12-hour clock the 12-hour one (wd.clock writes 13:00 as "1 PM").
+      const bool h12 = wd.clock && wd.clock(13 * 60).rfind("13", 0) != 0;
+      if (h % 3 == 0) p.text(x, ly - L(m, SMALL) / 2, ws.gw - P(6, 3), SMALL, Paint{MUTED}, std::to_string(h12 && h % 12 ? h % 12 : h12 ? 12 : h), RIGHT);
+      continue;
+    }
     p.text(x, ly - L(m, SMALL) / 2, ws.gw - P(8, 4), SMALL, Paint{MUTED}, wd.clock(h * 60), RIGHT);
   }
   for (int k = 0; k <= ws.days; ++k) p.box(std::min(gx + k * ws.cw, gx + gridw - 1), y, 1, gh, Paint{GRID});
@@ -633,7 +704,7 @@ inline void week_grid(Pen &p, int x, int y, const WeekShape &ws, const Data &d, 
   // Hours out of the window are never lost in silence: a quiet tag at the top or foot of a day says how many.
   for (int k = 0; tags && k < ws.days; ++k) {
     int before = 0, after = 0;
-    for (auto &e : d.events) if (!all_day(e) && day_of(e.start) == ws.d0 + k) { if (e.end - (ws.d0 + k) * 1440 <= ws.h0 * 60) ++before; else if (e.start - (ws.d0 + k) * 1440 >= ws.h1 * 60) ++after; }
+    for (auto &e : d.events) if (!banded(e) && on_day(e, ws.d0 + k)) { if (end_in(e, ws.d0 + k) <= ws.h0 * 60) ++before; else if (start_in(e, ws.d0 + k) >= ws.h1 * 60) ++after; }
     for (int side = 0; side < 2; ++side) {
       const int n = side ? after : before;
       if (!n || (side ? tag_foot : tag_top) <= 0) continue;
@@ -664,20 +735,21 @@ inline void hours_of(WeekShape &ws, const Data &d, Moment t, int rows) {
   int h0 = 8, h1 = 20;
   for (int k = 0; k < ws.days; ++k)
     for (auto &e : d.events)
-      if (!all_day(e) && day_of(e.start) == ws.d0 + k) { h0 = std::min(h0, (e.start - (ws.d0 + k) * 1440) / 60); h1 = std::max(h1, (e.end - (ws.d0 + k) * 1440 + 59) / 60); }
+      if (!banded(e) && on_day(e, ws.d0 + k)) { h0 = std::min(h0, start_in(e, ws.d0 + k) / 60); h1 = std::max(h1, (end_in(e, ws.d0 + k) + 59) / 60); }
   h0 = std::max(0, h0); h1 = std::min(24, h1);
   if (rows > 0 && h1 - h0 > rows) { const int start = std::clamp(t.minute / 60 - rows / 3, h0, h1 - rows); h0 = start; h1 = start + rows; }
   ws.h0 = h0; ws.h1 = h1;
 }
 // A week on a card: heads, all-day rows and a window of hours (no scrolling on a page: AGENTS.md).
-inline void week(Pen &p, int x, int y, int w, int h, const Data &d, Moment t, const Words &wd, bool bare = false) {
+inline int week_start(const Data &d, Moment t, const Options &o) { return o.from_monday ? t.day - date_of(d, t.day).weekday : t.day; }
+inline void week(Pen &p, int x, int y, int w, int h, const Data &d, Moment t, const Words &wd, bool bare = false, const Options &o = Options{}) {
   const auto &m = p.m;
   WeekShape ws;
   ws.bare = bare;
   ws.days = bare ? 7 : fit_days(m, w);
   // A week on a wall starts today: the days to come, not the ones gone since Monday (as Skylight's users keep it).
-  ws.d0 = t.day;
-  ws.gw = bare ? m.width(SMALL, "00") + P(10, 6) : gutter(m);
+  ws.d0 = week_start(d, t, o);
+  ws.gw = bare ? m.width(SMALL, "00") + P(10, 6) : gutter(m, &wd);
   ws.cw = (w - ws.gw) / ws.days;
   int yy = y + week_heads(p, x, y, ws, d, t, wd);
   if (!bare) yy += all_day_rows(p, x, yy, ws, d, wd);
@@ -685,16 +757,117 @@ inline void week(Pen &p, int x, int y, int w, int h, const Data &d, Moment t, co
   const int unit = bare ? P(14, 8) : hour_pref(m);
   WeekShape probe = ws;
   hours_of(probe, d, t, 0);
+  if (o.hours_to > o.hours_from) { probe.h0 = o.hours_from; probe.h1 = o.hours_to; }
   const int range = probe.h1 - probe.h0, pref = std::max(1, avail / unit), least = std::max(1, avail / (bare ? P(14, 8) : hour_min(m)));
   const int rows = range <= pref ? range : std::max(pref, std::min({range, 8, least}));
   hours_of(ws, d, t, rows);
+  if (o.hours_to > o.hours_from) {
+    ws.h0 = o.hours_from; ws.h1 = o.hours_to;
+    if (ws.h1 - ws.h0 > rows) { const int start = std::clamp(t.minute / 60 - rows / 3, ws.h0, ws.h1 - rows); ws.h0 = start; ws.h1 = start + rows; }
+  }
   bool before = false, after = false;
   for (int k = 0; !bare && k < ws.days; ++k)
     for (auto &e : d.events)
-      if (!all_day(e) && day_of(e.start) == ws.d0 + k) { before |= e.end - (ws.d0 + k) * 1440 <= ws.h0 * 60; after |= e.start - (ws.d0 + k) * 1440 >= ws.h1 * 60; }
+      if (!banded(e) && on_day(e, ws.d0 + k)) { before |= end_in(e, ws.d0 + k) <= ws.h0 * 60; after |= start_in(e, ws.d0 + k) >= ws.h1 * 60; }
   const int strip = L(m, SMALL) + P(6, 3), tt = before ? strip : 0, tf = after ? strip : 0;
   ws.hour_h = std::max(1, (avail - tt - tf) / std::max(1, ws.h1 - ws.h0));
   week_grid(p, x, yy + top_pad + tt, ws, d, t, wd, !bare, tt, tf);
+}
+
+// ---- "Status and booking": a room's sign. The state in one word as large as the faces go, in green or red, until
+// when, what is on or comes next; on a free room the keys that book it now (15 min, 30 min, 1 h, until the next
+// meeting), as many as fit before the next. A wide card keeps the room's day beside it. Too low for the word and its
+// line, it says both in one ("Free · Until 13:30") and leaves booking to the full screen.
+inline void pill(Pen &p, int x, int y, int w, int h, Paint fill, Paint ink, Face f, const std::string &s) {
+  p.box(x, y, w, h, fill, h / 2);
+  p.text(x, y + (h - L(p.m, f)) / 2, w, f, ink, s, CENTRE);
+}
+inline int room_min(const Measure &m) { return P(18, 8) * 2 + L(m, SMALL) + L(m, LABEL); }
+inline void room(Pen &p, int w, int h, const Data &d, Moment t, const Options &o, const Words &wd, const std::string &name) {
+  const auto &m = p.m;
+  const Status s = status(d, t, o);
+  const bool busy = s.now >= 0;
+  const uint8_t c = busy ? BUSY_COLOUR : FREE_COLOUR;
+  const bool split = w >= ui::mm(120) && h >= ui::mm(50);
+  const int sw = split ? w * 55 / 100 : w, mp = P(18, 8);
+  p.box(0, 0, sw, h, cal(CAL_BLOCK, c), module_radius());
+  const Paint ink = cal(CAL_INK, c);
+  const int x = mp, W = sw - 2 * mp, bottom = h - mp;
+  p.text(x, mp, W * 2 / 3, SMALL, ink, name);
+  p.text(x + W * 2 / 3, mp, W / 3, SMALL, ink, wd.clock(t.minute), RIGHT);
+  const int top = mp + L(m, SMALL) + P(4, 2);
+  const Event *e = busy ? &d.events[s.now] : s.next >= 0 ? &d.events[s.next] : nullptr;
+  const bool next_today = e && day_of(e->start) == t.day;
+  // The foot: on a busy room the bar of the meeting; on a free one the keys that fit before the next meeting.
+  const int key_h = std::max(ui::touch_min(), L(m, CONTROL) + P(18, 8)), bar_h = P(8, 5);
+  struct Key { std::string word; int end; };
+  std::vector<Key> keys;
+  if (!busy && o.book) {
+    const int T = t.at(), free_until = next_today ? e->start : (t.day + 1) * 1440;
+    for (int minutes : {15, 30, 60})
+      if (T + minutes <= free_until) keys.push_back({dur(wd, minutes), T + minutes});
+    if (next_today && free_until - T < 120 && free_until - T > 15) keys.push_back({with(wd.until, wd.clock(free_until % 1440)), free_until});
+    if (keys.size() > 3) keys.erase(keys.begin() + 2);
+  }
+  if (!keys.empty() && bottom - key_h - P(14, 6) - top < L(m, LABEL)) keys.clear();
+  const int foot = busy ? bar_h : keys.empty() ? 0 : key_h;
+  const Face big = L(m, VALUE) ? VALUE : HEADLINE, sub = large() ? HEADLINE : LABEL, mf = meta_face();
+  const std::string state = busy ? wd.busy : wd.free;
+  const std::string until = busy ? with(wd.until, at_time(wd, d, e->end, t.day, true)) : next_today ? with(wd.until, wd.clock(e->start % 1440)) : "";
+  const std::string what = busy ? title_of(*e, wd) : "";
+  const Event *after = busy ? (s.next >= 0 && day_of(d.events[s.next].start) == t.day ? &d.events[s.next] : nullptr) : next_today ? e : nullptr;
+  const std::string next = after ? with(wd.next, wd.clock(after->start % 1440)) + " · " + title_of(*after, wd) : "";
+  const int room_h = bottom - foot - (foot ? P(14, 6) : 0) - top;
+  int need = L(m, big) + (until.empty() ? 0 : L(m, sub));
+  const bool show_what = !what.empty() && need + P(8, 3) + L(m, title_face()) <= room_h;
+  if (show_what) need += P(8, 3) + L(m, title_face());
+  const bool show_next = !next.empty() && need + P(10, 4) + L(m, mf) <= room_h;
+  if (show_next) need += P(10, 4) + L(m, mf);
+  if (need > room_h) {
+    p.text(x, top + std::max(0, (room_h - L(m, LABEL)) / 2), W, LABEL, ink, until.empty() ? state : state + " · " + until);
+  } else {
+    int y = top + (room_h - need) / 2;
+    p.text(x, y, W, big, ink, state); y += L(m, big);
+    if (!until.empty()) { p.text(x, y, W, sub, ink, until); y += L(m, sub); }
+    if (show_what) { y += P(8, 3); p.text(x, y, W, title_face(), ink, what); y += L(m, title_face()); }
+    if (show_next) { y += P(10, 4); p.text(x, y, W, mf, ink, next); }
+  }
+  if (busy) {
+    const int by = bottom - bar_h, done = std::clamp(1000 * (t.at() - e->start) / std::max(1, e->end - e->start), 0, 1000);
+    p.box(x, by, W, bar_h, cal(CAL_TRACK, c), bar_h / 2);
+    p.box(x, by, std::max(bar_h, W * done / 1000), bar_h, cal(CAL_KEY, c), bar_h / 2);
+    p.hit(0, 0, sw, h, HIT_EVENT, s.now);
+  } else if (!keys.empty()) {
+    const int gap = P(10, 5);
+    int n = (int) keys.size(), kw = (W - (n - 1) * gap) / n;
+    for (auto &k : keys) if (m.width(CONTROL, k.word) + P(16, 8) > kw && n > 2) { n = 2; kw = (W - gap) / 2; }
+    for (int i = 0; i < n; ++i) {
+      const int kx = x + i * (kw + gap), ky = bottom - key_h;
+      // A booking on its way: its key says so, the others rest, until the events come back with it.
+      const bool going = o.booking == keys[i].end;
+      pill(p, kx, ky, kw, key_h, Paint{CARD}, going ? Paint{MUTED} : ink, CONTROL, going && !wd.booking.empty() ? wd.booking : keys[i].word);
+      if (o.booking < 0) p.hit(kx - gap / 2, ky - P(8, 4), kw + gap, key_h + P(16, 8), HIT_BOOK, keys[i].end);
+    }
+  }
+  if (!split) return;
+  // The room's day beside it: every meeting of today, the past ones pale.
+  const int lx = sw + P(18, 8), lw = w - lx;
+  const Face hf = large() ? HEADLINE : LABEL;
+  p.text(lx, mp, lw, hf, Paint{INK}, wd.today);
+  int yy = mp + L(m, hf) + P(12, 6), shown = 0, today = 0;
+  for (auto &ev : d.events) today += day_of(ev.start) == t.day;
+  for (size_t i = 0; i < d.events.size(); ++i) {
+    const auto &ev = d.events[i];
+    if (day_of(ev.start) != t.day) continue;
+    if (yy + event_row(m) + (shown + 1 < today ? L(m, mf) + P(14, 6) : 0) > h) {
+      p.text(lx, yy, lw, mf, Paint{MUTED}, with(wd.more, std::to_string(today - shown)));
+      break;
+    }
+    event_line(p, lx, yy, lw, d, ev, (int) i, wd, ev.end <= t.at());
+    yy += event_row(m) + P(14, 6);
+    ++shown;
+  }
+  if (!today) p.text(lx, yy, lw, mf, Paint{MUTED}, wd.nothing);
 }
 
 // ---- The card on a page: it picks the richest view its room allows.
@@ -726,10 +899,12 @@ inline View plan_tile(Scene &sc, const Measure &m, int w, int h, const Data &d, 
   const std::string head_first = o.busy_free ? hw.first : name;
   const std::string day_line = o.busy_free ? hw.second : long_day(wd, d, t.day);
   const int shown = s.now >= 0 ? -1 : s.next;
+  // A room's sign on every card with room for its word; a single cell keeps the head (Free, Busy, until when).
+  if (o.room && v != NOW_VIEW && h >= room_min(m)) { room(p, w, h, d, t, o, wd, name); return v; }
   switch (v) {
     case WEEK: {
       head(p, 0, 0, w, hh, hw.on, head_first, o.busy_free ? day_line : hw.on ? hw.first + " · " + hw.second : day_line);
-      week(p, 0, hh + gap, w, h - hh - gap, d, t, wd);
+      week(p, 0, hh + gap, w, h - hh - gap, d, t, wd, false, o);
       break;
     }
     case COLUMNS: {
@@ -803,6 +978,7 @@ struct State {
   int month = 0;        // months forward or back
   bool menu = false;    // the view key's choice is open
   int sheet = -1;       // the event whose sheet is open
+  uint8_t hidden = 0;   // calendars hidden on the glass from the view choice (bit n: calendar n), until it closes
 };
 // The views a glass takes: the week where it holds three days and six hours, else the day; the month on any glass.
 inline View first_view(const Measure &m, int w, int h, const Options &o) {
@@ -922,9 +1098,9 @@ inline void day_list(Pen &p, int x, int y, int w, int h, const Data &d, Moment t
     const Paint ink = cal(past ? CAL_INK_PAST : CAL_INK, e.cal);
     if (all_day(e)) { p.text(tx, yy + (h1 - L(m, tf)) / 2, W, tf, ink, title_of(e, wd)); yy += h1 + P(8, 4); continue; }
     p.text(tx, yy + mp, W, tf, ink, title_of(e, wd));
-    const std::string right = running ? with(wd.left, dur(wd, e.end - T)) : "";
+    const std::string right = running ? left_of(wd, d, e, t) : "";
     const int rw = right.empty() ? 0 : m.width(mf, right) + 2;
-    const std::string meta = span(wd, e.start, e.end) + (e.place.empty() ? "" : " · " + e.place);
+    const std::string meta = span_of(wd, d, e) + (e.place.empty() ? "" : " · " + e.place);
     p.text(tx, yy + mp + L(m, tf) + P(2, 1), W - rw - (rw ? P(8, 4) : 0), mf, ink, meta);
     if (rw) p.text(tx + W - rw, yy + mp + L(m, tf) + P(2, 1), rw, mf, ink, right, RIGHT);
     yy += h1 + P(8, 4);
@@ -935,7 +1111,15 @@ inline void day_list(Pen &p, int x, int y, int w, int h, const Data &d, Moment t
 // beside it.
 // Returns whether the chosen day's events stand with the month (beside it, or under it on square and tall glass): a tap
 // on a day then only changes that list; else it opens the day.
-inline bool month(Pen &p, int x, int y, int w, int h, const Data &d, Moment t, const Words &wd, int sel, int months_ahead) {
+// The ISO 8601 number of the week a day lies in (its Thursday's year counts).
+inline int iso_week(const Data &d, int day) {
+  const int thursday = day - date_of(d, day).weekday + 3;
+  const Date th = date_of(d, thursday);
+  int yday = th.day - 1;
+  for (int mo = 1; mo < th.month; ++mo) yday += days_in(th.year, mo);
+  return yday / 7 + 1;
+}
+inline bool month(Pen &p, int x, int y, int w, int h, const Data &d, Moment t, const Words &wd, int sel, int months_ahead, bool numbers = false) {
   const auto &m = p.m;
   const bool side = w >= ui::mm(150) && w * 10 >= h * 14;
   // Square and tall glass (the 4-inch Guition, standing screens): the month on top, the chosen day's events under it,
@@ -951,25 +1135,38 @@ inline bool month(Pen &p, int x, int y, int w, int h, const Data &d, Moment t, c
   const Date mfirst = date_of(d, offset_first);
   const int g0 = offset_first - mfirst.weekday;
   const int rows = (mfirst.weekday + days_in(mfirst.year, mfirst.month) + 6) / 7;
-  const int mw = side ? w * 58 / 100 : w, gap = P(16, 8), gh = below ? h * 56 / 100 : h;
-  const int head = L(m, SMALL) + P(8, 4), cw = mw / 7, ch = (gh - head) / rows;
-  for (int k = 0; k < 7; ++k) p.text(x + k * cw, y, cw, SMALL, Paint{k >= 5 ? SUBTLE : MUTED}, wd.days[k], CENTRE);
-  for (int r = 0; r <= rows; ++r) p.box(x, std::min(y + head + r * ch, y + gh - 1), cw * 7, 1, Paint{GRID});
+  // A day with dots: the number (today's in its circle), a gap and a row of dots, in the middle of its cell with room
+  // round them, so they stay on the chosen day's pad and off the lines. Under the month the list gives up height for it.
+  const int dot = P(8, 4), circle = L(m, num) + P(2, 0), dot_gap = P(4, 2), dots_h = circle + dot_gap + dot;
+  const int head = L(m, SMALL) + P(8, 4);
+  // The list under it keeps room for its heading, one event and its "N more" (a tap on the day opens all of them).
+  const int list_least = L(m, hf) + P(10, 5) + event_row(m) + L(m, meta_face()) + P(12, 6);
+  const int gh = below ? std::min(std::max(h * 56 / 100, head + rows * (dots_h + 2 * P(10, 5))), h - list_least) : h;
+  const int mw = side ? w * 58 / 100 : w, gap = P(16, 8);
+  // Week numbers: a narrow quiet column at the left of the weeks.
+  const int nw = numbers ? m.width(SMALL, "00") + P(14, 6) : 0;
+  const int ox = x + nw;
+  const int cw = (mw - nw) / 7, ch = (gh - head) / rows;
+  for (int k = 0; k < 7; ++k) p.text(ox + k * cw, y, cw, SMALL, Paint{k >= 5 ? SUBTLE : MUTED}, wd.days[k], CENTRE);
   const bool titles = ch >= L(m, num) + P(10, 6) + 2 * (L(m, SMALL) + P(4, 2));
+  auto num_y = [&](int cy) { return titles ? cy + (below ? P(3, 2) : P(6, 3)) : cy + std::max(0, (ch - dots_h) / 2); };
+  for (int r = 0; numbers && r < rows; ++r)
+    p.text(x, num_y(y + head + r * ch + 1) + (circle - L(m, SMALL)) / 2, nw - P(6, 3), SMALL, Paint{SUBTLE}, std::to_string(iso_week(d, g0 + 7 * r)), RIGHT);
+  for (int r = 0; r <= rows; ++r) p.box(ox, std::min(y + head + r * ch, y + gh - 1), cw * 7, 1, Paint{GRID});
   for (int i = 0; i < rows * 7; ++i) {
-    const int day = g0 + i, cx = x + (i % 7) * cw, cy = y + head + (i / 7) * ch + 1;
+    const int day = g0 + i, cx = ox + (i % 7) * cw, cy = y + head + (i / 7) * ch + 1;
     const Date dt = date_of(d, day);
     const bool in = dt.month == mfirst.month, weekend = (i % 7) >= 5;
     if (day == sel) p.box(cx + P(3, 1), cy + P(3, 1), cw - P(6, 2), ch - P(6, 3), Paint{TRACK}, P(10, 5));
     p.hit(cx, cy, cw, ch, HIT_DAY, day);
     const std::string ds = std::to_string(dt.day);
-    const int ny = cy + (below ? P(3, 2) : P(6, 3));
+    const int ny = num_y(cy);
     if (day == t.day) {
       const int c = L(m, num) + P(2, 0), cwid = std::max(c, m.width(num, ds) + P(10, 6));
       p.box(cx + (cw - cwid) / 2, ny, cwid, c, Paint{NOW}, c / 2);
       p.text(cx + (cw - cwid) / 2, ny + (c - L(m, num)) / 2, cwid, num, Paint{ON_NOW}, ds, CENTRE);
     } else p.text(cx, ny, cw, num, Paint{!in || weekend ? SUBTLE : INK}, ds, CENTRE);
-    const int top = ny + L(m, num) + (below ? P(2, 1) : P(6, 3));
+    const int top = titles ? ny + L(m, num) + (below ? P(2, 1) : P(6, 3)) : ny + circle + dot_gap;
     std::vector<int> evs;
     for (size_t k = 0; k < d.events.size(); ++k) if (on_day(d.events[k], day)) evs.push_back((int) k);
     if (titles && day >= d.from && day <= d.to) {
@@ -988,8 +1185,8 @@ inline bool month(Pen &p, int x, int y, int w, int h, const Data &d, Moment t, c
       std::vector<uint8_t> cals;
       for (uint8_t c = 0; c < 8; ++c) if (mask & (1u << c)) cals.push_back(c);
       if (cals.size() > 4) cals.resize(4);
-      const int dot = P(8, 4), n = (int) cals.size(), dw = n * dot + std::max(0, n - 1) * P(4, 2), dx = cx + (cw - dw) / 2;
-      for (int k = 0; k < n && top + dot <= cy + ch; ++k) p.box(dx + k * (dot + P(4, 2)), top, dot, dot, cal(in ? CAL_KEY : CAL_KEY_PAST, cals[k]), dot / 2);
+      const int n = (int) cals.size(), dw = n * dot + std::max(0, n - 1) * P(4, 2), dx = cx + (cw - dw) / 2;
+      for (int k = 0; k < n && top + dot <= cy + ch - 1; ++k) p.box(dx + k * (dot + P(4, 2)), top, dot, dot, cal(in ? CAL_KEY : CAL_KEY_PAST, cals[k]), dot / 2);
     }
   }
   if (side) {
@@ -1017,7 +1214,7 @@ inline bool month(Pen &p, int x, int y, int w, int h, const Data &d, Moment t, c
         p.text(x, std::min(yy, bottom - L(m, mf)), w, mf, Paint{MUTED}, with(wd.more, std::to_string((int) day.size() - (int) k)));
         break;
       }
-      event_line(p, x, yy, w, e, day[k], wd, sel == t.day && !all_day(e) && e.end <= t.at());
+      event_line(p, x, yy, w, d, e, day[k], wd, sel == t.day && !all_day(e) && e.end <= t.at());
       yy += rh + P(10, 4);
     }
   }
@@ -1059,7 +1256,7 @@ inline void sheet(Pen &p, int width, int height, int margin, const Data &d, Mome
   p.text(x + pad + iw, yy, W - iw, tf, Paint{INK}, long_day(wd, d, day));
   yy += L(m, tf);
   const bool running = !all_day(e) && e.start <= t.at() && t.at() < e.end;
-  p.text(x + pad + iw, yy, W - iw, mf, Paint{MUTED}, (all_day(e) ? wd.all_day : span(wd, e.start, e.end)) + (running ? " · " + with(wd.left, dur(wd, e.end - t.at())) : ""));
+  p.text(x + pad + iw, yy, W - iw, mf, Paint{MUTED}, (all_day(e) ? wd.all_day : span_of(wd, d, e)) + (running ? " · " + left_of(wd, d, e, t) : ""));
   yy += L(m, mf) + P(12, 4);
   if (!e.place.empty()) {
     p.sc.texts.push_back({x + pad, yy + (L(m, mf) - L(m, ICON)) / 2, iw, ICON, Paint{MUTED}, LEFT, GLYPH_PLACE});
@@ -1069,13 +1266,19 @@ inline void sheet(Pen &p, int width, int height, int margin, const Data &d, Mome
   if (has_note && yy < y + h - pad) p.para(x + pad + iw, yy, W - iw, mf, Paint{MUTED}, d.notes, std::min(lines_note, (y + h - pad - yy) / std::max(1, L(m, mf))));
 }
 // The view key's choice: four views, the one on show ticked, in a sheet under the key.
-inline void choice(Pen &p, int width, int height, int margin, const HeaderPlace &hp, View on, const Words &wd) {
+// The view key's choice: the four views, and under them the card's calendars when it has more than one, a tap showing
+// or hiding one while the full screen stays open (only where the glass has room for the row).
+inline void choice(Pen &p, int width, int height, int margin, const HeaderPlace &hp, View on, const Words &wd, const Data &d, uint8_t hidden) {
   const auto &m = p.m;
   p.box(0, hp.bottom + P(6, 3), width, height - hp.bottom - P(6, 3), Paint{SCRIM}, 0, 76);
   p.hit(0, 0, width, height, HIT_SCRIM);
   const Face tf = title_face(), mf = meta_face();
   const int rh = L(m, tf) + L(m, mf) + 2 * P(12, 6), w = std::min(width - 2 * margin, std::max(ui::mm(70), hp.view_w * 3));
-  const int sheet_h = std::min(4 * rh + 2 * P(8, 4), height - hp.bottom - P(8, 4) - margin);
+  const int chip_h = std::max(ui::touch_min(), L(m, CONTROL) + P(16, 8)), caption = L(m, SMALL) + P(12, 6);
+  const int room = height - hp.bottom - P(8, 4) - margin, views_h = 4 * rh + 2 * P(8, 4);
+  const int calendars_h = caption + chip_h + P(14, 6);
+  const bool chips = d.names.size() > 1 && views_h + calendars_h <= room;
+  const int sheet_h = std::min(views_h + (chips ? calendars_h : 0), room);
   const int x = std::clamp(hp.view_x + hp.view_w - w, margin, width - margin - w), y = hp.bottom + P(8, 4);
   p.framed(x, y, w, sheet_h, Paint{RAISED}, Paint{RAISED_LINE}, P(18, 10));
   p.hit(x, y, w, sheet_h, HIT_SHEET);
@@ -1091,11 +1294,37 @@ inline void choice(Pen &p, int width, int height, int margin, const HeaderPlace 
     if (chosen) p.sc.texts.push_back({x + w - ix - cw, ry + (rh - L(m, ICON)) / 2, cw, ICON, Paint{ACCENT}, CENTRE, GLYPH_CHECK});
     p.hit(x, ry, w, rh, HIT_VIEW, (int) views[i]);
   }
+  if (!chips) return;
+  const int ix = P(20, 10), dot = P(12, 7);
+  int yy = y + views_h - P(8, 4) + P(2, 1);
+  p.text(x + ix, yy, w - 2 * ix, SMALL, Paint{MUTED}, wd.calendars);
+  yy += caption;
+  int cx = x + ix, row = 0;
+  for (size_t c = 0; c < d.names.size() && c < 8; ++c) {
+    const bool shown = !(hidden & (1u << c));
+    const int tw = std::min(m.width(CONTROL, d.names[c]), w / 2), chip_w = dot + P(10, 5) + tw + P(32, 16);
+    if (cx + chip_w > x + w - ix) { if (row) break; ++row; cx = x + ix; yy += chip_h + P(8, 4); if (yy + chip_h > y + sheet_h) break; }
+    if (shown) p.box(cx, yy, chip_w, chip_h, cal(CAL_BLOCK, (uint8_t) c), chip_h / 2);
+    else p.framed(cx, yy, chip_w, chip_h, Paint{RAISED}, Paint{GRID}, chip_h / 2, P(2, 1));
+    p.box(cx + P(16, 8), yy + (chip_h - dot) / 2, dot, dot, shown ? cal(CAL_KEY, (uint8_t) c) : Paint{SUBTLE}, dot / 2);
+    p.text(cx + P(16, 8) + dot + P(10, 5), yy + (chip_h - L(m, CONTROL)) / 2, tw + 2, CONTROL, shown ? cal(CAL_INK, (uint8_t) c) : Paint{MUTED}, d.names[c]);
+    p.hit(cx, yy, chip_w, chip_h, HIT_CALENDAR, (int) c);
+    cx += chip_w + P(10, 5);
+  }
 }
 inline const char *view_word(const Words &wd, View v) { return (v == UP_NEXT ? wd.views[0] : v == DAY ? wd.views[1] : v == MONTH ? wd.views[3] : wd.views[2]).c_str(); }
 // Plans the whole full screen for a state; returns the view drawn (a week the glass cannot hold becomes the Watch's
 // week without words; a day on tall glass becomes a scrolling timeline).
-inline View plan_full(Full &f, const Measure &m, int width, int height, int margin, const Data &d, Moment t, const Options &o, const Words &wd, const std::string &name, const State &st) {
+inline View plan_full(Full &f, const Measure &m, int width, int height, int margin, const Data &all, Moment t, const Options &o, const Words &wd, const std::string &name, const State &st) {
+  // Calendars hidden from the view choice leave the plan, their events and their dots in the month.
+  Data kept;
+  if (st.hidden) {
+    kept = all;
+    kept.events.clear();
+    for (auto &e : all.events) if (!(st.hidden & (1u << std::min<int>(e.cal, 7)))) kept.events.push_back(e);
+    for (auto &mask : kept.glance) mask &= uint8_t(~st.hidden);
+  }
+  const Data &d = st.hidden ? kept : all;
   f.fixed.clear(); f.scroll.clear(); f.overlay.clear(); f.sh = 0; f.scroll_to = 0; f.month_list = false;
   Pen p{f.fixed, m};
   const int body_y = margin + key_size(m) + P(12, 6), bw = width - 2 * margin, bh = height - body_y - margin;
@@ -1137,16 +1366,16 @@ inline View plan_full(Full &f, const Measure &m, int width, int height, int marg
     up_next(p, margin, body_y, bw, uh, d, t, o, wd);
     list(p, margin, body_y + uh + P(12, 6), bw, bh - uh - P(12, 6), d, t, s, wd, 12, s.now >= 0 ? -1 : s.next);
   } else if (v == MONTH) {
-    f.month_list = month(p, margin, body_y, bw, bh, d, t, wd, st.day, st.month);
+    f.month_list = month(p, margin, body_y, bw, bh, d, t, wd, st.day, st.month, o.week_numbers);
   } else if (v == DAY) {
     // The strip runs from today, a week at a time, as the week does.
-    const int d0 = t.day + 7 * ((st.day - t.day) >= 0 ? (st.day - t.day) / 7 : -((t.day - st.day + 6) / 7));
+    const int w0 = week_start(d, t, o), d0 = w0 + 7 * ((st.day - w0) >= 0 ? (st.day - w0) / 7 : -((w0 - st.day + 6) / 7));
     day_strip(p, margin, body_y, bw, d, t, wd, st.day, d0);
     const int y = body_y + strip_height(m) + P(12, 6), h = body_y + bh - y;
     // Tall glass (standing up): the day as a scrolling timeline, hours down; a list would leave half the glass empty.
     if (h / hour_pref(m) >= 12) {
       WeekShape ws;
-      ws.days = 1; ws.d0 = st.day; ws.gw = gutter(m); ws.cw = bw - ws.gw;
+      ws.days = 1; ws.d0 = st.day; ws.gw = gutter(m, &wd); ws.cw = bw - ws.gw;
       const int ar = all_day_rows(p, margin, y, ws, d, wd);
       ws.h0 = 0; ws.h1 = 24;
       ws.hour_h = std::max(hour_pref(m), (h - ar) / 12);
@@ -1162,8 +1391,8 @@ inline View plan_full(Full &f, const Measure &m, int width, int height, int marg
     WeekShape ws;
     ws.bare = v == BLOCKS;
     ws.days = ws.bare ? 7 : fit_days(m, bw);
-    ws.d0 = t.day + 7 * st.week;
-    ws.gw = ws.bare ? m.width(SMALL, "00") + P(10, 6) : gutter(m);
+    ws.d0 = week_start(d, t, o) + 7 * st.week;
+    ws.gw = ws.bare ? m.width(SMALL, "00") + P(10, 6) : gutter(m, &wd);
     ws.cw = (bw - ws.gw) / ws.days;
     int y = body_y + week_heads(p, margin, body_y, ws, d, t, wd);
     if (!ws.bare) y += all_day_rows(p, margin, y, ws, d, wd);
@@ -1177,19 +1406,20 @@ inline View plan_full(Full &f, const Measure &m, int width, int height, int marg
       week_grid(p, margin, y + top, ws, d, t, wd, false, 0, 0);
     } else {
       ws.h0 = 0; ws.h1 = 24;
+      if (o.hours_to > o.hours_from) { ws.h0 = o.hours_from; ws.h1 = o.hours_to; }
       // Generous rows: about eleven hours on the glass, never less than a half-hour event needs for its title.
-      ws.hour_h = std::max(hour_pref(m), h / 11);
+      ws.hour_h = std::max(hour_pref(m), h / std::min(11, ws.h1 - ws.h0));
       f.sx = margin; f.sy = y; f.sw = bw; f.sh = h;
       Pen sp{f.scroll, m};
       const int top = L(m, SMALL);
       week_grid(sp, 0, top, ws, d, t, wd, false, 0, 0);
-      f.scroll.height = top + 24 * ws.hour_h + top;
+      f.scroll.height = top + (ws.h1 - ws.h0) * ws.hour_h + top;
       const bool this_week = t.day >= ws.d0 && t.day < ws.d0 + ws.days;
-      f.scroll_to = std::clamp((this_week ? t.minute / 60 - 1 : 7) * ws.hour_h, 0, std::max(0, f.scroll.height - f.sh));
+      f.scroll_to = std::clamp(((this_week ? t.minute / 60 - 1 : 7) - ws.h0) * ws.hour_h, 0, std::max(0, f.scroll.height - f.sh));
     }
   }
   Pen op{f.overlay, m};
-  if (st.menu) choice(op, width, height, margin, hp, v, wd);
+  if (st.menu) choice(op, width, height, margin, hp, v, wd, all, st.hidden);
   else if (st.sheet >= 0) sheet(op, width, height, margin, d, t, wd, st.sheet);
   f.view = v;
   return v;

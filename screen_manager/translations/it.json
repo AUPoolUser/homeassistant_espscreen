@@ -617,7 +617,11 @@
         "Giorni affiancati, ore verso il basso",
         "Il mese a colpo d'occhio, tocca per aprire un giorno"
       ],
-      "today_key": "Oggi"
+      "today_key": "Oggi",
+      "booking": "Prenotazione…",
+      "calendars": "Calendari",
+      "also": "+{x} ora",
+      "booked": "Prenotato sullo schermo"
     }
   },
   "addon": {
@@ -2447,7 +2451,9 @@
           "events": "Eventi",
           "events_hint": "Titoli, cosa viene dopo, la settimana e il mese",
           "busy_free": "Libero o occupato",
-          "busy_free_hint": "Libero, Inizia a breve o Occupato in grande, la prossima prenotazione e quanto dura"
+          "busy_free_hint": "Libero, Inizia a breve o Occupato in grande, la prossima prenotazione e quanto dura",
+          "room": "Stato e prenotazione",
+          "room_hint": "Libero od Occupato in grande, in verde o rosso, fino a quando, e tasti che prenotano la sala adesso"
         },
         "calendars": {
           "label": "Calendari",
@@ -2495,6 +2501,26 @@
           "day": "Giorno",
           "week": "Settimana",
           "month": "Mese"
+        },
+        "week_start": "La settimana inizia",
+        "week_start_hint": "Oggi tiene in vista i prossimi giorni; lunedì mostra la settimana del calendario.",
+        "week_start_today": "Oggi",
+        "week_start_monday": "Lunedì",
+        "hours": "Ore",
+        "hours_hint": "Le ore che mostra la settimana. Automatico segue gli eventi, almeno dalle otto alle otto; ciò che resta fuori viene contato.",
+        "hours_auto": "Automatico",
+        "week_numbers": "Numeri delle settimane",
+        "week_numbers_hint": "Nel mese, a sinistra di ogni settimana.",
+        "book": {
+          "title": "Prenotazione",
+          "on": "Prenota in",
+          "on_hint": "Il calendario in cui va una prenotazione fatta sullo schermo. Solo calendari che accettano nuovi eventi da Home Assistant, come Local Calendar, Google e CalDAV.",
+          "none": "Nessun calendario di questa scheda accetta nuovi eventi da Home Assistant, quindi la scheda non mostra tasti di prenotazione.",
+          "place": "Luogo",
+          "place_hint": "Scritto come luogo della prenotazione, per esempio il nome della sala.",
+          "place_add": "Aggiungi un luogo",
+          "name": "Titolo",
+          "name_hint": "Il titolo della prenotazione nel calendario."
         }
       }
     },

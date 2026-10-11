@@ -12,7 +12,9 @@ namespace cc = calendar_card;
 
 // A plan's paint as this look draws it: the theme's roles, and a calendar's own colour from the card's data.
 inline uint32_t colour(cc::Paint p, const std::vector<uint32_t> &colors) {
-  const uint32_t key = p.cal < colors.size() ? colors[p.cal] : theme::ha::BLUE;
+  // The room's state (calendar_card FREE_COLOUR, BUSY_COLOUR): Home Assistant's green and red, painted as a calendar's.
+  const uint32_t key = p.cal == cc::FREE_COLOUR ? theme::ha::GREEN : p.cal == cc::BUSY_COLOUR ? theme::ha::RED
+                       : p.cal < colors.size() ? colors[p.cal] : theme::ha::BLUE;
   switch (p.role) {
     case cc::INK: return theme::hex(theme::INK);
     case cc::MUTED: return theme::hex(theme::MUTED);

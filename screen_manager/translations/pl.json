@@ -617,7 +617,11 @@
         "Dni obok siebie, godziny w dół",
         "Miesiąc w skrócie, dotknij, by otworzyć dzień"
       ],
-      "today_key": "Dziś"
+      "today_key": "Dziś",
+      "booking": "Rezerwacja…",
+      "calendars": "Kalendarze",
+      "also": "+{x} teraz",
+      "booked": "Zarezerwowano na ekranie"
     }
   },
   "addon": {
@@ -2447,7 +2451,9 @@
           "events": "Wydarzenia",
           "events_hint": "Tytuły, co dalej, tydzień i miesiąc",
           "busy_free": "Wolne lub zajęte",
-          "busy_free_hint": "Wolne, Zaraz się zaczyna lub Zajęte dużymi literami, następna rezerwacja i jak długo trwa"
+          "busy_free_hint": "Wolne, Zaraz się zaczyna lub Zajęte dużymi literami, następna rezerwacja i jak długo trwa",
+          "room": "Stan i rezerwacja",
+          "room_hint": "Wolne lub Zajęte dużymi literami na zielono lub czerwono, do kiedy, i przyciski, które rezerwują salę teraz"
         },
         "calendars": {
           "label": "Kalendarze",
@@ -2495,6 +2501,26 @@
           "day": "Dzień",
           "week": "Tydzień",
           "month": "Miesiąc"
+        },
+        "week_start": "Tydzień zaczyna się",
+        "week_start_hint": "Dziś trzyma w widoku najbliższe dni; poniedziałek pokazuje tydzień kalendarzowy.",
+        "week_start_today": "Dziś",
+        "week_start_monday": "Poniedziałek",
+        "hours": "Godziny",
+        "hours_hint": "Godziny, które pokazuje tydzień. Automatycznie podąża za wydarzeniami, co najmniej od ósmej do ósmej; to, co wypada poza nimi, jest liczone.",
+        "hours_auto": "Automatycznie",
+        "week_numbers": "Numery tygodni",
+        "week_numbers_hint": "W miesiącu, po lewej stronie każdego tygodnia.",
+        "book": {
+          "title": "Rezerwacja",
+          "on": "Rezerwuj w",
+          "on_hint": "Kalendarz, do którego trafia rezerwacja z ekranu. Tylko kalendarze, które przyjmują nowe wydarzenia z Home Assistant, takie jak Local Calendar, Google i CalDAV.",
+          "none": "Żaden z kalendarzy tej karty nie przyjmuje nowych wydarzeń z Home Assistant, więc karta nie pokazuje przycisków rezerwacji.",
+          "place": "Miejsce",
+          "place_hint": "Wpisywane jako miejsce rezerwacji, na przykład nazwa sali.",
+          "place_add": "Dodaj miejsce",
+          "name": "Tytuł",
+          "name_hint": "Tytuł rezerwacji w kalendarzu."
         }
       }
     },

@@ -4685,7 +4685,8 @@ def create_app(manager, development=False):
                                                                  data.get('value')))
     async def calendar_preview(request):
         """A calendar card as the screen would get it, for the editor (firmware 0.56.0): its events after the tile's
-        filters, and every place its calendars' events name, most used first, for the place filter's choices."""
+        filters, every place its calendars' events name, most used first, for the place filter's choices, and the
+        calendars that take new events (Home Assistant's CREATE_EVENT), which "Status and booking" can book on."""
         data = await request.json()
         tile = data.get('tile') if isinstance(data, dict) else None
         if not isinstance(tile, dict) or not str(tile.get('entity', '')).startswith('calendar.'):
@@ -4698,7 +4699,10 @@ def create_app(manager, development=False):
         card = await manager.calendar_extras(tile)
         every = await manager.calendar_extras({'entity': tile['entity'], 'options': {k: v for k, v in options.items() if k in ('calendars', 'ahead')}})
         places = Counter(row[5] for row in every['e'] if row[5])
-        return web.json_response({'cal': card, 'places': [place for place, _ in places.most_common(24)]})
+        bookable = [entity for entity, state in manager.ha.states.items() if entity.startswith('calendar.') and
+                    isinstance(((state or {}).get('attributes') or {}).get('supported_features'), int) and
+                    state['attributes']['supported_features'] & calendar_feed.CREATE_EVENT]
+        return web.json_response({'cal': card, 'places': [place for place, _ in places.most_common(24)], 'bookable': sorted(bookable)})
     app.router.add_post('/api/calendar/preview', calendar_preview)
     app.router.add_get('/api/screens/{inbox}/extras', extras)
     app.router.add_post('/api/screens/{inbox}/extras', extra)

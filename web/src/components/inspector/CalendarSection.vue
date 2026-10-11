@@ -34,11 +34,12 @@ const set = (key: string, value: unknown) => setTileOption(props.tile, key, valu
 
 // ---- What the card shows: two presets, named by what you see on it.
 const style = computed(() => current<string>("style"));
-const STYLE_ICONS: Record<string, IconName> = { events: "format-list-bulleted", busy_free: "check-circle" };
-// Free or busy is about the next booking: it says Starts soon a while before one, a quarter of an hour unless chosen.
+const STYLE_ICONS: Record<string, IconName> = { events: "format-list-bulleted", busy_free: "check-circle", room: "gesture-tap" };
+// Free or busy (and a room's status) is about the next booking: it says Starts soon a while before one, a quarter of an
+// hour unless chosen.
 function pickStyle(value: string) {
   if (value === style.value) return;
-  if (value === "busy_free" && !current<number>("soon")) setTileOptions(props.tile, { style: value, soon: 15 });
+  if (value !== "events" && !current<number>("soon")) setTileOptions(props.tile, { style: value, soon: 15 });
   else set("style", value);
 }
 
@@ -52,7 +53,7 @@ function toggleCalendar(id: string) {
 }
 
 // ---- The card as the screen would get it (api/calendar/preview). A failed answer leaves neutral dots and no places.
-type Preview = { cal?: { c?: [number, string][]; e?: unknown[]; m?: number }; places?: string[] };
+type Preview = { cal?: { c?: [number, string][]; e?: unknown[]; m?: number }; places?: string[]; bookable?: string[] };
 const preview = ref<Preview | null>(null);
 let timer: ReturnType<typeof setTimeout> | undefined, asked = 0;
 async function load() {
@@ -82,6 +83,30 @@ const colours = computed(() => {
 const dot = (id: string) => (colours.value[id] ? { background: colours.value[id] } : undefined);
 const places = computed(() => preview.value?.places ?? []);
 const found = computed(() => preview.value?.cal?.e ? preview.value.cal.e.length + (preview.value.cal.m ?? 0) : null);
+
+// ---- "Status and booking": the calendar a booking goes into (only one that takes new events; the tile's own unless
+// another is chosen, stored empty), or none; the place and the title the booking gets.
+const bookable = computed(() => preview.value?.bookable ?? []);
+const bookChoices = computed(() => {
+  const ids = [props.tile.entity, ...extra.value, ...bookable.value].filter((id, i, all) => all.indexOf(id) === i && bookable.value.includes(id));
+  return [...ids.map((id) => [id === props.tile.entity ? "" : id, entities.entityName(id)] as [string, string]),
+    ["none", t("editor.tile.calendar.soon_off")] as [string, string]];
+});
+const bookOn = computed(() => current<string>("book_on"));
+const canBook = computed(() => preview.value === null || bookChoices.value.length > 1);
+const titleDraft = ref<string | null>(null);
+function setTitle(value: string) { titleDraft.value = null; set("book_title", value.trim()); }
+
+// ---- The week: its first day, its hours, the month's week numbers.
+const weekStartChoices = computed(() => rules.calendar.weekStarts.map((value) => [value, t(`editor.tile.calendar.week_start_${value}`)] as [string, string]));
+const HOURS: [number, number][] = [[7, 19], [8, 18], [9, 17], [7, 23]];
+const hoursValue = computed(() => { const h = current<[number, number] | null>("hours"); return h ? `${h[0]}-${h[1]}` : "auto"; });
+const hoursChoices = computed(() => {
+  const list = HOURS.map(([a, b]) => [`${a}-${b}`, `${a}:00 – ${b}:00`] as [string, string]);
+  if (hoursValue.value !== "auto" && !list.some(([v]) => v === hoursValue.value)) list.push([hoursValue.value, hoursValue.value.replace("-", ":00 – ") + ":00"]);
+  return [["auto", t("editor.tile.calendar.hours_auto")] as [string, string], ...list];
+});
+function pickHours(value: string) { set("hours", value === "auto" ? null : value.split("-").map(Number)); }
 
 // ---- How far it looks, when an event starts soon, where its full screen opens. A value stored by hand stays in sight.
 const withCurrent = (values: number[], now: number) => (values.includes(now) ? values : [...values, now].sort((a, b) => a - b));
@@ -117,6 +142,24 @@ const viewChoices = computed(() => rules.calendar.startViews.map((view) => [view
     </PropRow>
   </Section>
 
+  <Section v-if="style === 'room'" :title="t('editor.tile.calendar.book.title')">
+    <PropRow :label="t('editor.tile.calendar.book.on')" icon="plus" :hint="t('editor.tile.calendar.book.on_hint')">
+      <ChoiceField v-if="canBook" :choices="bookChoices" :value="bookOn" :aria-label="t('editor.tile.calendar.book.on')" @pick="(v) => set('book_on', v)" />
+    </PropRow>
+    <p v-if="!canBook" class="hint">{{ t("editor.tile.calendar.book.none") }}</p>
+    <template v-if="canBook && bookOn !== 'none'">
+      <PropRow :label="t('editor.tile.calendar.book.place')" icon="map-marker-radius-outline" :hint="t('editor.tile.calendar.book.place_hint')" stack>
+        <TagField :values="current<string>('book_place') ? [current<string>('book_place')] : []" :suggestions="places" :max="1"
+          :placeholder="t('editor.tile.calendar.book.place_add')" :label="t('editor.tile.calendar.book.place')" @change="(values) => set('book_place', values[0] ?? '')" />
+      </PropRow>
+      <PropRow :label="t('editor.tile.calendar.book.name')" icon="format-title" :hint="t('editor.tile.calendar.book.name_hint')" stack>
+        <input class="cal-book-title" :value="titleDraft ?? current<string>('book_title')" :placeholder="t('screen.calendar.booked')" :maxlength="rules.calendar.bookText"
+          autocomplete="off" @input="titleDraft = ($event.target as HTMLInputElement).value" @blur="setTitle(($event.target as HTMLInputElement).value)"
+          @keydown.enter="($event.target as HTMLInputElement).blur()" :aria-label="t('editor.tile.calendar.book.name')" />
+      </PropRow>
+    </template>
+  </Section>
+
   <Section :title="t('editor.tile.calendar.filter.title')" :aside="found === null ? undefined : t('editor.tile.calendar.filter.found', found)">
     <PropRow :label="t('editor.tile.calendar.places.label')" icon="map-marker-radius-outline" :hint="t('editor.tile.calendar.places.hint')" stack>
       <TagField :values="list('places')" :suggestions="places" :max="rules.calendar.words" :placeholder="t('editor.tile.calendar.places.add')"
@@ -149,5 +192,13 @@ const viewChoices = computed(() => rules.calendar.startViews.map((view) => [view
     <PropRow :label="t('editor.tile.calendar.start_view')" icon="tablet-dashboard" :hint="t('editor.tile.calendar.start_view_hint')">
       <ChoiceField :choices="viewChoices" :value="current<string>('start_view')" :aria-label="t('editor.tile.calendar.start_view')" @pick="(v) => set('start_view', v)" />
     </PropRow>
+    <PropRow :label="t('editor.tile.calendar.week_start')" icon="view-column-outline" :hint="t('editor.tile.calendar.week_start_hint')">
+      <ChoiceField :choices="weekStartChoices" :value="current<string>('week_start')" :aria-label="t('editor.tile.calendar.week_start')" @pick="(v) => set('week_start', v)" />
+    </PropRow>
+    <PropRow :label="t('editor.tile.calendar.hours')" icon="clock-outline" :hint="t('editor.tile.calendar.hours_hint')">
+      <ChoiceField :choices="hoursChoices" :value="hoursValue" :aria-label="t('editor.tile.calendar.hours')" @pick="(v) => pickHours(String(v))" />
+    </PropRow>
+    <SwitchRow :label="t('editor.tile.calendar.week_numbers')" :description="t('editor.tile.calendar.week_numbers_hint')"
+      :model-value="current<boolean>('week_numbers')" @update:model-value="(on) => set('week_numbers', on)" />
   </Section>
 </template>

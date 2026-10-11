@@ -5750,6 +5750,8 @@ inline void event(lv_event_t *event) {
   if(d=="person"&&!held&&tile.tap=="auto"&&camera_supported()){camera_open(tile.entity,tile.name.empty()?tile.entity:tile.name,(int)w.index,tile.entity);return;}
   // A favourite plays (or pauses) what it holds on a tap; held, it opens the player's card (firmware 0.24.0+).
   if(tile.favorite()&&!held&&tile.tap=="auto"){favorite_tap(w.index);return;}
+  // A room's calendar card books on its keys (calendar_view.cpp); the rest of the card opens its full screen.
+  if(d=="calendar"&&!held&&calendar_view::card_tap(w,tile))return;
   // tile_controls::tap_route decides; tests/test_tile_controls.cpp keeps every older tap choice routed as before.
   auto tap = tile_controls::tap_route(tile, code == LV_EVENT_LONG_PRESSED);
   switch (tap.route) {

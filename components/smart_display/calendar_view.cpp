@@ -17,6 +17,7 @@ struct View {
   cc::Scene scene;
   std::shared_ptr<const cc::Data> data;
   cc::Edge edge;  // the card's padding round the content: the canvas covers the whole card, for its edge's progress
+  int width = 0, height = 0;  // the content the plan was made for
 };
 
 // The board's fixed fonts, in calendar_card::Face's order.
@@ -42,6 +43,7 @@ static const cc::Words &words() {
   w.until = tr(txt::calendar_until); w.next = tr(txt::calendar_next); w.left = tr(txt::calendar_left); w.in = tr(txt::calendar_in);
   w.more = tr(txt::calendar_more); w.earlier = tr(txt::calendar_earlier); w.later = tr(txt::calendar_later);
   w.more_week = tr(txt::calendar_more_week); w.today_key = tr(txt::calendar_today_key);
+  w.booking = tr(txt::calendar_booking); w.calendars = tr(txt::calendar_calendars); w.also = tr(txt::calendar_also);
   // The date words start on Sunday (screen.date); the card's weeks start on Monday.
   for (int i = 0; i < 7; ++i) {
     w.days[i] = tr(txt::date_weekdays_short + (i + 1) % 7);
@@ -58,11 +60,25 @@ static const cc::Words &words() {
   w.duration = [](int minutes) { return history_view::duration(static_cast<uint32_t>(std::max(0, minutes)) * 60u); };
   return w;
 }
+// A booking on its way (a key of a room's card was tapped): the card it is for, the end its key showed, and when; the
+// key says so until the card's events change, or for twenty seconds.
+static struct { std::string entity; int end = -1; uint32_t at = 0; std::shared_ptr<const cc::Data> data; } booking;
 static cc::Options options(const Tile &t) {
   cc::Options o;
-  o.busy_free = t.calendar_busy_free;
+  o.room = t.calendar_room;
+  o.busy_free = t.calendar_busy_free || t.calendar_room;
   o.soon = t.calendar_soon;
   o.start_view = t.calendar_view;
+  o.from_monday = t.calendar_monday;
+  o.hours_from = t.calendar_hours_from;
+  o.hours_to = t.calendar_hours_to;
+  o.week_numbers = t.calendar_week_numbers;
+  const auto &x = t.extra().calendar;
+  o.book = t.calendar_room && x && !x->book_on.empty();
+  if (booking.end >= 0 && booking.entity == t.entity) {
+    if (x != booking.data || esphome::millis() - booking.at > 20000) booking.end = -1;
+    else o.booking = booking.end;
+  }
   return o;
 }
 // Days from 1970-01-01 of a date (Howard Hinnant's days_from_civil), to put the screen's clock on the card's days.
@@ -133,8 +149,60 @@ void render(Widgets &w, const Tile &t, int width, int height) {
   lv_obj_set_pos(canvas, -v.edge.left, -v.edge.top);
   lv_obj_set_size(canvas, width + v.edge.left + v.edge.right, height + v.edge.top + v.edge.bottom);
   v.data = data_of(t);
+  v.width = width; v.height = height;
   cc::plan_tile(v.scene, measure(), width, height, *v.data, moment(*v.data), options(t), words(), t.name, v.edge);
   lv_obj_invalidate(canvas);
+}
+
+// A tap on a room's card (docs/CALENDAR.md, "Status and booking"): a booking key books the room from now to the end
+// it showed, with calendar.create_event on the calendar the app named, the place and the title the card was given;
+// Home Assistant takes the times in its own zone. The key says Booking until the events come back with it. Anything else
+// on the card is the card's tap (its full screen). Returns whether the tap was a booking key's.
+bool card_tap(Widgets &w, const Tile &t) {
+  View *v = w.calendar;
+  auto *canvas = w.parts[0];
+  auto *input = lv_indev_active();
+  if (!v || !v->data || !canvas || !input || !t.calendar_room) return false;
+  lv_point_t p;
+  lv_indev_get_point(input, &p);
+  lv_area_t a;
+  lv_obj_get_coords(canvas, &a);
+  const cc::Hit *hit = calendar_paint::hit(v->scene, p.x - a.x1 - v->edge.left, p.y - a.y1 - v->edge.top);
+  if (!hit || hit->kind != cc::HIT_BOOK) return false;
+  const auto &d = *v->data;
+  const cc::Moment now = moment(d);
+  const int start = now.at(), end = hit->arg;
+  if (booking.end >= 0 || d.book_on.empty() || end <= start || !rt::fresh()) return true;
+  auto stamp = [&](int minute) {
+    const cc::Date dt = cc::date_of(d, cc::day_of(minute));
+    const int m = ((minute % 1440) + 1440) % 1440;
+    char b[24];
+    snprintf(b, sizeof b, "%04d-%02d-%02d %02d:%02d:00", dt.year, dt.month, dt.day, m / 60, m % 60);
+    return std::string(b);
+  };
+  const std::string from = stamp(start), until = stamp(end);
+  using namespace rt;
+  const std::string title = d.book_title.empty() ? tr(txt::calendar_booked) : d.book_title;
+  esphome::api::HomeassistantActionRequest request;
+  request.service = esphome::StringRef("calendar.create_event");
+  request.data.init(d.book_place.empty() ? 4 : 5);
+  auto field = [&](const char *key, const std::string &value) {
+    esphome::api::HomeassistantServiceMap entry;
+    entry.key = esphome::StringRef(key);
+    entry.value = esphome::StringRef(value);
+    request.data.push_back(entry);
+  };
+  field("entity_id", d.book_on);
+  field("summary", title);
+  field("start_date_time", from);
+  field("end_date_time", until);
+  if (!d.book_place.empty()) field("location", d.book_place);
+  rt::send_action(request, d.book_on, true, false);
+  ESP_LOGI("calendar", "Booked %s from %s until %s", d.book_on.c_str(), from.c_str(), until.c_str());
+  booking.entity = t.entity; booking.end = end; booking.at = esphome::millis(); booking.data = v->data;
+  cc::plan_tile(v->scene, measure(), v->width, v->height, d, now, options(t), words(), t.name, v->edge);
+  lv_obj_invalidate(canvas);
+  return true;
 }
 
 // ---- The full screen: what stays (header, day heads, all-day rows), the hours that scroll, and a sheet over them.
@@ -185,6 +253,7 @@ static void tapped(lv_event_t *e) {
     case cc::HIT_VIEW_KEY: st.menu = !st.menu; break;
     case cc::HIT_VIEW: st.view = static_cast<cc::View>(hit->arg); st.menu = false; st.chosen = true; st.week = st.month = 0; keep = false; break;
     case cc::HIT_EVENT: st.sheet = hit->arg; break;
+    case cc::HIT_CALENDAR: st.hidden ^= uint8_t(1u << std::clamp(hit->arg, 0, 7)); keep = full.plan.view == cc::WEEK; break;
     case cc::HIT_DAY:
       st.day = hit->arg;
       // A day of the week or of a narrow month opens that day; a wide month shows it beside the grid.
@@ -252,6 +321,7 @@ void open(lv_obj_t *root, const Tile &t, unsigned index) {
   }
   full.state.menu = false;
   full.state.sheet = -1;
+  full.state.hidden = 0;
   full.entity = t.entity;
   full.index = index;
   full.width = w;
