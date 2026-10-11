@@ -640,6 +640,14 @@ class Run:
         digits, value, number, word = (int(v) for v in re.search(r'digits=(\d+) value=(\d+) covers=(\d),(\d)', fonts).groups())
         if not (digits > value and number == 1 and word == 0):
             self.failures.append(f'Font::DIGITS is not the large digits: {fonts}')
+        # The tones for a block (plugin API 0.9): four colours of their own, GOOD on the badge, and a label one line high.
+        tones = await self.until(lambda l: probe(l, 'tile=0 tones'), 10, 'the tones of tile 0', start)
+        good, busy, alert, normal, fill = re.search(r'good=(\w+) busy=(\w+) alert=(\w+) normal=(\w+) fill=(\w+)', tones).groups()
+        if len({good, busy, alert, normal}) != 4 or fill != good:
+            self.failures.append(f'the tones are not four colours, or the fill is not GOOD: {tones}')
+        height = await self.until(lambda l: probe(l, 'tile=0 label height'), 10, 'the height of a label', start)
+        if re.search(r'height=(\d+) line=(\d+)', height).group(1) != re.search(r'height=(\d+) line=(\d+)', height).group(2):
+            self.failures.append(f'a label is not one line high: {height}')
         # Boot came before the harness listened: the probe repeats what it heard then with every tile it makes.
         status = await self.until(lambda l: probe(l, 'status ready='), 10, 'the probe status', start)
         assert 'ready=1 settings=5 interval=1' in status, f'the moments of boot: {status}'

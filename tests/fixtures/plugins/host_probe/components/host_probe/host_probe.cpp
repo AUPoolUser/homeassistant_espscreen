@@ -32,7 +32,18 @@ class ProbeTile : public tessera::Tile {
     // The large digits (0.9): taller than VALUE, with the digits of a value and without the letters of a word.
     ESP_LOGI(TAG, "tile=%d fonts digits=%d value=%d covers=%d,%d", tile_, ui::line_height(Font::DIGITS),
              ui::line_height(Font::VALUE), (int) ui::covers("-21,5°", Font::DIGITS), (int) ui::covers("open", Font::DIGITS));
+    // The tones for a block (0.9): the badge in GOOD's green, and the four tones' colours, each its own.
+    ui::set_fill(badge_, tessera::Tone::GOOD, theme::ACCENT);
+    ESP_LOGI(TAG, "tile=%d tones good=%06X busy=%06X alert=%06X normal=%06X fill=%06X", tile_,
+             (unsigned) lv_color_to_u32(ui::tone_color(tessera::Tone::GOOD, theme::INK)) & 0xFFFFFF,
+             (unsigned) lv_color_to_u32(ui::tone_color(tessera::Tone::BUSY, theme::INK)) & 0xFFFFFF,
+             (unsigned) lv_color_to_u32(ui::tone_color(tessera::Tone::ALERT, theme::INK)) & 0xFFFFFF,
+             (unsigned) lv_color_to_u32(ui::tone_color(tessera::Tone::NORMAL, theme::INK)) & 0xFFFFFF,
+             (unsigned) lv_color_to_u32(lv_obj_get_style_bg_color(badge_, LV_PART_MAIN)) & 0xFFFFFF);
     number_ = ui::label(c.parent, Font::DIGITS, theme::INK);
+    // One line of its font high (0.9), and so after set_font too.
+    ESP_LOGI(TAG, "tile=%d label height=%d line=%d", tile_, (int) lv_obj_get_style_height(number_, LV_PART_MAIN),
+             ui::line_height(Font::DIGITS));
     lv_obj_set_width(number_, c.width);
     lv_obj_set_pos(number_, 0, lv_obj_get_height(badge_) + ui::px(4));
     plugin_->ask_once();
@@ -52,7 +63,7 @@ class ProbeTile : public tessera::Tile {
   }
   void on_theme() override {
     ESP_LOGI(TAG, "tile=%d theme dark=%d", tile_, (int) theme::dark);
-    lv_obj_set_style_bg_color(badge_, ui::color(theme::ACCENT), 0);
+    ui::set_fill(badge_, tessera::Tone::GOOD, theme::ACCENT);
     ui::set_color(label_, theme::ON_ACCENT);
     ui::set_color(number_, theme::INK);
   }

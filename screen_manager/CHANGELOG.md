@@ -4,10 +4,12 @@
   with GT911 touch, a dimmable backlight, and its speaker and microphone as the screen's audio, so audio plugins such as
   a voice assistant fit it. Built from Elecrow's own ESPHome example and a configuration a community member ran on the
   board (#116). Choose it under New screen.
-- **Plugin API 0.9: large digits for plugins.** A plugin's tile can show its numbers in the large digits Tessera's own
-  climate card uses for its setpoint, so a count or a reading fills a large tile. It costs no flash: the font is already
-  on every screen, and a value with letters in it stays in the plugin's usual size. A plugin that uses it needs this
-  firmware.
+- **Plugin API 0.9: large digits and colours by meaning for plugins.** A plugin's tile can show its numbers in the large
+  digits Tessera's own climate card uses for its setpoint, so a count or a reading fills a large tile. It costs no
+  flash: the font is already on every screen, and a value with letters in it stays in the plugin's usual size. Bars and
+  dots of a plugin take the same green, amber and red as Home Assistant, in light and dark, for a level that is good,
+  moderate or bad. A plugin's one-line text now stays on one line and ends in dots on a narrow tile, instead of running
+  under it. A plugin that uses the new parts needs this firmware.
 - **Bluetooth for plugins on every ESP32-P4 screen.** The app now knows which screens can run Bluetooth beside the
   screen: every board with an ESP32-P4, whose ESP32-C6 does Wi-Fi and Bluetooth. A plugin that needs it, such as the
   new Bluetooth proxy plugin for Home Assistant, is offered only on those screens. ESP32-S3 screens with an RGB panel

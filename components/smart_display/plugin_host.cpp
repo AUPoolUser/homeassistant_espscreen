@@ -259,6 +259,7 @@ static bool tone_color(Tone tone, uint32_t &color) {
     case Tone::ACCENT: color = theme::hex(theme::ACCENT); return true;
     case Tone::BUSY: color = theme::foreground(theme::ha::AMBER); return true;
     case Tone::ALERT: color = theme::foreground(theme::ha::RED); return true;
+    case Tone::GOOD: color = theme::foreground(theme::ha::GREEN); return true;
     default: return false;
   }
 }
@@ -304,14 +305,26 @@ lv_obj_t *label(lv_obj_t *parent, Font f, theme::Role role) {
   lv_obj_remove_flag(l, LV_OBJ_FLAG_CLICKABLE);
   lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
   lv_label_set_text(l, "");
-  if (const lv_font_t *face = font(f)) lv_obj_set_style_text_font(l, face, 0);
+  if (const lv_font_t *face = font(f)) {
+    lv_obj_set_style_text_font(l, face, 0);
+    // One line high, as the label promises: with LVGL's own height a text too long for its width wraps onto a second
+    // line (outside a tile) instead of ending in dots.
+    lv_obj_set_height(l, lv_font_get_line_height(face));
+  }
   lv_obj_set_style_text_color(l, theme::color(role), 0);
   return l;
 }
 
 void set_text(lv_obj_t *l, const std::string &text) { if (l) rt::label(l, text); }
 void set_font(lv_obj_t *l, Font f) {
-  if (const lv_font_t *face = font(f)) if (l) rt::set_font(l, face);
+  const lv_font_t *face = font(f);
+  if (!face || !l) return;
+  // A label one line of its old font high stays one line high in the new one; a height of the plugin's own stays.
+  const lv_font_t *was = lv_obj_get_style_text_font(l, LV_PART_MAIN);
+  const bool one_line = was && lv_obj_get_style_height(l, LV_PART_MAIN) == lv_font_get_line_height(was);
+  rt::set_font(l, face);
+  if (one_line && lv_obj_get_style_height(l, LV_PART_MAIN) != lv_font_get_line_height(face))
+    lv_obj_set_height(l, lv_font_get_line_height(face));
 }
 void set_color(lv_obj_t *l, theme::Role role) {
   if (l) rt::set_color(l, LV_STYLE_TEXT_COLOR, theme::color(role));
@@ -320,8 +333,17 @@ void set_color(lv_obj_t *l, theme::Role role) {
 void set_tone(lv_obj_t *l, Tone tone, theme::Role normal) {
   if (!l) return;
   uint32_t color = 0;
-  if (!tone_color(tone, color)) return set_color(l, normal);
+  if (!::tessera::tone_color(tone, color)) return set_color(l, normal);
   rt::set_color(l, LV_STYLE_TEXT_COLOR, lv_color_hex(color));
+}
+
+lv_color_t tone_color(Tone tone, theme::Role normal) {
+  uint32_t color = 0;
+  return ::tessera::tone_color(tone, color) ? lv_color_hex(color) : theme::color(normal);
+}
+
+void set_fill(lv_obj_t *block, Tone tone, theme::Role normal) {
+  if (block) rt::set_color(block, LV_STYLE_BG_COLOR, tone_color(tone, normal));
 }
 
 lv_obj_t *block(lv_obj_t *parent, theme::Role fill) {

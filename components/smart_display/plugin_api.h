@@ -42,7 +42,8 @@ namespace tessera {
 // ts_speaker, whichever plugin or board brings it), parts that need a feature, and plugins that come along with the one
 // that needs them. 0.8: the features `camera` (ts_camera) and `camera_sensor`, the first feature only a board brings (its
 // I2C bus as the substitution CAMERA_I2C), and a top bar item's `tone`, the colour of its icon. 0.9: Font::DIGITS, the
-// large digits of a climate card's setpoint, and ui::covers(), whether a font has every character of a text.
+// large digits of a climate card's setpoint, and ui::covers(), whether a font has every character of a text;
+// Tone::GOOD, and the tones for a block too (ui::set_fill, ui::tone_color); ui::label is one line high as it says.
 constexpr uint8_t PLUGIN_API_MAJOR = 0, PLUGIN_API_MINOR = 9;
 
 // The screen's fixed fonts, largest first. A tile takes the largest that fits; a plugin brings no font of its own.
@@ -162,8 +163,9 @@ class SettingsPage {
 // What an item of a plugin in the top bar shows now: an icon of Tessera's set and a short text, or nothing.
 // The colour of a top bar item's icon (0.8), by what it means: the core picks the colour, in both looks. NORMAL is the
 // bar's own grey; ACCENT the screen's blue (it listens, it is on); BUSY Home Assistant's amber (it works on something);
-// ALERT its red (a camera that streams, something that went wrong).
-enum class Tone : uint8_t { NORMAL, ACCENT, BUSY, ALERT };
+// ALERT its red (a camera that streams, something that went wrong). GOOD (0.9) its green (a level that is fine, a full
+// battery). The same tones colour a tile's labels (ui::set_tone) and its blocks (ui::set_fill), a bar or a dot.
+enum class Tone : uint8_t { NORMAL, ACCENT, BUSY, ALERT, GOOD };
 struct BarItem {
   bool shown = false;
   uint32_t icon = 0;         // a codepoint of Tessera's icon set (0xF00E7), 0 for none
@@ -315,7 +317,9 @@ inline int line_height(Font f) { const lv_font_t *face = font(f); return face ? 
 int text_width(const std::string &text, Font font);
 // True when the font has a glyph for every character of `text` (0.9): a character it lacks draws as nothing.
 bool covers(const std::string &text, Font font);
-// A label in `parent`, in this font and colour, one line, cut with dots when it is too long for the width it gets.
+// A label in `parent`, in this font and colour, one line, cut with dots when it is too long for the width it gets. It is
+// one line of its font high (0.9; before, LVGL's own height let a long text wrap onto a second line), and set_font keeps
+// it so; a label given a height of its own keeps that.
 lv_obj_t *label(lv_obj_t *parent, Font font, theme::Role role = theme::INK);
 // Set what a label shows, its font or its colour only when that differs (a repaint that finds nothing new is free).
 void set_text(lv_obj_t *label, const std::string &text);
@@ -323,6 +327,11 @@ void set_font(lv_obj_t *label, Font font);
 void set_color(lv_obj_t *label, theme::Role role);
 // A label in a tone (0.8), the colours a top bar item's icon takes; NORMAL takes `normal`.
 void set_tone(lv_obj_t *label, Tone tone, theme::Role normal);
+// A block's fill in a tone (0.9): a bar, a dot or a badge in the colour of what it means, in both looks; NORMAL takes
+// `normal`. Changed only when it differs, as set_color.
+void set_fill(lv_obj_t *block, Tone tone, theme::Role normal);
+// The colour of a tone in this look (0.9), for a part ui::set_tone and set_fill do not reach (a line of a chart).
+lv_color_t tone_color(Tone tone, theme::Role normal);
 // A rounded block (a line number's badge, a bar): no border, the radius of a key.
 lv_obj_t *block(lv_obj_t *parent, theme::Role fill);
 // The UTF-8 of an icon of Tessera's set by its codepoint (0xF0B5E), for a label in Font::ICON or ICON_SMALL.
