@@ -1,4 +1,128 @@
 {
+ "checkout/crowpanel101.yaml": {
+  "alert": {
+   "line": 18,
+   "title_line": 22
+  },
+  "battery": false,
+  "board": "crowpanel101",
+  "camera": {
+   "full": [
+    1024,
+    600
+   ],
+   "thumb": [
+    269,
+    151
+   ]
+  },
+  "can_standby": true,
+  "catalog": {
+   "calibrate": false,
+   "choices": {},
+   "inch": 10.1,
+   "model": "Advanced 10.1 ESP32-P4",
+   "name": "CrowPanel",
+   "order": 22,
+   "settings": [
+    "media_player",
+    "microphone"
+   ],
+   "status": "experimental",
+   "touch": "GT911"
+  },
+  "chip": "ESP32-P4",
+  "columns": 5,
+  "dimmable": true,
+  "dpi": 118,
+  "features": [
+   "speaker",
+   "microphone",
+   "media_player"
+  ],
+  "firmware": "0.55.0",
+  "fonts": {
+   "headline": 19,
+   "icon_home": 24,
+   "icon_mini": 18,
+   "label": 12,
+   "setpoint": 44,
+   "sublabel": 11,
+   "sublabel_big": 15,
+   "watch_icon": 12,
+   "watch_value": 26
+  },
+  "height": 600,
+  "hotspot": true,
+  "look": "standard",
+  "max_bar_items": 12,
+  "max_pages": 16,
+  "max_tiles": 256,
+  "orientations": {
+   "landscape": {
+    "camera": {
+     "full": [
+      1024,
+      600
+     ],
+     "thumb": [
+      269,
+      151
+     ]
+    },
+    "columns": 5,
+    "height": 600,
+    "max": [
+     8,
+     8
+    ],
+    "min": [
+     1,
+     1
+    ],
+    "rotation": 0,
+    "rows": 5,
+    "width": 1024
+   },
+   "portrait": {
+    "camera": {
+     "full": [
+      600,
+      1024
+     ],
+     "thumb": [
+      269,
+      151
+     ]
+    },
+    "columns": 5,
+    "height": 1024,
+    "max": [
+     5,
+     8
+    ],
+    "min": [
+     1,
+     1
+    ],
+    "rotation": 90,
+    "rows": 5,
+    "width": 600
+   }
+  },
+  "rows": 5,
+  "spacing": {
+   "circle": 37,
+   "gap": 8,
+   "gap_y": 8,
+   "margin": 11,
+   "page_bar": 32,
+   "tile_pad": 8,
+   "top": 39
+  },
+  "wide_slots": false,
+  "width": 1024
+ },
  "checkout/cyd.yaml": {
   "alert": {
    "line": 16,
@@ -2482,6 +2606,130 @@
   "wide_slots": false,
   "width": 720
  },
+ "crowpanel101": {
+  "alert": {
+   "line": 18,
+   "title_line": 22
+  },
+  "battery": false,
+  "board": "crowpanel101",
+  "camera": {
+   "full": [
+    1024,
+    600
+   ],
+   "thumb": [
+    269,
+    151
+   ]
+  },
+  "can_standby": true,
+  "catalog": {
+   "calibrate": false,
+   "choices": {},
+   "inch": 10.1,
+   "model": "Advanced 10.1 ESP32-P4",
+   "name": "CrowPanel",
+   "order": 22,
+   "settings": [
+    "media_player",
+    "microphone"
+   ],
+   "status": "experimental",
+   "touch": "GT911"
+  },
+  "chip": "ESP32-P4",
+  "columns": 5,
+  "dimmable": true,
+  "dpi": 118,
+  "features": [
+   "speaker",
+   "microphone",
+   "media_player"
+  ],
+  "firmware": "0.55.0",
+  "fonts": {
+   "headline": 19,
+   "icon_home": 24,
+   "icon_mini": 18,
+   "label": 12,
+   "setpoint": 44,
+   "sublabel": 11,
+   "sublabel_big": 15,
+   "watch_icon": 12,
+   "watch_value": 26
+  },
+  "height": 600,
+  "hotspot": true,
+  "look": "standard",
+  "max_bar_items": 12,
+  "max_pages": 16,
+  "max_tiles": 256,
+  "orientations": {
+   "landscape": {
+    "camera": {
+     "full": [
+      1024,
+      600
+     ],
+     "thumb": [
+      269,
+      151
+     ]
+    },
+    "columns": 5,
+    "height": 600,
+    "max": [
+     8,
+     8
+    ],
+    "min": [
+     1,
+     1
+    ],
+    "rotation": 0,
+    "rows": 5,
+    "width": 1024
+   },
+   "portrait": {
+    "camera": {
+     "full": [
+      600,
+      1024
+     ],
+     "thumb": [
+      269,
+      151
+     ]
+    },
+    "columns": 5,
+    "height": 1024,
+    "max": [
+     5,
+     8
+    ],
+    "min": [
+     1,
+     1
+    ],
+    "rotation": 90,
+    "rows": 5,
+    "width": 600
+   }
+  },
+  "rows": 5,
+  "spacing": {
+   "circle": 37,
+   "gap": 8,
+   "gap_y": 8,
+   "margin": 11,
+   "page_bar": 32,
+   "tile_pad": 8,
+   "top": 39
+  },
+  "wide_slots": false,
+  "width": 1024
+ },
  "cyd": {
   "alert": {
    "line": 16,
@@ -3800,6 +4048,130 @@
   },
   "wide_slots": false,
   "width": 800
+ },
+ "packages/crowpanel101.yaml": {
+  "alert": {
+   "line": 18,
+   "title_line": 22
+  },
+  "battery": false,
+  "board": "crowpanel101",
+  "camera": {
+   "full": [
+    1024,
+    600
+   ],
+   "thumb": [
+    269,
+    151
+   ]
+  },
+  "can_standby": true,
+  "catalog": {
+   "calibrate": false,
+   "choices": {},
+   "inch": 10.1,
+   "model": "Advanced 10.1 ESP32-P4",
+   "name": "CrowPanel",
+   "order": 22,
+   "settings": [
+    "media_player",
+    "microphone"
+   ],
+   "status": "experimental",
+   "touch": "GT911"
+  },
+  "chip": "ESP32-P4",
+  "columns": 5,
+  "dimmable": true,
+  "dpi": 118,
+  "features": [
+   "speaker",
+   "microphone",
+   "media_player"
+  ],
+  "firmware": "0.55.0",
+  "fonts": {
+   "headline": 19,
+   "icon_home": 24,
+   "icon_mini": 18,
+   "label": 12,
+   "setpoint": 44,
+   "sublabel": 11,
+   "sublabel_big": 15,
+   "watch_icon": 12,
+   "watch_value": 26
+  },
+  "height": 600,
+  "hotspot": true,
+  "look": "standard",
+  "max_bar_items": 12,
+  "max_pages": 16,
+  "max_tiles": 256,
+  "orientations": {
+   "landscape": {
+    "camera": {
+     "full": [
+      1024,
+      600
+     ],
+     "thumb": [
+      269,
+      151
+     ]
+    },
+    "columns": 5,
+    "height": 600,
+    "max": [
+     8,
+     8
+    ],
+    "min": [
+     1,
+     1
+    ],
+    "rotation": 0,
+    "rows": 5,
+    "width": 1024
+   },
+   "portrait": {
+    "camera": {
+     "full": [
+      600,
+      1024
+     ],
+     "thumb": [
+      269,
+      151
+     ]
+    },
+    "columns": 5,
+    "height": 1024,
+    "max": [
+     5,
+     8
+    ],
+    "min": [
+     1,
+     1
+    ],
+    "rotation": 90,
+    "rows": 5,
+    "width": 600
+   }
+  },
+  "rows": 5,
+  "spacing": {
+   "circle": 37,
+   "gap": 8,
+   "gap_y": 8,
+   "margin": 11,
+   "page_bar": 32,
+   "tile_pad": 8,
+   "top": 39
+  },
+  "wide_slots": false,
+  "width": 1024
  },
  "packages/cyd.yaml": {
   "alert": {
