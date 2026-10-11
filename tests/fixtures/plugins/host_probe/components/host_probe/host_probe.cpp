@@ -29,7 +29,10 @@ class ProbeTile : public tessera::Tile {
     label_ = ui::label(badge_, Font::TITLE, theme::ON_ACCENT);
     ui::set_text(label_, word_);
     lv_obj_center(label_);
-    number_ = ui::label(c.parent, Font::VALUE, theme::INK);
+    // The large digits (0.9): taller than VALUE, with the digits of a value and without the letters of a word.
+    ESP_LOGI(TAG, "tile=%d fonts digits=%d value=%d covers=%d,%d", tile_, ui::line_height(Font::DIGITS),
+             ui::line_height(Font::VALUE), (int) ui::covers("-21,5°", Font::DIGITS), (int) ui::covers("open", Font::DIGITS));
+    number_ = ui::label(c.parent, Font::DIGITS, theme::INK);
     lv_obj_set_width(number_, c.width);
     lv_obj_set_pos(number_, 0, lv_obj_get_height(badge_) + ui::px(4));
     plugin_->ask_once();
@@ -43,7 +46,9 @@ class ProbeTile : public tessera::Tile {
   }
   void on_tick(uint32_t epoch) override {
     ESP_LOGI(TAG, "tile=%d tick epoch=%u n=%d", tile_, (unsigned) epoch, n_);
-    ui::set_text(number_, std::to_string(n_));
+    const std::string number = std::to_string(n_);
+    ui::set_font(number_, ui::covers(number, Font::DIGITS) ? Font::DIGITS : Font::VALUE);
+    ui::set_text(number_, number);
   }
   void on_theme() override {
     ESP_LOGI(TAG, "tile=%d theme dark=%d", tile_, (int) theme::dark);

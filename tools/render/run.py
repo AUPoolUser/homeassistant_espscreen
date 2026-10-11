@@ -635,6 +635,11 @@ class Run:
         order = [next(k for k, word in enumerate(('create', 'state', 'tick')) if f'tile=0 {word}' in l)
                  for l in self.lines[start:] if '[probe:' in l and any(f'tile=0 {w}' in l for w in ('create', 'state', 'tick'))][:3]
         assert order == [0, 1, 2], f'tile 0 moments came as {order}, not create, state, tick'
+        # The large digits (plugin API 0.9): a face of their own, taller than VALUE, that has a value's characters only.
+        fonts = await self.until(lambda l: probe(l, 'tile=0 fonts'), 10, 'the fonts of tile 0', start)
+        digits, value, number, word = (int(v) for v in re.search(r'digits=(\d+) value=(\d+) covers=(\d),(\d)', fonts).groups())
+        if not (digits > value and number == 1 and word == 0):
+            self.failures.append(f'Font::DIGITS is not the large digits: {fonts}')
         # Boot came before the harness listened: the probe repeats what it heard then with every tile it makes.
         status = await self.until(lambda l: probe(l, 'status ready='), 10, 'the probe status', start)
         assert 'ready=1 settings=5 interval=1' in status, f'the moments of boot: {status}'

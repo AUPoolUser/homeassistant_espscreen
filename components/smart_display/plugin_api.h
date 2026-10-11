@@ -41,15 +41,17 @@ namespace tessera {
 // `topics`, `provides` and `requires.features` (a feature is a promise about one ESPHome id, such as a speaker with id
 // ts_speaker, whichever plugin or board brings it), parts that need a feature, and plugins that come along with the one
 // that needs them. 0.8: the features `camera` (ts_camera) and `camera_sensor`, the first feature only a board brings (its
-// I2C bus as the substitution CAMERA_I2C), and a top bar item's `tone`, the colour of its icon.
-constexpr uint8_t PLUGIN_API_MAJOR = 0, PLUGIN_API_MINOR = 8;
+// I2C bus as the substitution CAMERA_I2C), and a top bar item's `tone`, the colour of its icon. 0.9: Font::DIGITS, the
+// large digits of a climate card's setpoint, and ui::covers(), whether a font has every character of a text.
+constexpr uint8_t PLUGIN_API_MAJOR = 0, PLUGIN_API_MINOR = 9;
 
 // The screen's fixed fonts, largest first. A tile takes the largest that fits; a plugin brings no font of its own.
 // VALUE is the big number of a watch card, HEADLINE a card's large words, TITLE a card's name, BODY its second line,
 // BODY_LARGE the words on a key, ICON a tile's icon, ICON_SMALL the icons of the top bar. Every text font has the same
 // letters (Latin with the accents of the screen's languages, digits and common signs); the icon fonts have Tessera's
-// icon set only.
-enum class Font : uint8_t { VALUE, HEADLINE, TITLE, BODY_LARGE, BODY, ICON, ICON_SMALL };
+// icon set only. DIGITS (0.9) is the largest: a climate card's setpoint, with the digits and - . , ° % alone, so a
+// tile takes it only for a value ui::covers() and steps down to VALUE for any other (a word, a unit, a letter).
+enum class Font : uint8_t { VALUE, HEADLINE, TITLE, BODY_LARGE, BODY, ICON, ICON_SMALL, DIGITS };
 
 // What a tile gets when its card is made. It is valid during create() only: `name`, `entity` and `options` point into
 // the core's own storage and the JSON document of the call, so a tile copies what it needs into members of its own.
@@ -311,6 +313,8 @@ inline lv_color_t color(theme::Role role) { return theme::color(role); }
 const lv_font_t *font(Font font);
 inline int line_height(Font f) { const lv_font_t *face = font(f); return face ? lv_font_get_line_height(face) : 0; }
 int text_width(const std::string &text, Font font);
+// True when the font has a glyph for every character of `text` (0.9): a character it lacks draws as nothing.
+bool covers(const std::string &text, Font font);
 // A label in `parent`, in this font and colour, one line, cut with dots when it is too long for the width it gets.
 lv_obj_t *label(lv_obj_t *parent, Font font, theme::Role role = theme::INK);
 // Set what a label shows, its font or its colour only when that differs (a repaint that finds nothing new is free).

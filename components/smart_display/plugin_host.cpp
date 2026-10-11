@@ -282,6 +282,7 @@ const lv_font_t *font(Font f) {
     case Font::BODY: face = rt::small_font; break;              // sublabel: a tile's value, a card's second line
     case Font::ICON: face = rt::tile_icon_font(); break;        // materialdesign_icons
     case Font::ICON_SMALL: face = rt::mini_icon_font; break;    // materialdesign_icons_mini
+    case Font::DIGITS: face = rt::setpoint_font ? rt::setpoint_font : rt::watch_value_font; break;  // setpoint_digits
   }
   // Before boot handed them over (never on a screen: plugins are made after on_boot), the nearest that is there.
   if (!face) face = rt::small_font ? rt::small_font : rt::control_font ? rt::control_font : rt::detail_font;
@@ -291,6 +292,11 @@ const lv_font_t *font(Font f) {
 int text_width(const std::string &text, Font f) {
   const lv_font_t *face = font(f);
   return face ? rt::text_width(text, face) : 0;
+}
+
+bool covers(const std::string &text, Font f) {
+  const lv_font_t *face = font(f);
+  return face && rt::face_covers(face, text);
 }
 
 lv_obj_t *label(lv_obj_t *parent, Font f, theme::Role role) {

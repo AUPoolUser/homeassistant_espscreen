@@ -4,6 +4,10 @@
   with GT911 touch, a dimmable backlight, and its speaker and microphone as the screen's audio, so audio plugins such as
   a voice assistant fit it. Built from Elecrow's own ESPHome example and a configuration a community member ran on the
   board (#116). Choose it under New screen.
+- **Plugin API 0.9: large digits for plugins.** A plugin's tile can show its numbers in the large digits Tessera's own
+  climate card uses for its setpoint, so a count or a reading fills a large tile. It costs no flash: the font is already
+  on every screen, and a value with letters in it stays in the plugin's usual size. A plugin that uses it needs this
+  firmware.
 
 ## 0.4.87 (firmware 0.55.0)
 
