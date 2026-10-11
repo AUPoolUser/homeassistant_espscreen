@@ -1,5 +1,9 @@
 ## Unreleased
 
+- **Two new boards, experimental.** The Guition JC8048W550C_I, a 5-inch ESP32-S3 with 800 x 480 RGB glass and GT911
+  touch, by [@BSkando](https://github.com/BSkando) (#230), and the Guition JC4880P443, a 4.3-inch ESP32-P4 with
+  MIPI-DSI glass and GT911 touch, by [@pmarki](https://github.com/pmarki) (#200). Both were tried on the glass by
+  the people who added them, and both dim. Choose them under New screen.
 - **The screensaver no longer stands black over a cover that doesn't come.** When a player plays but its cover can't
   be fetched (an error from the address, or a picture of `none`), the screensaver shows its next step, the camera or
   the clock, instead of a black glass, and the music comes back as soon as the cover does or the next track starts. A
