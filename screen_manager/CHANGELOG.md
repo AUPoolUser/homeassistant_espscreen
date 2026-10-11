@@ -8,6 +8,10 @@
   climate card uses for its setpoint, so a count or a reading fills a large tile. It costs no flash: the font is already
   on every screen, and a value with letters in it stays in the plugin's usual size. A plugin that uses it needs this
   firmware.
+- **Bluetooth for plugins on every ESP32-P4 screen.** The app now knows which screens can run Bluetooth beside the
+  screen: every board with an ESP32-P4, whose ESP32-C6 does Wi-Fi and Bluetooth. A plugin that needs it, such as the
+  new Bluetooth proxy plugin for Home Assistant, is offered only on those screens. ESP32-S3 screens with an RGB panel
+  are left out: they lack the memory for it.
 
 ## 0.4.87 (firmware 0.55.0)
 
