@@ -1,5 +1,9 @@
 ## Unreleased
 
+- **A dark screen saves power.** In standby or Sleep at brightness 0 the screen stops drawing and lets its Wi-Fi doze
+  between the router's beacons, so a screen on a battery lasts longer. It stays connected: Home Assistant still sees it
+  and can wake it, alerts still arrive, and a tap wakes it as before. Waking fades the light in over 200 ms instead of
+  switching it on at once. The screen needs this firmware.
 - **A calendar card.** Put a Home Assistant calendar on a screen, or several calendars on one card in Home Assistant's
   own colours. The card shows more as it gets bigger: what is on now in one cell, the next event large on a bigger tile,
   then a list of what follows, and on a large screen the whole week. A tap opens the full screen with the day, the week,

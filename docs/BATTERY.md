@@ -176,6 +176,21 @@ The charger only works when the firmware enables it: M5Stack's documentation say
 started. The board file switches it on at boot, together with quick charge and the Wi-Fi chip's power, on the second
 I/O expander (docs/TAB5.md).
 
+## A dark screen saves power
+
+Every screen, with a battery or not, saves what it can while its glass is dark: in standby or after Sleep, at a
+brightness of 0 (`components/smart_display/screen_power.h`). Two seconds after the backlight has faded out:
+
+- **drawing pauses** (ESPHome's `lvgl.pause`): nothing is rendered or sent to the panel. Changes from Home Assistant
+  are still applied to the cards, and the screen is drawn once when it wakes;
+- **Wi-Fi dozes** between the router's beacons (ESP-IDF's modem sleep, ESPHome's `light`). A lit screen keeps the mode
+  of its YAML, `none`, so a tap's action never waits for a beacon. The connection stays up: Home Assistant still sees
+  the screen, can wake it and send it an alert.
+
+A touch on the dark glass resumes drawing at once and wakes the screen as before; the light fades in over 200 ms. A
+standby or night brightness above 0 keeps the screen drawing, since its glass still shows something. The log says
+every step under the tag `power`.
+
 ## Places a change touches
 
 - `components/smart_display/battery_status.h`: Home Assistant's icon rules, "low", and the reading.

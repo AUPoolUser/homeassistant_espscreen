@@ -7,8 +7,8 @@
 substitutions:
   # apply_screen_settings: how the backlight takes its level. Standby dims slowly (ESPHome's transition); waking is quick.
   APPLY_BACKLIGHT: |-
-    // Standby dims slowly (ESPHome's transition); waking is quick.
-    id(set_backlight).execute(level, id(display_dimmed) ? 1500 : 300);
+    // Standby dims slowly (ESPHome's transition); waking fades in over 200 ms.
+    id(set_backlight).execute(level, id(display_dimmed) ? 1500 : 200);
   # An update coming in (ota_status::wake, firmware 0.38.0): the glass at its brightness at once. ESPHome's update holds
   # the loop that runs the light's transition, so the level goes straight to the output, with the light's own gamma.
   OTA_BACKLIGHT: |-
@@ -40,13 +40,16 @@ script:
   - id: wake_display
     mode: restart
     then:
+      - script.stop: screen_power_rest
       - lambda: |-
+          // Drawing and full-speed Wi-Fi come back before the light (screen_power.h).
+          screen_power::leave();
           id(last_touch_ms) = millis();
           id(display_dimmed) = false;
           id(sleep_requested) = false;
-          // Almost instant brightness-up. ESPHome's default is 1s, and that feels sluggish
+          // A short fade in, 200 ms. ESPHome's default is 1s, and that feels sluggish
           // when you touch the screen and are waiting on light.
-          id(set_backlight).execute(screen_settings::current.brightness, 80);
+          id(set_backlight).execute(screen_settings::current.brightness, 200);
           // The screensaver goes with the standby, and the touch that woke the screen does nothing else (0.29.0+).
           runtime_tiles::saver_wake();
       - lvgl.widget.hide: dim_wake_overlay
