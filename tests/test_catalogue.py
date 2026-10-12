@@ -113,7 +113,7 @@ class Offers(unittest.TestCase):
         self.assertEqual(self.offers('weather.a')['displays'], ['standard', 'watch', 'forecast'])  # unavailable keeps it
         line = catalogue.offers('sensor.t', state(), [], history=lambda entity, st: 'line')['displays']
         text = catalogue.offers('sensor.s', state(), [], history=lambda entity, st: 'state')['displays']
-        self.assertEqual((line, text), (['standard', 'watch', 'graph'], ['standard', 'watch']))
+        self.assertEqual((line, text), (['standard', 'watch', 'graph', 'meter'], ['standard', 'watch']))
 
 
 class Cards(unittest.TestCase):

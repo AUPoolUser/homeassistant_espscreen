@@ -16,6 +16,7 @@ import ChoiceField from "./ChoiceField.vue";
 import CalendarSection from "./inspector/CalendarSection.vue";
 import FavoriteSection from "./inspector/FavoriteSection.vue";
 import MapSection from "./inspector/MapSection.vue";
+import MeterSection from "./inspector/MeterSection.vue";
 import NameField from "./inspector/NameField.vue";
 import TitleButton from "./inspector/TitleButton.vue";
 import PropRow from "./ui/PropRow.vue";
@@ -104,6 +105,8 @@ const energyTile = computed(() => props.tile.entity === "screen.energy");
 const calendarCard = computed(() => domain.value === "calendar" && !key.value);
 // A favourite (app 0.4.42): what it plays and on which speaker, in its own section.
 const favoriteCard = computed(() => display.value === "favorite" && domain.value === "media_player");
+// A sensor's meter (firmware 0.56.0): its look, its range and its colours, in its own sections.
+const meterCard = computed(() => display.value === "meter" && domain.value === "sensor");
 // How the energy card shows power along a line: running dots, or calm lines that grow with it and an arrow each.
 const flowChoices = computed(() => offer("flow", rules.energyFlow.map((value) => [value, t(`editor.tile.energy.flow.${value}`)] as [string, string]), current("flow", rules.energyFlow[0])));
 const pictureChoices = (key: "fit" | "overlay") => offer(key, rules.picture[key].map((value) => [value, t(`editor.tile.picture.${key}.${value}`)] as [string, string]), current(key, rules.picture[key][0]));
@@ -236,8 +239,9 @@ const backgroundName = computed(() => inv.inventory.backgrounds?.[props.tile.opt
         <ChoiceField :choices="displays" :value="display" :tile="tile" preview-key="display" :aria-label="t('editor.tile.display.label')" @pick="(v) => setTileOption(tile, 'display', v)" />
         <template v-if="shownHint?.warn" #note><small class="help warn">{{ shownHint.text }}</small></template>
       </PropRow>
-      <!-- A bedside clock and its keys have no second line: the clock draws the time, a key its name alone. -->
-      <PropRow v-if="!bedside && !key && !mapCard && !energyTile" :label="t('editor.tile.sub.label')" icon="text-short" :hint="t(`editor.tile.sub.hint_${subKind}`)">
+      <!-- A bedside clock and its keys have no second line: the clock draws the time, a key its name alone. A meter
+           writes its value and name itself. -->
+      <PropRow v-if="!bedside && !key && !mapCard && !energyTile && !meterCard" :label="t('editor.tile.sub.label')" icon="text-short" :hint="t(`editor.tile.sub.hint_${subKind}`)">
         <ChoiceField :choices="subList" :value="subKind" :tile="tile" preview-key="sub" :sample="subSample" :aria-label="t('editor.tile.sub.label')" @pick="pickSubKind" />
         <template v-if="subKind === 'attr' || subKind === 'text'" #note>
           <UiSelect v-if="subKind === 'attr'" class="sub-value" :model-value="subAttribute" :options="subValues.map((value) => [value.key, value.name] as [string, string])"
@@ -262,6 +266,9 @@ const backgroundName = computed(() => inv.inventory.backgrounds?.[props.tile.opt
       </PropRow>
     </Section>
 
+
+    <!-- A sensor's meter (firmware 0.56.0): a ring, a tape or a bar; Home Assistant's range or its own; its colours. -->
+    <MeterSection v-if="lookShown && meterCard" :tile="tile" />
 
     <!-- A calendar card (firmware 0.56.0): what it shows, its calendars, which events, how far ahead. -->
     <CalendarSection v-if="calendarCard" :tile="tile" />

@@ -152,6 +152,13 @@ KINDS = {
     'select': {'entity': 'select.audit', 'state': 'Comfort', 'attributes': {'options': ['Eco', 'Comfort', 'Boost']}},
     'sensor': {'entity': 'sensor.audit', 'state': '21.4', 'attributes': {'unit_of_measurement': '°C', 'device_class': 'temperature'},
                'history': HISTORY},
+    # A sensor's meter (firmware 0.56.0): the ring is the sensor case's own face; the tape and the bar with a range and
+    # three segments of their own.
+    'sensor-meter-tape': {'entity': 'sensor.tape', 'state': '840', 'attributes': {'unit_of_measurement': 'ppm', 'device_class': 'carbon_dioxide'},
+                          'options': {'display': 'meter', 'meter': 'tape', 'min': 400, 'max': 1600, 'segments': 3, 'thresholds': [800, 1200]},
+                          'history': HISTORY},
+    'sensor-meter-bar': {'entity': 'sensor.bar', 'state': '86', 'attributes': {'unit_of_measurement': '%'},
+                         'options': {'display': 'meter', 'meter': 'bar', 'segments': 3}, 'history': HISTORY},
     'sensor-text': {'entity': 'sensor.text', 'state': 'A status that Home Assistant reports as a long sentence', 'attributes': {}},
     'sun': {'entity': 'sun.sun', 'state': 'above_horizon', 'attributes': {'next_rising': iso(hours=9), 'next_setting': iso(hours=2)}},
     'switch': {'entity': 'switch.audit', 'state': 'on', 'attributes': {}},

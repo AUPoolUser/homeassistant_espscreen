@@ -138,7 +138,8 @@
     "sensor": [
       "standard",
       "watch",
-      "graph"
+      "graph",
+      "meter"
     ],
     "sun": [
       "standard",
@@ -496,5 +497,53 @@
       "monday"
     ],
     "bookText": 48
+  },
+  "meter": {
+    "styles": [
+      "ring",
+      "tape",
+      "bar"
+    ],
+    "segments": [
+      1,
+      2,
+      3
+    ],
+    "colors": {
+      "red": "#F44336",
+      "pink": "#E91E63",
+      "purple": "#926BC7",
+      "deep-purple": "#6E41AB",
+      "indigo": "#3F51B5",
+      "blue": "#2196F3",
+      "light-blue": "#03A9F4",
+      "cyan": "#00BCD4",
+      "teal": "#009688",
+      "green": "#4CAF50",
+      "light-green": "#8BC34A",
+      "lime": "#CDDC39",
+      "yellow": "#FFEB3B",
+      "amber": "#FFC107",
+      "orange": "#FF9800",
+      "deep-orange": "#FF6F22",
+      "brown": "#795548",
+      "grey": "#9E9E9E",
+      "blue-grey": "#607D8B"
+    },
+    "defaultColors": {
+      "2": [
+        "green",
+        "red"
+      ],
+      "3": [
+        "green",
+        "orange",
+        "red"
+      ]
+    },
+    "shares": [
+      0.8,
+      0.9
+    ]
   }
 }

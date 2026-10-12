@@ -1,5 +1,10 @@
 ## Unreleased
 
+- **Meters for sensors.** A sensor tile can show where its value stands as a ring, a tape or a bar of cells, on any size
+  from one cell to the whole page, growing with the room it gets. The range comes from Home Assistant (0 to 100 for a
+  percentage) or is the tile's own, and the colour is one, or two or three segments (green, orange and red by default)
+  up to thresholds in the sensor's own unit, each colour and threshold yours to change. Choose Meter under Display. The
+  screen needs this firmware.
 - **Plugins have pictures.** A plugin whose maker added one shows a picture across the top of its card on the Plugins
   page and large above its details: the plugin on a few screens, with its name and what it does. Makers make one with
   the plugins repository's new `tools/store_image.py`, from the real firmware of the bench.

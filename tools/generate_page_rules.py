@@ -12,6 +12,7 @@ from core import (DOMAINS, HEADER_ONLY_DOMAINS, CAMERA_DOMAINS, HEADER_BUILTIN,
                   FAVORITE_SHUFFLES, FAVORITE_REPEATS, ENERGY_FLOWS)
 from tile_icons import ICONS
 import calendar_feed
+import meter
 
 
 def rules():
@@ -42,7 +43,12 @@ def rules():
             'calendar': {'styles': list(calendar_feed.STYLES), 'startViews': list(calendar_feed.START_VIEWS),
                          'calendars': calendar_feed.MAX_CALENDARS - 1, 'words': calendar_feed.MAX_WORDS,
                          'ahead': [calendar_feed.AHEAD_DEFAULT, calendar_feed.AHEAD_MAX],
-                         'weekStarts': list(calendar_feed.WEEK_STARTS), 'bookText': calendar_feed.BOOK_TEXT}}
+                         'weekStarts': list(calendar_feed.WEEK_STARTS), 'bookText': calendar_feed.BOOK_TEXT},
+            # A sensor's meter (firmware 0.56.0, meter.validate): its looks, how many colours, the colours a segment may
+            # have (Home Assistant's, by name) and the ones each count starts with, and where the thresholds start.
+            'meter': {'styles': list(meter.STYLES), 'segments': list(meter.SEGMENTS),
+                      'colors': {name: f'#{value:06X}' for name, value in meter.COLORS.items()},
+                      'defaultColors': {str(k): list(v) for k, v in meter.DEFAULT_COLORS.items()}, 'shares': list(meter.SHARES)}}
 
 
 def output():

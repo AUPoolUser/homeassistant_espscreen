@@ -36,6 +36,14 @@ export type TileOptions = {
   book_on?: string;
   book_place?: string;
   book_title?: string;
+  // A sensor's meter (firmware 0.56.0, meter.validate): its look, its own range (both ends or none), how many colours,
+  // their names (Home Assistant's) and the thresholds between them in the sensor's unit.
+  meter?: "ring" | "tape" | "bar";
+  min?: number;
+  max?: number;
+  segments?: number;
+  colors?: string[];
+  thresholds?: number[];
   [key: string]: unknown;
 };
 // What a favourite plays (app 0.4.42), as Home Assistant's library names it: its content id and type, the title and the
@@ -83,7 +91,9 @@ export type PageTile = {
     // tentative, private, ahead, soon and start_view.
     calendarStyle?: string; calendarEntities?: string[]; calendarPlaces?: string[]; calendarWords?: string[]; calendarHideWords?: string[];
     calendarAllDay?: boolean; calendarTentative?: boolean; calendarPrivate?: boolean; calendarAhead?: number; calendarSoon?: number; calendarStartView?: string;
-    calendarWeekStart?: string; calendarHours?: [number, number]; calendarWeekNumbers?: boolean; calendarBookOn?: string; calendarBookPlace?: string; calendarBookTitle?: string };
+    calendarWeekStart?: string; calendarHours?: [number, number]; calendarWeekNumbers?: boolean; calendarBookOn?: string; calendarBookPlace?: string; calendarBookTitle?: string;
+    // A sensor's meter (firmware 0.56.0): TileOptions' meter, min, max, segments, colors and thresholds.
+    meterStyle?: string; meterMin?: number; meterMax?: number; meterSegments?: number; meterColors?: string[]; meterThresholds?: number[] };
   interaction: { tap?: string; inline?: string; controls?: string; action?: TileOptions["action"]; guard?: string; play?: FavoritePlay; speaker?: string; shuffle?: string; repeat?: string };
   children?: ChildTile[];
 };

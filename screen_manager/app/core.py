@@ -11,6 +11,7 @@ import secrets
 
 from i18n import english, screen_t, t
 import calendar_feed
+import meter
 import catalogue
 import tile_icons
 
@@ -1312,7 +1313,9 @@ TILE_EVENT_OPTIONS = {'size': 'size', 'controls': 'controls', 'display': 'displa
                       # How the energy card shows power along a line: dots or lines.
                       'flow': 'flow',
                       # A calendar card (firmware 0.56.0): its calendars, filters and look (calendar_feed.validate).
-                      **{key: key for key in calendar_feed.KEYS}}
+                      **{key: key for key in calendar_feed.KEYS},
+                      # A sensor's meter (firmware 0.56.0): its look, its range and its colours (meter.validate).
+                      **{key: key for key in meter.KEYS}}
 TILE_SIZES = {'full': 'full', 'fullscreen': 'full', 'full screen': 'full', 'full-screen': 'full', 'page': 'full', 'whole page': 'full',
               'wide': 'wide', 'double': 'wide', 'large': 'wide', 'big': 'wide',
               'single': 'single', 'small': 'single', 'normal': 'single', 'tall': 'tall', 'high': 'tall', 'square': 'square'}
@@ -1414,6 +1417,19 @@ def tile_options(data, current=None):
             options[name] = value if isinstance(value, bool) else loose(value) in ('true', 'yes', 'on', '1')
         elif name in ('ahead', 'soon'):
             options[name] = int(value) if str(value).strip().isdigit() else value
+        elif name in ('min', 'max', 'segments'):
+            # A meter's range and its count of colours: numbers, as people write them ("21,5" as well).
+            try:
+                number = float(str(value).strip().replace(',', '.'))
+                options[name] = int(number) if number.is_integer() else number
+            except ValueError:
+                options[name] = value
+        elif name in ('colors', 'thresholds'):
+            # A meter's colours and the thresholds between them: a list, or written with commas ("green, orange, red").
+            parts = value if isinstance(value, list) else [p for p in re.split(r'\s*[,;]\s*', str(value).strip()) if p]
+            if name == 'thresholds':
+                parts = [float(p) if isinstance(p, str) and re.fullmatch(r'-?\d+(\.\d+)?', p) else p for p in parts]
+            options[name] = [str(p).strip() for p in parts] if name == 'colors' else parts
         else:
             options[name] = str(value).strip()
     # Perform action (app 0.2.67): `action` names Home Assistant's action and `data` its fields; the tap follows.
@@ -1869,7 +1885,7 @@ def validate_layout(data, stored=False, grid=DEFAULT_GRID):
             continue
         if 'options' in tile:
             options = tile['options']
-            if not isinstance(options, dict) or set(options) - {'tap', 'display', 'inline', 'history_hours', 'background', 'size', 'icon', 'controls', 'action', 'refresh', 'sub', 'fit', 'overlay', 'guard', 'flow', *MAP_OWN, *FAVORITE_OWN, *calendar_feed.KEYS}:
+            if not isinstance(options, dict) or set(options) - {'tap', 'display', 'inline', 'history_hours', 'background', 'size', 'icon', 'controls', 'action', 'refresh', 'sub', 'fit', 'overlay', 'guard', 'flow', *MAP_OWN, *FAVORITE_OWN, *calendar_feed.KEYS, *meter.KEYS}:
                 raise ValueError(t('addon.errors.layout.unknown_settings'))
             # A calendar card's choices (firmware 0.56.0): its calendars, its filters, its look; other tiles have none.
             if tile['entity'].startswith('calendar.'):
@@ -1879,6 +1895,11 @@ def validate_layout(data, stored=False, grid=DEFAULT_GRID):
                     raise ValueError(t('addon.errors.layout.invalid_setting', setting=str(error))) from None
             else:
                 options = {k: v for k, v in options.items() if k not in calendar_feed.KEYS}
+            # A sensor's meter (firmware 0.56.0): its look, its range and its colours; another display keeps none of them.
+            try:
+                options = meter.validate(options)
+            except ValueError as error:
+                raise ValueError(t('addon.errors.layout.invalid_setting', setting=str(error))) from None
             # A navigation tile (screen.page_<n>, firmware 0.2.62+) has a name, an icon, a colour and a width; never the page.
             if page_target(tile['entity']):
                 if options.get('size') == 'full':
@@ -2451,6 +2472,8 @@ def screen_options(tile, attrs, state=None, entry=None):
     # So do a favourite's own (app 0.4.42): the screen asks to play its tile, never an id.
     # A calendar's filters stay too (calendar_feed.OWN): the screen gets the events they let through.
     options = {k: v for k, v in tile.get('options', {}).items() if k not in ('icon', 'controls', 'action', *MAP_OWN, *FAVORITE_OWN, *calendar_feed.OWN)}
+    # A meter's colours travel as numbers (firmware 0.56.0): the screen keeps no table of names.
+    options = meter.screen_options(options)
     icon = tile_icon(tile, attrs, state, entry)
     if icon:
         options['icon'] = icon

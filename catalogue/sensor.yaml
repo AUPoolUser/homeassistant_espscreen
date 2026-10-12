@@ -9,3 +9,7 @@ displays:
   # A line of its history, for a sensor whose history is numbers (history_card.kind): a status sensor has none.
   graph:
     needs: {history: line}
+  # Where the value stands in its range (firmware 0.56.0, docs/METER.md): a ring, a tape or a bar of cells. Numbers only.
+  meter:
+    needs: {history: line}
+    screen: {firmware: 0.56.0}

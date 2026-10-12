@@ -679,6 +679,27 @@ std::string receive(const std::string &payload) {
       if (a >= 0 && b <= 24 && b - a >= 4) { tile.calendar_hours_from = (uint8_t) a; tile.calendar_hours_to = (uint8_t) b; }
     }
     tile.calendar_week_numbers = options["week_numbers"].is<bool>() && options["week_numbers"].as<bool>();
+    // A sensor's meter (firmware 0.56.0, meter_card.h): a ring, a tape or a bar, its own range, one to three colours.
+    tile.meter.reset();
+    if (tile.display == "meter") {
+      auto m = std::make_shared<Tile::Meter>();
+      const std::string style = string(options["meter"], 8);
+      m->style = style == "tape" ? 1 : style == "bar" ? 2 : 0;
+      if (options["min"].is<float>() && options["max"].is<float>()) {
+        const float low = options["min"].as<float>(), high = options["max"].as<float>();
+        if (std::isfinite(low) && std::isfinite(high) && low < high) { m->low = low; m->high = high; }
+      }
+      m->segments = (uint8_t) std::clamp(options["segments"] | 1, 1, 3);
+      if (options["colors"].is<JsonArray>()) {
+        size_t i = 0;
+        for (JsonVariant c : options["colors"].as<JsonArray>()) { if (i == 3) break; m->colors[i++] = (c | 0u) & 0xFFFFFF; }
+      }
+      if (options["thresholds"].is<JsonArray>()) {
+        size_t i = 0;
+        for (JsonVariant v : options["thresholds"].as<JsonArray>()) { if (i == 2) break; m->thresholds[i++] = v.is<float>() ? v.as<float>() : NAN; }
+      }
+      tile.meter = std::move(m);
+    }
     tile.inline_control = string(options["inline"]); if (tile.inline_control.empty()) tile.inline_control="none";
     // What the second line says (firmware 0.2.90+); "auto" is the line the screen works out itself, as before.
     tile.subtitle = string(options["sub"], 96); if (tile.subtitle.empty()) tile.subtitle="auto";

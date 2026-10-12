@@ -15,6 +15,7 @@ import { coverPrimary, hasCoverTilt, withCoverTilt } from "./tall-controls";
 import type { Capability, PageTile, Tile, TileOptions } from "../types";
 import { BUILTIN_CARDS, type BuiltinName } from "../types";
 import { PLUGIN_TILE, PLUGIN_TILE_OPTIONS } from "./plugins";
+import { canonicalMeter } from "./meter";
 
 const APPEARANCE = { display: "display", icon: "icon", background: "background", historyHours: "history_hours", refresh: "refresh", subtitle: "sub", fit: "fit", overlay: "overlay",
   mapEntities: "map", mapFraming: "framing", mapDistance: "distance",
@@ -23,7 +24,8 @@ const APPEARANCE = { display: "display", icon: "icon", background: "background",
   calendarStyle: "style", calendarEntities: "calendars", calendarPlaces: "places", calendarWords: "words", calendarHideWords: "hide_words",
   calendarAllDay: "all_day", calendarTentative: "tentative", calendarPrivate: "private", calendarAhead: "ahead", calendarSoon: "soon",
   calendarStartView: "start_view", calendarWeekStart: "week_start", calendarHours: "hours", calendarWeekNumbers: "week_numbers",
-  calendarBookOn: "book_on", calendarBookPlace: "book_place", calendarBookTitle: "book_title" } as const;
+  calendarBookOn: "book_on", calendarBookPlace: "book_place", calendarBookTitle: "book_title",
+  meterStyle: "meter", meterMin: "min", meterMax: "max", meterSegments: "segments", meterColors: "colors", meterThresholds: "thresholds" } as const;
 const INTERACTION = ["tap", "inline", "controls", "action", "play", "speaker", "shuffle", "repeat"] as const;
 const PICTURE_OWN = ["refresh", ...Object.keys(rules.picture)];
 // A map card's own choices (app 0.4.33); its name on the picture is the live picture's `overlay`.
@@ -46,7 +48,9 @@ const SAMPLE_ACTION = { action: "homeassistant.turn_on" };
 export const DEFAULTS: Record<string, unknown> = { sub: "auto", fit: rules.picture.fit[0], overlay: rules.picture.overlay[0],
   framing: MAP?.framing[0], distance: MAP?.distance[0], follow: MAP?.follow[0], markers: MAP?.markers[0], names: MAP?.names[0],
   zones: MAP?.zones[0], streets: MAP?.streets[0], look: MAP?.look[0], flow: rules.energyFlow[0],
-  ...Object.fromEntries(Object.entries(CALENDAR_DEFAULTS).filter(([key]) => !["places", "words", "hide_words", "calendars"].includes(key))) };
+  ...Object.fromEntries(Object.entries(CALENDAR_DEFAULTS).filter(([key]) => !["places", "words", "hide_words", "calendars"].includes(key))),
+  // A sensor's meter (firmware 0.56.0, meter.validate): the ring and one segment are what nothing means.
+  meter: rules.meter.styles[0], segments: rules.meter.segments[0] };
 
 const pageTile = (entity: string) => /^screen\.page_\d+$/.test(entity);
 
@@ -79,6 +83,9 @@ export function canonicalOptions(entity: string, options: TileOptions = {}, key 
   for (const field of ["calendars", "places", "words", "hide_words"]) if (Array.isArray(out[field]) && !(out[field] as unknown[]).length) delete out[field];
   // The week's and the booking's choices are stored only when they differ from what nothing means (calendar_feed.validate).
   for (const field of ["week_start", "hours", "week_numbers", "book_on", "book_place", "book_title"]) if (out[field] === CALENDAR_DEFAULTS[field] || out[field] === null) delete out[field];
+  // A sensor's meter (firmware 0.56.0) keeps its look, its range, its colours and its thresholds while it is the meter;
+  // a default is never stored (model/meter.ts, meter.validate).
+  canonicalMeter(entity, out);
   for (const [key, value] of Object.entries(DEFAULTS)) if (out[key] === value) delete out[key];
   // A Go to page tile has a name, an icon, a colour and a width, nothing else.
   if (pageTile(entity)) for (const key of ["display", "inline", "controls", "history_hours"]) delete out[key];
@@ -188,6 +195,8 @@ export function displayChoices(tile: Tile, panel: TilePanel) {
   const keys = ((rules.displays as Record<string, string[]>)[domainOf(tile)] || ["standard", "watch"]).filter((key) => {
     if (key === "forecast") return !c || c.displays.includes("forecast") || display === "forecast";
     if (key === "graph") return !c || c.displays.includes("graph") || display === "graph";
+    // A meter (firmware 0.56.0) for a sensor whose history is numbers, as a graph has.
+    if (key === "meter") return !c || c.displays.includes("meter") || display === "meter";
     // The album cover on a media tile (app 0.2.92), on a board that draws pictures; the tile over the whole page has the card's big cover.
     if (key === "cover") return (panel.pictures || display === "cover") && size !== "full";
     // A map (app 0.4.33) is a picture the add-on draws: only on a board that draws pictures.
@@ -204,6 +213,9 @@ export function displayHint(tile: Tile, panel: TilePanel): Hint | null {
   let text = "";
   if (c && display === "graph" && !c.displays.includes("graph")) text = t("editor.tile.display.no_graph");
   else if (c && display === "forecast" && !c.displays.includes("forecast")) text = t("editor.tile.display.no_forecast");
+  else if (c && display === "meter" && !c.displays.includes("meter")) text = t("editor.tile.display.no_meter");
+  // A meter (firmware 0.56.0): an older screen shows the name and status until it is updated.
+  else if (display === "meter" && !supports(0, 56, 0)) text = t("editor.tile.display.meter_needs_firmware");
   else if (display === "live") text = t(filled ? "editor.tile.display.live_card_hint" : supports(0, 2, 77) ? "editor.tile.display.live_card_needs_firmware" : "editor.tile.display.live_needs_firmware");
   else if (display === "map") text = t(supports(0, 20, 0) ? "editor.tile.display.map_hint" : "editor.tile.display.map_needs_firmware");
   else if (display === "favorite") text = t(supports(0, 24, 0) ? "editor.tile.display.favorite_hint" : "editor.tile.display.favorite_needs_firmware");

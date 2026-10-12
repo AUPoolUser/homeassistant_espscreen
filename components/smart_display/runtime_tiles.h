@@ -58,6 +58,7 @@
 #include "saver_view.h"
 #include "energy_view.h"
 #include "calendar_view.h"
+#include "meter_view.h"
 #include "plugin_api.h"
 #include "plugin_host.h"
 #include "screen_hooks.h"
@@ -582,6 +583,8 @@ struct Widgets {
   energy_view::View *energy{};
   // A calendar card's plan (firmware 0.56.0+, calendar_view.cpp); it goes with the card's extra layer.
   calendar_view::View *calendar{};
+  // A sensor's meter (firmware 0.56.0+, meter_view.cpp); it goes with the card's extra layer.
+  meter_view::View *meter{};
   // A plugin tile's card (docs/PLUGINS.md, plugin_host.cpp): the plugin's object; it goes with the card's extra layer.
   plugin_host::Card *plugin{};
 };
@@ -6101,6 +6104,7 @@ inline void end_extra(Widgets &w) {
     if(captured_slider&&std::find(w.parts.begin(),w.parts.end(),captured_slider)!=w.parts.end()){captured_slider=nullptr;slider_changed=false;}
     if(w.energy)energy_view::release(w);
     if(w.calendar)calendar_view::release(w);
+    if(w.meter)meter_view::release(w);
     if(w.plugin)plugin_host::release(w);
     lv_obj_clean(w.extra);w.parts.fill(nullptr);w.extra_mode.clear();delete[] w.points;w.points=nullptr;}
 }
@@ -8318,9 +8322,12 @@ inline void render_slot(size_t slot) {
   bool energy=t.is_energy();
   // The calendar card (firmware 0.56.0+) draws its own head and what its room allows, on any size (calendar_card.h).
   bool calendar=d=="calendar" && !w.key;
+  // A sensor's meter (firmware 0.56.0+): a ring, a tape or a bar of cells, drawn on any size (meter_card.h). A key of a
+  // bedside clock stays a key.
+  bool meter=t.is_meter() && !w.key;
   // A plugin's tile (docs/PLUGINS.md) draws itself too, when this screen has its plugin; else it is a plain card.
   bool plugin=t.is_plugin() && plugin_host::known(t);
-  bool custom=clock||forecast||sunpath||bedside||energy||plugin||calendar;
+  bool custom=clock||forecast||sunpath||bedside||energy||plugin||calendar||meter;
   if(!large_tile)pad_vertical(w.tile,watch||custom||graph?2:4);
   // A big value that stepped up to the setpoint's digits (the watch block below) keeps them until that block
   // decides again, so a card is not restyled twice a render.
@@ -8365,6 +8372,12 @@ inline void render_slot(size_t slot) {
     if(w.picture)lv_obj_add_flag(w.picture,LV_OBJ_FLAG_HIDDEN);
     lap(swipe_profile::GEOMETRY);
     calendar_view::render(w,t,content_w,content_h);
+    lap(swipe_profile::CUSTOM);
+  }else if(meter){
+    lv_obj_add_flag(w.slider,LV_OBJ_FLAG_HIDDEN);hide_panel(w);lv_obj_add_flag(w.progress,LV_OBJ_FLAG_HIDDEN);
+    if(w.picture)lv_obj_add_flag(w.picture,LV_OBJ_FLAG_HIDDEN);
+    lap(swipe_profile::GEOMETRY);
+    meter_view::render(w,t,content_w,content_h);
     lap(swipe_profile::CUSTOM);
   }else if(plugin){
     lv_obj_add_flag(w.slider,LV_OBJ_FLAG_HIDDEN);hide_panel(w);lv_obj_add_flag(w.progress,LV_OBJ_FLAG_HIDDEN);
@@ -8640,7 +8653,7 @@ inline void render_slot(size_t slot) {
   // in the media colours, not the card's.
   if(w.extra_mode=="bedside"){}  // render_bedside paints its own parts
   else if(w.extra_mode=="calm"||w.extra_mode=="flip")paint_face(w,title_color,value_color,icon_color);
-  else for(unsigned i=0;i<w.parts.size() && w.extra_mode!="media" && w.extra_mode!="tall" && w.extra_mode!="cover_tilt" && w.extra_mode!="forecast" && w.extra_mode!="forecast_rows" && w.extra_mode!="week" && w.extra_mode!="favorite" && w.extra_mode!="energy" && w.extra_mode!="calendar_card";++i){
+  else for(unsigned i=0;i<w.parts.size() && w.extra_mode!="media" && w.extra_mode!="tall" && w.extra_mode!="cover_tilt" && w.extra_mode!="forecast" && w.extra_mode!="forecast_rows" && w.extra_mode!="week" && w.extra_mode!="favorite" && w.extra_mode!="energy" && w.extra_mode!="calendar_card" && w.extra_mode!="meter_card";++i){
     auto *p=w.parts[i];if(!p)continue;
     bool muted=w.extra_mode=="sunpath" ? i>=1 : w.extra_mode=="calendar" ? i==15||i==17 : w.extra_mode=="digital" ? i==16||i==17 : i==16;
     if(lv_obj_check_type(p,&lv_label_class))set_color(p,LV_STYLE_TEXT_COLOR,muted?value_color:title_color);
@@ -9784,6 +9797,7 @@ inline void drop_card(Widgets &w) {
   end_extra(w);
   if (w.energy) energy_view::release(w);
   if (w.calendar) calendar_view::release(w);
+  if (w.meter) meter_view::release(w);
   if (w.plugin) plugin_host::release(w);
   if (captured_slider && (captured_slider == w.slider || captured_slider == w.control_slider)) { captured_slider = nullptr; slider_changed = false; }
   if (w.tile) lv_obj_delete(w.tile);

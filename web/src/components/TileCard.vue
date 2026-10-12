@@ -12,6 +12,7 @@ import TileBedside from "./tile/TileBedside.vue";
 import TileClockFace from "./tile/TileClockFace.vue";
 import TileEnergy from "./tile/TileEnergy.vue";
 import TileLine from "./tile/TileLine.vue";
+import TileMeter from "./tile/TileMeter.vue";
 import TilePicture from "./tile/TilePicture.vue";
 import TilePlugin from "./tile/TilePlugin.vue";
 import TileRoundKey from "./tile/TileRoundKey.vue";
@@ -97,6 +98,7 @@ async function onKey(e: KeyboardEvent) {
     <TileBedside v-if="kind === 'bedside'" :card="card" />
     <TilePlugin v-else-if="kind === 'plugin-live' || kind === 'plugin'" :card="card" />
     <TileEnergy v-else-if="kind === 'energy'" :card="card" />
+    <TileMeter v-else-if="kind === 'meter'" :card="card" />
     <TileClockFace v-else-if="CLOCKS.includes(kind)" :card="card" />
     <TilePicture v-else-if="kind === 'favorite' || kind === 'camera'" :card="card" />
     <TileWatch v-else-if="kind === 'watch'" :card="card" />

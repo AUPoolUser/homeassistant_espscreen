@@ -2,6 +2,7 @@
 #include "tile_catalogue.h"
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <memory>
 #include <string>
 #include <utility>
@@ -493,6 +494,16 @@ struct Tile {
   std::string calendar_view;
   bool calendar_room = false, calendar_monday = false, calendar_week_numbers = false;
   uint8_t calendar_hours_from = 0, calendar_hours_to = 0;
+  // A sensor's meter (firmware 0.56.0, meter_card.h): its look, its own range and its colours; none on any other tile, so
+  // a tile pays one pointer for it.
+  struct Meter {
+    uint8_t style = 0, segments = 1;            // meter_card::Style; one, two or three colours
+    float low = NAN, high = NAN;                // the tile's own range; NAN: Home Assistant's
+    std::array<uint32_t, 3> colors{};           // 0xRRGGBB, 0 for none (the tile's own, or the segment's default)
+    std::array<float, 2> thresholds{NAN, NAN};  // in the sensor's unit; NAN: 80 % and 90 % of the range
+  };
+  std::shared_ptr<const Meter> meter;
+  bool is_meter() const { return display == "meter" && domain() == "sensor"; }
   bool live() const { const auto d = domain(); return display == "live" && (d == "camera" || d == "image"); }
   // A media player's album cover in the icon's place (firmware 0.2.78+): "display": "cover" on a single or double-width
   // tile, while the player has a picture; the tile over the whole page keeps the card's big cover.

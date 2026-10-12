@@ -495,3 +495,113 @@ describe("the calendar card (firmware 0.56.0)", () => {
     vi.useRealTimers();
   });
 });
+
+describe("a sensor's meter (firmware 0.56.0)", () => {
+  const caps = (displays: string[]) => ({ toggle: false, inline: false, controls: [], displays } as any);
+  beforeEach(() => {
+    useInventoryStore().inventory.entities.push({ id: "sensor.co2", name: "Office CO2", state: "840", area: "" } as any);
+    useEntitiesStore().liveStates = { "sensor.co2": { state: "840", word: null, a: { unit_of_measurement: "ppm" } } } as any;
+    Object.assign(useInventoryStore().inventory.screens[0], { firmware: "0.56.0" });
+  });
+
+  it("is offered for a sensor with numbers, and says what an older screen or a sensor without numbers lacks", () => {
+    const tile: Tile = { entity: "sensor.co2", name: "", slot: 0, options: { display: "meter" } };
+    const panel = (displays: string[], firmware = "0.56.0") => ({ caps: caps(displays), supports: (a: number, b: number, c: number) => supportsFirmware(firmware, a, b, c),
+      pictures: false, columns: 2, attributes: {}, rangeless: false });
+    expect(displayChoices({ ...tile, options: {} }, panel(["graph", "meter"])).map(([key]) => key)).toContain("meter");
+    expect(displayChoices({ ...tile, options: {} }, panel([])).map(([key]) => key)).not.toContain("meter");
+    expect(displayHint(tile, panel(["meter"]))).toBeNull();
+    expect(displayHint(tile, panel(["meter"], "0.55.0"))).toEqual({ text: t("editor.tile.display.meter_needs_firmware"), warn: true });
+    expect(displayHint(tile, panel([]))).toEqual({ text: t("editor.tile.display.no_meter"), warn: true });
+  });
+
+  it("sets its look, its range and its colours from its own section and saves them as the add-on keeps them", async () => {
+    const fetch = vi.fn((url: string) => url.startsWith("api/history-preview")
+      ? Promise.resolve(new Response(JSON.stringify({ history: { start: 0, end: 86400, values: [420, 610, null, 1190], unit: "ppm" } }), { status: 200 }))
+      : Promise.reject(new Error("offline")));
+    vi.stubGlobal("fetch", fetch);
+    const tile: Tile = { entity: "sensor.co2", name: "", slot: 0 };
+    appendTiles(tile);
+    let panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    // The meter is a display of the sensor; picking it opens its sections.
+    expect(panel.find(".meter-looks").exists()).toBe(false);
+    const { setTileOption } = await import("../src/editor/tiles");
+    setTileOption(current(tile)!, "display", "meter");
+    panel.unmount();
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    expect(panel.text()).toContain(t("editor.tile.meter.styles.tape"));
+    // The look: the tape is stored, the ring (the default) is not.
+    await panel.find(".meter-looks .look-tape").trigger("click");
+    expect(current(tile)!.options?.meter).toBe("tape");
+    panel.unmount();
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    await panel.find(".meter-looks .look-ring").trigger("click");
+    expect(current(tile)!.options?.meter).toBeUndefined();
+    // 840 ppm lies outside Home Assistant's 0 - 100: the hint's button sets a range of its own from the last day.
+    panel.unmount();
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    expect(panel.find(".meter-outside").exists()).toBe(true);
+    expect(panel.find(".meter-min").attributes("disabled")).toBeDefined();
+    await panel.find(".meter-own").trigger("click");
+    await vi.waitFor(() => expect(current(tile)!.options).toMatchObject({ min: 400, max: 1200 }));
+    panel.unmount();
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    expect(panel.find(".meter-outside").exists()).toBe(false);
+    // A range of its own is typed; the wrong way round is refused and said.
+    await panel.find(".meter-max").setValue("1600");
+    await panel.find(".meter-max").trigger("blur");
+    expect(current(tile)!.options).toMatchObject({ min: 400, max: 1600 });
+    panel.unmount();
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    await panel.find(".meter-min").setValue("2000");
+    await panel.find(".meter-min").trigger("blur");
+    expect(current(tile)!.options).toMatchObject({ min: 400, max: 1600 });
+    expect(panel.text()).toContain(t("editor.tile.meter.range_wrong"));
+    panel.unmount();
+    // Three segments start at 80 % and 90 % of the range, in round numbers; the default colours are not stored.
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    await panel.findAll(".meter-segments button")[2].trigger("click");
+    expect(current(tile)!.options).toMatchObject({ segments: 3, thresholds: [1360, 1480] });
+    expect(current(tile)!.options?.colors).toBeUndefined();
+    panel.unmount();
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    expect(panel.find(".meter-reset").exists()).toBe(false);
+    await panel.findAll(".meter-threshold")[0].setValue("800");
+    await panel.findAll(".meter-threshold")[0].trigger("blur");
+    expect(current(tile)!.options?.thresholds).toEqual([800, 1480]);
+    // A threshold above the next is refused.
+    panel.unmount();
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    await panel.findAll(".meter-threshold")[0].setValue("1500");
+    await panel.findAll(".meter-threshold")[0].trigger("blur");
+    expect(current(tile)!.options?.thresholds).toEqual([800, 1480]);
+    expect(panel.text()).toContain(t("editor.tile.meter.thresholds_wrong"));
+    expect(() => validatePages(doc.document!, doc.documentGrid!)).not.toThrow();
+    const saved = doc.document!.pages.flatMap((page) => page.tiles)[0];
+    expect(saved.appearance).toMatchObject({ display: "meter", meterMin: 400, meterMax: 1600, meterSegments: 3, meterThresholds: [800, 1480] });
+    // Reset brings the default colours and thresholds of three segments back.
+    panel.unmount();
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    await panel.find(".meter-reset").trigger("click");
+    expect(current(tile)!.options?.thresholds).toEqual([1360, 1480]);
+    // Back to Home Assistant's range, and to another display: nothing of the meter stays.
+    panel.unmount();
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    await panel.findAll(".meter-range button")[0].trigger("click");
+    expect(current(tile)!.options?.min).toBeUndefined();
+    setTileOption(current(tile)!, "display", "graph");
+    expect(current(tile)!.options).toEqual({ display: "graph" });
+    panel.unmount();
+  });
+
+  it("saves a calendar's week and booking choices in the page document", () => {
+    const tile: Tile = { entity: "calendar.work", name: "", slot: 0, options: { week_start: "monday", book_on: "none" } };
+    useInventoryStore().inventory.entities.push({ id: "calendar.work", name: "Work", state: "off", area: "" } as any);
+    appendTiles(tile);
+    return import("../src/editor/tiles").then(({ setTileOptions }) => {
+      setTileOptions(current(tile)!, { week_start: "monday", week_numbers: true });
+      expect(current(tile)!.options).toMatchObject({ week_start: "monday", week_numbers: true });
+      expect(() => validatePages(doc.document!, doc.documentGrid!)).not.toThrow();
+    });
+  });
+});

@@ -9,7 +9,7 @@ import { availableControl, controlKeys, coverPrimary, hasCoverTilt, type Control
 import type { Live } from "./tile-text";
 import type { TileOptions } from "../types";
 
-export type FaceKind = "bedside" | "plugin-live" | "plugin" | "energy" | "analog" | "dial" | "flip-wide" | "flip" | "digital" | "graph"
+export type FaceKind = "bedside" | "plugin-live" | "plugin" | "energy" | "analog" | "dial" | "flip-wide" | "flip" | "digital" | "graph" | "meter"
   | "favorite" | "camera" | "watch" | "full" | "big-key" | "tall" | "wide" | "standard";
 
 export type FaceInput = {
@@ -132,6 +132,8 @@ function faceKind(input: FaceInput, face: Omit<Face, "kind">): FaceKind {
     return display as FaceKind;
   }
   if (display === "graph" && domain === "sensor") return "graph";
+  // A sensor's meter (firmware 0.56.0): a ring, a tape or a bar of cells over the whole card, at every size.
+  if (display === "meter" && domain === "sensor") return "meter";
   if (input.favorite && !face.full) return "favorite";
   if (display === "live" && ["camera", "image"].includes(domain)) return "camera";
   if (input.watch) return "watch";

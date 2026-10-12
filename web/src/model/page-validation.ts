@@ -18,6 +18,10 @@ export function fields(value: any, allowed: string[], required = allowed) {
 // A calendar card's choices (firmware 0.56.0), as the page document names them.
 const CALENDAR_FIELDS = ['calendarStyle', 'calendarEntities', 'calendarPlaces', 'calendarWords', 'calendarHideWords', 'calendarAllDay',
   'calendarTentative', 'calendarPrivate', 'calendarAhead', 'calendarSoon', 'calendarStartView'] as const;
+// ... and its week and booking (the add-on's page_layout.APPEARANCE has them; calendar_feed.validate checks them).
+const CALENDAR_MORE = ['calendarWeekStart', 'calendarHours', 'calendarWeekNumbers', 'calendarBookOn', 'calendarBookPlace', 'calendarBookTitle'] as const;
+// A sensor's meter (firmware 0.56.0, meter.validate), as the page document names it.
+const METER_FIELDS = ['meterStyle', 'meterMin', 'meterMax', 'meterSegments', 'meterColors', 'meterThresholds'] as const;
 const entity = (value: any, domains: string[]) => typeof value === 'string' && value.length <= 120 &&
   matches(/^[a-z0-9_]+\.[a-z0-9_]+$/, value) && domains.includes(value.split('.')[0]);
 const icon = (value: any, none = false) => value === 'auto' || (none && value === 'none') || rules.icons.includes(value);
@@ -74,7 +78,7 @@ export function validatePageShape(layout: PageLayout, plugins = false) {
       fields(tile.placement, ['row', 'column', 'columns', 'rows']);
       fields(tile.appearance, ['label', 'presentation', 'display', 'icon', 'background', 'historyHours', 'refresh', 'subtitle', 'fit', 'overlay',
         'mapEntities', 'mapFraming', 'mapDistance', 'mapFollow', 'mapMarkers', 'mapNames', 'mapZones', 'mapStreets', 'mapLook', 'energyFlow',
-        ...CALENDAR_FIELDS], ['label']);
+        ...CALENDAR_FIELDS, ...CALENDAR_MORE, ...METER_FIELDS], ['label']);
       fields(tile.interaction, ['tap', 'inline', 'controls', 'action', 'guard', 'play', 'speaker', 'shuffle', 'repeat'], []);
       const content = tile.content;
       fields(content, ['kind', 'entityId', 'name', 'target', 'plugin', 'tile', 'options'], ['kind']);
@@ -165,6 +169,21 @@ export function validateCardOptions(tile: PageTile, entityId: string, size: stri
     const whole = (value: unknown, least: number, most: number) => typeof value === 'number' && Number.isInteger(value) && value >= least && value <= most;
     if (a.calendarAhead !== undefined && (!whole(a.calendarAhead, 1, cal.ahead[1]) || a.calendarAhead === cal.ahead[0])) fail('normalization');
     if (a.calendarSoon !== undefined && (!whole(a.calendarSoon, 1, 120))) fail('normalization');
+  }
+  // A sensor's meter (firmware 0.56.0), as meter.validate checks it: with the meter alone, a default never stored.
+  if (METER_FIELDS.some((key) => a[key] !== undefined)) {
+    const m = rules.meter, number = (value: unknown) => typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= 1e9;
+    if (a.display !== 'meter') fail('normalization');
+    if (a.meterStyle !== undefined && (!m.styles.includes(a.meterStyle) || a.meterStyle === m.styles[0])) fail('normalization');
+    if ((a.meterMin !== undefined || a.meterMax !== undefined) && !(number(a.meterMin) && number(a.meterMax) && a.meterMin! < a.meterMax!)) fail();
+    const segments = a.meterSegments ?? 1;
+    if (a.meterSegments !== undefined && (!m.segments.includes(a.meterSegments) || a.meterSegments === 1)) fail('normalization');
+    const defaults = (m.defaultColors as Record<string, string[]>)[String(segments)];
+    if (a.meterColors !== undefined && (!Array.isArray(a.meterColors) || a.meterColors.length !== segments || a.meterColors.some((name) => !(name in m.colors)))) fail();
+    if (a.meterColors !== undefined && defaults && a.meterColors.join() === defaults.join()) fail('normalization');
+    const values = a.meterThresholds;
+    if (values !== undefined && (!Array.isArray(values) || !values.length || values.length !== segments - 1 || !values.every(number) ||
+        values.some((value, i) => i > 0 && values[i - 1] >= value))) fail();
   }
   // A favourite (app 0.4.42): what it plays and its speaker, and its own shuffle and repeat (app 0.4.84), with the
   // favourite alone.

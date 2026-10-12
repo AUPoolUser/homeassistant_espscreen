@@ -1974,6 +1974,15 @@
      "needs": {
       "history": "line"
      }
+    },
+    {
+     "key": "meter",
+     "needs": {
+      "history": "line"
+     },
+     "screen": {
+      "firmware": "0.56.0"
+     }
     }
    ],
    "controls": [],
