@@ -9,7 +9,7 @@ from copy import deepcopy
 import json
 import re
 
-from core import (ENTITY_REPEAT_MIN_FIRMWARE, FIRMWARE_MAX_BAR_ITEMS, FIRMWARE_MAX_PAGES, FIRMWARE_MAX_TILES, FREE_PAGES_MIN_FIRMWARE,
+from core import (BAR_CARDS_FEATURE, ENTITY_REPEAT_MIN_FIRMWARE, FIRMWARE_MAX_BAR_ITEMS, FIRMWARE_MAX_PAGES, FIRMWARE_MAX_TILES, FREE_PAGES_MIN_FIRMWARE,
                   NIGHTSTAND_MIN_FIRMWARE, STORE_MAX_BAR_ITEMS, STORE_MAX_PAGES, STORE_MAX_TILES, is_key, repeated_entities, sizes_on)
 from page_layout import compile_tiles, fingerprint, grid_of_record, new_id
 from i18n import english
@@ -40,9 +40,11 @@ def bounded(message):
     return message
 
 
-def configuration(record, region):
-    """Editor workspace and legacy device settings never change this revision."""
-    return fingerprint({"layout": record["layout"], "grid": record["sourceGrid"], "region": region})
+def configuration(record, region, bar=()):
+    """Editor workspace and legacy device settings never change this revision. The tiles of the top bar a screen gets do
+    (`bar`, core.BAR_CARDS_FEATURE): a screen that starts to take them gets the layout again with them."""
+    return fingerprint({"layout": record["layout"], "grid": record["sourceGrid"], "region": region,
+                        **({"bar": [tile["entity"] for tile in bar]} if bar else {})})
 
 
 def appearance_configuration(record, region, initial_tiles):
@@ -79,13 +81,16 @@ def page_message(page, index, items, *, initial):
 
 def tile_message(message, tile, *, initial, holders=None):
     """A key of a bedside clock (firmware 0.8.0+) is a tile without a cell: its first message names its clock by index
-    (`in`, from `holders`, the placed tiles' indexes by entity) and its place under it (`k`) instead of a slot."""
+    (`in`, from `holders`, the placed tiles' indexes by entity) and its place under it (`k`) instead of a slot. So is a
+    tile of the top bar (firmware 0.56.0+, core.BAR_CARDS_FEATURE): `bar` instead of a slot, and nothing else of its own."""
     message = deepcopy(message)
     message.pop("v", None)
     if initial:
         if is_key(tile):
             message.update(op="tile")
             message["in"], message["k"] = holders[tile["in"]], tile["key"]
+        elif tile.get("bar"):
+            message.update(op="tile", bar=1)
         else:
             message.update(op="tile", slot=tile["slot"])
         message.setdefault("o", {})
@@ -122,18 +127,19 @@ def bar_value_messages(bars, previous, stride=FIRMWARE_MAX_BAR_ITEMS):
     return [*replacements, *grouped.values()]
 
 
-def prepare(inbox, record, region, values, bars):
+def prepare(inbox, record, region, values, bars, bar=()):
     """Compile and bound the entire transaction before persistence or delivery.
 
     Initial states are supplied by the caller so this pure boundary has no HA
-    side effects. The real delivery also checks refreshed values here.
+    side effects. The real delivery also checks refreshed values here. `bar`:
+    the tiles of the top bar for a screen that takes them, after every other.
     """
-    revision = configuration(record, region)
-    tiles = compile_tiles(record["layout"], grid_of_record(record))
+    revision = configuration(record, region, bar)
+    tiles = compile_tiles(record["layout"], grid_of_record(record)) + list(bar)
     pages = record["layout"]["pages"]
     if len(values) != len(tiles) or len(bars) != len(pages):
         raise Refused(english('addon.errors.pages.fields'))
-    holders = {tile["entity"]: i for i, tile in enumerate(tiles) if not is_key(tile)}
+    holders = {tile["entity"]: i for i, tile in enumerate(tiles) if not is_key(tile) and not tile.get("bar")}
     initial_tiles = [tile_message(value, tile, initial=True, holders=holders) for value, tile in zip(values, tiles)]
     initial_bars = [page_message(page, i, bar, initial=True) for i, (page, bar) in enumerate(zip(pages, bars))]
     live_values = [tile_message(value, tile, initial=False) for value, tile in zip(values, tiles)]
@@ -359,18 +365,19 @@ class Sender:
             raise DeliveryError(answer.get("status") or "Screen requested synchronization")
         return answer
 
-    async def synchronize(self, inbox, record, region, values, bars, alive=lambda: True):
-        """values and bars are resolved snapshots for this validated document.
+    async def synchronize(self, inbox, record, region, values, bars, alive=lambda: True, bar=()):
+        """values and bars are resolved snapshots for this validated document,
+        `bar` the tiles of the top bar the values end with (prepare).
 
         Every message is size-checked before begin. Optional histories/images
         may arrive later; tile configuration and an initial HA value may not.
         """
-        revision = configuration(record, region)
+        revision = configuration(record, region, bar)
         if self.failed_revision == revision:
             raise Refused(self.failure)
         pages = record["layout"]["pages"]
         try:
-            begin, initial_tiles, initial_bars, live_values = prepare(inbox, record, region, values, bars)
+            begin, initial_tiles, initial_bars, live_values = prepare(inbox, record, region, values, bars, bar)
         except Refused as error:
             # No begin was sent, so an already applied document remains valid.
             # Resolved live values may shrink again without a layout edit.
@@ -402,6 +409,10 @@ class Sender:
                     self.phase = "applying"
                     if await self._hello() != PROTOCOL:
                         raise Refused(english('editor.pages.update_notice'))
+                    # Tiles of the top bar only to a screen that still names them: one flashed back to an older firmware
+                    # gets the layout without them on the next round, which its hello now decides.
+                    if bar and BAR_CARDS_FEATURE not in self.features:
+                        raise Superseded("The screen takes no tiles of the top bar")
                     # A screen that takes the layout's grid (firmware 0.53.0+) takes that grid's sizes; its hello names
                     # those of the grid it is on.
                     sizes = sizes_on(grid_of_record(record)) if self.grids is not None else self.tile_sizes

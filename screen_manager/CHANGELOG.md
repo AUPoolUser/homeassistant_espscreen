@@ -10,9 +10,11 @@
   sensor, so choosing it in the editor changes it in Home Assistant too, and every tile, meter, top bar item and
   dashboard follows.
 - **Durations in hours and minutes.** A duration sensor in minutes, hours or days shows as Home Assistant shows it:
-  "0h 12m" instead of "0.20 h", in the screen's language, on tiles, meters, cards and the top bar (wishlist 107).
-- **A sensor in the top bar opens its card.** A tap on a sensor's item in the top bar opens the same card a tap on its
-  tile opens, with its history.
+  "1h 30m" instead of "1.50 h" and "12m" instead of "0.20 h", in the screen's language, on tiles, meters, cards and the
+  top bar (wishlist 107).
+- **An entity in the top bar opens its card.** A tap on an entity's item in the top bar opens the card that holding its
+  tile opens, and does nothing else: a switch or a lamp there opens its card instead of switching, a sensor its
+  history. It works whether or not the entity also has a tile, and the screen needs this firmware.
 - **The colour card follows the light while it is open.** A light's colour, white shade or brightness changed elsewhere
   (in Home Assistant, by an automation, on another screen) now moves its sliders at once, and a colour or white shade
   you set shows on the light's tile straight away. The brightness slider sends what the tile's own slider sends. The

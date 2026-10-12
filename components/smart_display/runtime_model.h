@@ -525,10 +525,14 @@ struct Tile {
   // The columns of a span ("3x2", firmware 0.19.0); 0 for the five names, whose width `wide` and `full` say.
   uint8_t span = 0;
   // A key of a bedside clock (firmware 0.8.0+): a tile without a place of its own. `parent` is its clock's index, -1
-  // for a tile that has a place; `key` is where it stands under the time, counted from 0.
+  // for a tile that has a place; `key` is where it stands under the time, counted from 0. BAR_TILE (firmware 0.56.0+):
+  // a tile of the top bar, an entity in a page's top bar that is on no tile. It has no cell and is drawn nowhere; it is
+  // there for its card, which a tap on its item opens.
+  static constexpr int16_t BAR_TILE = -2;
   int16_t parent = -1;
   uint8_t key = 0;
   bool is_key() const { return parent >= 0; }
+  bool bar_tile() const { return parent == BAR_TILE; }
   // Direct control set on a wide card (firmware 0.2.19+); empty keeps the plain card.
   std::string controls, device_class;
   bool muted = false;
@@ -792,7 +796,8 @@ struct Model {
     const unsigned x = slot % grid.columns, y = slot % grid.slots() / grid.columns;
     if (!rows || index >= count || slot >= pages * grid.slots() || (full && slot % grid.slots()) ||
         x + columns > grid.columns || y + rows > grid.rows) return false;
-    for (size_t i = 0; i < count; ++i) if (i != index && tiles[i].received && !tiles[i].is_key() && slots[i] / grid.slots() == slot / grid.slots()) {
+    for (size_t i = 0; i < count; ++i) if (i != index && tiles[i].received && !tiles[i].is_key() && !tiles[i].bar_tile() &&
+                                           slots[i] / grid.slots() == slot / grid.slots()) {
       const unsigned other_x = slots[i] % grid.columns, other_y = slots[i] % grid.slots() / grid.columns;
       if (x < other_x + tiles[i].column_span() && other_x < x + columns &&
           y < other_y + tiles[i].row_span() && other_y < y + rows) return false;
@@ -811,8 +816,9 @@ struct Model {
 inline unsigned place(const Model &m, std::array<Placement, TILES_MAX> &out) {
   unsigned last = 0;
   for (size_t i = 0; i < m.count && i < grid.max_tiles(); ++i) {
-    // A key has no cell: it is on its clock's page (below), where runtime_tiles::place_page gives it a card.
-    if (m.tiles[i].is_key()) { out[i] = {0xFF, 0xFF}; continue; }
+    // A key has no cell: it is on its clock's page (below), where runtime_tiles::place_page gives it a card. A tile of
+    // the top bar has none either, and is on no page.
+    if (m.tiles[i].is_key() || m.tiles[i].bar_tile()) { out[i] = {0xFF, 0xFF}; continue; }
     unsigned slot = m.slots[i];
     if (m.tiles[i].full) slot -= slot % grid.slots();
     else if (m.tiles[i].wide && !m.tiles[i].span && !grid.wide_fits(slot)) --slot;

@@ -5364,19 +5364,14 @@ inline void history_received(){
      detail_tile()->entity==history.entity&&history_hours==history.hours)refresh_detail(detail_index);
 }
 // An energy card's circle opens its sensor (firmware 0.47.0+), and the card's next moment brings the sensor's state.
-// A top bar's sensor (0.56.0+) brings the words Home Assistant writes its value in as well, as a tile's state_word.
-inline void open_sensor_detail(const std::string &entity,const std::string &name,const std::string &state,const std::string &unit,
-                               const std::string &word=""){
+inline void open_sensor_detail(const std::string &entity,const std::string &name,const std::string &state,const std::string &unit){
   detail_sensor=Tile{};detail_sensor.entity=entity;detail_sensor.name=name;detail_sensor.state=state;detail_sensor.unit=unit;
-  if(!word.empty())detail_sensor.edit_extra().state_word=word;
   detail_sensor.received=true;
   show_detail(SENSOR_DETAIL);
 }
-inline void sensor_detail_update(const std::string &entity,const std::string &state,const std::string &word=""){
-  if(detail_index!=SENSOR_DETAIL||detail_sensor.entity!=entity||(detail_sensor.state==state&&detail_sensor.extra().state_word==word))return;
-  detail_sensor.state=state;
-  if(word!=detail_sensor.extra().state_word)detail_sensor.edit_extra().state_word=word;
-  refresh_detail(SENSOR_DETAIL);
+inline void sensor_detail_update(const std::string &entity,const std::string &state){
+  if(detail_index!=SENSOR_DETAIL||detail_sensor.entity!=entity||detail_sensor.state==state)return;
+  detail_sensor.state=state;refresh_detail(SENSOR_DETAIL);
 }
 inline void refresh_detail(unsigned index){
   if(!detail_root || lv_obj_has_flag(detail_root,LV_OBJ_FLAG_HIDDEN) || detail_index!=index)return;
@@ -5681,9 +5676,10 @@ inline void bind_pages() {
   effects_page::now = []() { return static_cast<uint32_t>(esphome::millis()); };
   options_received = effects_page::received;
 }
-// What a hold on tile `index` opens, without the finger (the screen's preview_runtime_card action, the browser preview):
-// the colour card for a light with a colour, the runtime card for everything else. tile_controls::tap_route decides, as
-// it does for the hold itself.
+// What a hold on tile `index` opens, without the finger: the one way to a tile's card, for a tap or a hold on the tile
+// that opens it (event), an entity's item in the top bar (render_header, firmware 0.56.0+), the screen's
+// preview_runtime_card action and the browser preview. The colour card for a light with a colour, the runtime card for
+// everything else; tile_controls::tap_route decides, as it does for the hold itself.
 inline void hold_card(size_t index) {
   if (!enabled || index >= model.count) return;
   active_index = static_cast<int>(index);
@@ -5797,13 +5793,10 @@ inline void event(lv_event_t *event) {
       return;
     case tile_controls::TapRoute::CARD:
       if (tap.busy) tile.begin(esphome::millis(), true);
-      active_index = w.index;
-      show_detail(w.index);
+      hold_card(w.index);
       return;
     case tile_controls::TapRoute::OVERLAY:
-      active_index = w.index;
-      tile.begin(esphome::millis(), true);
-      colour_open(tile);
+      hold_card(w.index);
       return;
     default:
       return;
@@ -9314,13 +9307,15 @@ inline void render_header() {
     if (!allowed(esphome::millis(), 14, "header navigation")) return;
     if (open_this_screen) open_this_screen();
   });
-  // A sensor in the top bar (firmware 0.56.0+) opens the card its tile opens, its history.
-  header_renderer.on_sensor([](size_t item) {
+  // An entity in the top bar (firmware 0.56.0+) opens its tile's card through hold_card, and does nothing else: a switch
+  // there opens its card instead of switching. Its tile is one on a page or a tile of the top bar (Tile::BAR_TILE), and
+  // an unavailable entity opens nothing, as its tile does.
+  header_renderer.on_item([](size_t item) {
     const auto *bar = shown_bar();
-    if (!bar || item >= bar->count || !bar->items[item].sensor) return;
-    if (!allowed(esphome::millis(), 14, "header sensor")) return;
-    const auto &s = *bar->items[item].sensor;
-    open_sensor_detail(s.entity, s.name, s.state, s.unit, s.word);
+    if (!bar || item >= bar->count || bar->items[item].card >= model.count || !fresh()) return;
+    const auto &tile = model.tiles[bar->items[item].card];
+    if (!tile.received || !tile.available() || !allowed(esphome::millis(), 14, "header item")) return;
+    hold_card(bar->items[item].card);
   });
   draw_header(ha_connected() && feed_alive());
 }

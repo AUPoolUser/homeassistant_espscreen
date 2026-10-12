@@ -3,7 +3,6 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
-#include <memory>
 #include <string>
 #include "screen_text.h"
 #include "battery_status.h"
@@ -41,6 +40,8 @@ inline Kind kind(const std::string &name) {
   return Kind::none;
 }
 
+// An item that opens no card (Item::card).
+inline constexpr uint16_t NO_CARD = 0xFFFF;
 struct Item {
   Kind kind = Kind::none;
   uint32_t icon = 0;   // Material Design Icons codepoint, 0 without an icon
@@ -52,20 +53,12 @@ struct Item {
   bool only_weak = false;
   // Kind::plugin: its icon without the plugin's words (`o`, plugin API 0.8), as a person chose in the editor.
   bool icon_only = false;
-  // A sensor's item (`d`, firmware 0.56.0+): a tap opens the card its tile opens (runtime_tiles::open_sensor_detail), with
-  // the entity, its state, its unit, its name and the words Home Assistant writes its value in (a duration's "0h 12m", as a
-  // tile's state_word). Shared, so a bar of items without a sensor costs a pointer each.
-  struct Sensor {
-    std::string entity, state, unit, name, word;
-    bool operator==(const Sensor &o) const {
-      return entity == o.entity && state == o.state && unit == o.unit && name == o.name && word == o.word;
-    }
-  };
-  std::shared_ptr<const Sensor> sensor;
+  // An entity's item (`d`, firmware 0.56.0+): the index of the tile whose card a tap on it opens
+  // (runtime_tiles::open_card), NO_CARD for an item that opens nothing.
+  uint16_t card = NO_CARD;
   bool operator==(const Item &o) const {
     return kind == o.kind && icon == o.icon && text == o.text && epoch == o.epoch && color == o.color && has_color == o.has_color &&
-           only_weak == o.only_weak && icon_only == o.icon_only &&
-           (sensor && o.sensor ? *sensor == *o.sensor : sensor == o.sensor);
+           only_weak == o.only_weak && icon_only == o.icon_only && card == o.card;
   }
 };
 

@@ -1,10 +1,11 @@
-"""A duration sensor's value as Home Assistant shows it (wishlist 107): "0.20 h" is "0h 12m", "1.5 h" is "1h 30m".
+"""A duration sensor's value as Home Assistant shows it (wishlist 107): "1.5 h" is "1h 30m", "0.20 h" is "12m".
 
 Home Assistant's frontend does this for a sensor with device class duration and a unit of min, h or d
 (compute_state_display.ts and formatDuration in src/common/datetime/format_duration.ts): it rounds the value to the
 entity's display precision when it has one, splits it into whole days and hours, hours and minutes, or minutes and
-seconds, and writes them with Intl.DurationFormat in its narrow style, the larger unit always and the smaller one only
-when it is not nought. A value in seconds stays a number with its unit. The words below are what that narrow style
+seconds, and writes them with Intl.DurationFormat in its narrow style, the smaller unit only when it is not nought. One
+choice of ours: a larger unit that is nought is left out too ("12m", where Home Assistant writes "0h 12m"), unless it is
+all there is ("0h"). A value in seconds stays a number with its unit. The words below are what that narrow style
 writes in the languages of the screens (CLDR, as a browser's Intl.DurationFormat gives them), so a screen says what
 Home Assistant says in the same language.
 """
@@ -51,7 +52,8 @@ def text(value, unit, language='en', precision=None):
     def part(name, n):
         one, other = words[name]
         return (one if _one(language, n) else other).format(n=n)
-    parts = [part(names[0], big)] + ([part(names[1], small)] if small else [])
+    # A nought before the smaller unit says nothing: "12m", not "0h 12m" (the one place we differ from Home Assistant).
+    parts = ([part(names[0], big)] if big or not small else []) + ([part(names[1], small)] if small else [])
     return joiner.join(parts)
 
 

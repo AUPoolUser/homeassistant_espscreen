@@ -2,7 +2,7 @@
 // tile catalogue's (catalogue/<type>.yaml `memory`); the screen says how much room it has and what its board adds (PSRAM
 // or not, the size of a tile and of its block of extras). The screen (tile_memory::cost) and the add-on (core.tile_cost)
 // price a tile the same way: tests/fixtures/memory-conformance.json holds the cases all three answer alike.
-import { TILE, TYPES, type TypeMemory } from "./catalogue";
+import { DOMAINS, TILE, TYPES, type TypeMemory } from "./catalogue";
 import type { ScreenMemory } from "../types";
 import { noPluginTiles, type PluginTileLookup } from "./plugins";
 
@@ -25,15 +25,29 @@ export function tileCost(tile: PricedTile, memory: Pick<ScreenMemory, "psram" | 
 }
 
 /** A page as its price counts it: its top bar's items, of which the entity items keep a text. */
-export type PricedPage = { topbar: { trailing: readonly { type: string }[] } };
+export type PricedPage = { topbar: { trailing: readonly { type: string; entity?: string }[] } };
+
+/** The entities in the pages' top bars that are on none of `tiles`, once each: the tiles of the top bar a screen that takes
+ * cards from its top bar gets (firmware 0.56.0), one without a cell for each, so a tap on its item opens its card. Only a
+ * type the screen draws a card for. The add-on picks the same ones (core.bar_entities). */
+export function barEntities(pages: readonly PricedPage[], tiles: readonly PricedTile[]) {
+  const onTiles = new Set(tiles.map((tile) => tile.entity)), out: string[] = [];
+  for (const page of pages)
+    for (const item of page.topbar.trailing)
+      if (item.type === "entity" && item.entity && !onTiles.has(item.entity) && !out.includes(item.entity) &&
+          !item.entity.startsWith("screen.") && DOMAINS.has(item.entity.split(".", 1)[0])) out.push(item.entity);
+  return out;
+}
 
 /** What one page costs: its title, each entity item of its top bar, and on a board without PSRAM its own record. */
 export const pageCost = (page: PricedPage, memory: Pick<ScreenMemory, "psram" | "page">) =>
   TILE.memory.page + page.topbar.trailing.filter((item) => item.type === "entity").length * TILE.memory.bar_text + (memory.psram ? 0 : memory.page ?? 0);
 
-/** What these tiles (the keys of a bedside clock included) and pages take together. */
+/** What these tiles (the keys of a bedside clock included) and pages take together, with the tiles of the top bar on a
+ * screen that gets them (`bar_cards`, barEntities). */
 export const layoutCost = (tiles: readonly PricedTile[], memory: ScreenMemory, pages: readonly PricedPage[] = [], plugins: PluginTileLookup = noPluginTiles) =>
-  tiles.reduce((sum, tile) => sum + tileCost(tile, memory, plugins), 0) + pages.reduce((sum, page) => sum + pageCost(page, memory), 0);
+  tiles.reduce((sum, tile) => sum + tileCost(tile, memory, plugins), 0) + pages.reduce((sum, page) => sum + pageCost(page, memory), 0) +
+  (memory.bar_cards ? barEntities(pages, tiles).reduce((sum, entity) => sum + tileCost({ entity }, memory, plugins), 0) : 0);
 
 export type MemoryUse = { need: number; room: number; share: number; level: "fine" | "close" | "full" | "over" };
 

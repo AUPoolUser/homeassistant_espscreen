@@ -118,7 +118,10 @@ class Firmware(unittest.TestCase):
         self.assertIn('return light_colour(t) ? Tap{TapRoute::OVERLAY', controls, "not to the board's value overlay any more")
         self.assertIn('d == "light" || d == "fan" ? Tap{TapRoute::CARD, "", true}', controls)
         self.assertIn('case tile_controls::TapRoute::CARD:', event)
-        self.assertIn('show_detail(w.index);', event)
+        # One way to a card (firmware 0.56.0): the tile's tap, its hold and the top bar all go through hold_card.
+        self.assertIn('hold_card(w.index);', event)
+        hold = RUNTIME[RUNTIME.index('inline void hold_card('):]
+        self.assertIn('show_detail(index);', hold[:hold.index('\n}\n')])
         self.assertIn('}else if(d=="cover"){', RUNTIME)
         self.assertIn('render_cover_detail(t,large,width,height,pad,columns);', RUNTIME)
         # Firmware 0.2.80: the preview asks the firmware's own routing instead of listing domains, so it opens whatever

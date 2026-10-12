@@ -8,8 +8,8 @@ without any traffic.
 
 Wire format, one message after the layout: {"v":1,"op":"header","items":[...]} with per item
 "k" (clock, analog, date, text, ago), "i" (icon codepoint), "t" (text), "e" (unix time) and
-"c" (accent colour RRGGBB). A sensor's item also has "d": [entity, state, unit, name] and, for a duration, its words
-("0h 12m"), so a tap on it opens the card its tile opens (firmware 0.56.0+; older firmware ignores it).
+"c" (accent colour RRGGBB). An entity's item also has "d", the index of the tile whose card a tap on it opens, for a
+screen that takes cards from its top bar (core.BAR_CARDS_FEATURE, firmware 0.56.0+).
 """
 import math
 import unicodedata
@@ -302,8 +302,9 @@ def auto_icon(entity, state, entry=None):
         name = DOMAIN_ICONS.get(domain, tile_icons.FALLBACK)
     return tile_icons.GLYPHS[name]
 
-def entity_item(item, states, registry=None, units=None, tz=None, words=None):
-    """(wire item, shown) for one entity item; the wire item exists even while hidden, for the editor."""
+def entity_item(item, states, registry=None, units=None, tz=None, words=None, card=None):
+    """(wire item, shown) for one entity item; the wire item exists even while hidden, for the editor. `card`: the index
+    of the tile whose card a tap on it opens (core.bar_cards), or None."""
     entity = item['entity']
     state = states.get(entity)
     wire = {'k': 'text'}
@@ -330,23 +331,9 @@ def entity_item(item, states, registry=None, units=None, tz=None, words=None):
     color = accent(entity, state)
     if color:
         wire['c'] = color
-    if entity.startswith('sensor.') and state:
-        wire['d'] = sensor_detail(entity, state, (registry or {}).get(entity) if isinstance(registry, dict) else None)
+    if card is not None:
+        wire['d'] = card
     return wire, item['show'] == 'always' or active(entity, state)
-
-def sensor_detail(entity, state, entry=None):
-    """What a sensor's card needs when a tap on its top bar item opens it (runtime_tiles::open_sensor_detail): the entity,
-    its state as its tile gets it (Home Assistant's display precision), its unit, its name, and the words a duration says
-    itself in (durations.py), as a tile's `w`, when it has them."""
-    from core import rounded_state
-    attributes = state.get('attributes') or {}
-    raw, unit = rounded_state(state.get('state', 'unavailable'), precision_of(entry)), str(attributes.get('unit_of_measurement') or '')
-    wire = [entity, short(raw, 32), short(unit, 16), short(str(attributes.get('friendly_name') or entity), 80)]
-    # A duration says itself in hours and minutes there too, as Home Assistant's own card does; the card keeps the number
-    # for its graph.
-    if durations.is_duration(attributes) and numeric(raw) is not None:
-        wire.append(short(clean_text(durations.text(raw, unit, i18n.screen_language())), 32))
-    return wire
 
 # What the Wi-Fi item's text says beside its bars on the screen (header_bar.h device_item): nothing, a percentage or dBm;
 # and the battery's beside its icon (firmware 0.41.0): nothing or its percentage.
@@ -364,9 +351,10 @@ def status_item(item):
         wire['a'] = 1
     return wire
 
-def message(layout, states, registry=None, units=None, tz=None, words=None, features=None):
+def message(layout, states, registry=None, units=None, tz=None, words=None, features=None, cards=None):
     """`features`: what the screen's hello said it takes; the screen's own items go only to one that named them, since an
-    older screen refuses a page with an item it does not know. None: the screen of this app's own firmware (the preview)."""
+    older screen refuses a page with an item it does not know. None: the screen of this app's own firmware (the preview).
+    `cards`: which tile's card each entity's item opens (core.bar_cards), for a screen that takes cards from its top bar."""
     items = []
     for item in header_items(layout):
         if item['type'] in HEADER_BUILTIN:
@@ -384,7 +372,7 @@ def message(layout, states, registry=None, units=None, tz=None, words=None, feat
             if features is None or 'plugins' in features:
                 items.append({'k': 'plugin', 't': item['item'], **({'o': 1} if item.get('content') == 'icon' else {})})
             continue
-        wire, shown = entity_item(item, states, registry, units, tz, words)
+        wire, shown = entity_item(item, states, registry, units, tz, words, (cards or {}).get(item['entity']))
         if shown:
             items.append(wire)
     return {'v': 1, 'op': 'header', 'items': items}

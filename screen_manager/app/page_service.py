@@ -7,7 +7,7 @@ it does not import the server or keep another copy of a page document.
 import time
 import camera_feed
 import page_delivery
-from core import plugin_tile, BUILTIN, CAMERA_DOMAINS, FREE_PAGES_MIN_FIRMWARE, board_of, firmware_features, page_target, sizes_on, state_message, version_text
+from core import bar_cards, bar_entities, plugin_tile, BAR_CARDS_FEATURE, BUILTIN, FIRMWARE_MAX_TILES, CAMERA_DOMAINS, FREE_PAGES_MIN_FIRMWARE, board_of, firmware_features, page_target, sizes_on, state_message, version_text
 from i18n import t, shown, english
 from page_layout import (FORMAT as PAGE_FORMAT, LayoutError, bar_items, compile_tiles,
                          grid_of_record, grown, legacy_projection, screen_grid_of_record, validate_document)
@@ -162,6 +162,16 @@ def grow_record(manager, inbox, record):
     return record
 
 
+def top_bar_tiles(record, tiles, sender, features):
+    """The tiles of the top bar a screen gets (core.BAR_CARDS_FEATURE): to one whose hello names them, a tile without a
+    cell for each entity in a top bar that is on no tile, after `tiles`, as many as its tile ceiling leaves room for. An
+    entity past the ceiling keeps its item, which then opens nothing."""
+    if BAR_CARDS_FEATURE not in features:
+        return []
+    most = (getattr(sender, 'max_tiles', None) or getattr(sender, 'last_max_tiles', None) or FIRMWARE_MAX_TILES) - len(tiles)
+    return [{'entity': entity, 'name': '', 'bar': True} for entity in bar_entities(record['layout']['pages'], tiles)][:max(0, most)]
+
+
 async def sync_pages(manager, inbox, record, screen, dirty=None, force=False, context=None):
     record = grow_record(manager, inbox, record)
     grid = manager.record_grid(inbox, record)
@@ -175,33 +185,37 @@ async def sync_pages(manager, inbox, record, screen, dirty=None, force=False, co
     lamps = getattr(sender, 'group_lamps', False)
     # What else its hello said it takes (app 0.4.32): a thermostat's range on its -/+ (firmware 0.19.0+).
     features = frozenset(getattr(sender, 'features', ()) or ())
+    bar = top_bar_tiles(record, flat['tiles'], sender, features)
+    tiles = flat['tiles'] + bar
     full = (force or dirty is None or not cached or cached['revision'] != record['revision'] or cached['context'] != context
-            or cached.get('lamps') != lamps or cached.get('features') != features)
+            or cached.get('lamps') != lamps or cached.get('features') != features or cached.get('bar') != bar)
     if full:
         dependencies = [{item['entity'] for item in bar_items(page) if item['type'] == 'entity'} for page in record['layout']['pages']]
     else:
         dependencies = cached['dependencies']
     values = []
-    for i, tile in enumerate(flat['tiles']):
+    for i, tile in enumerate(tiles):
         reuse = not full and tile['entity'] not in dirty and dirty.isdisjoint(manager.related_entities(tile))
         if reuse and tile['entity'].startswith('weather.') and manager.forecast_due(tile['entity']): reuse = False
         if reuse and tile['entity'].startswith('calendar.') and manager.calendar_due(tile): reuse = False
         values.append(cached['values'][i] if reuse else await manager.tile_message(i, tile, lamps=lamps, features=features, inbox=inbox))
+    # Each entity's item names the tile whose card it opens, to a screen that takes cards from its top bar.
+    cards = bar_cards(tiles) if BAR_CARDS_FEATURE in features else None
     bars = [cached['bars'][i] if not full and dirty.isdisjoint(dependencies[i]) else
-            manager.header_message({'header': {'items': bar_items(page)}}, features)['items'] for i, page in enumerate(record['layout']['pages'])]
+            manager.header_message({'header': {'items': bar_items(page)}}, features, cards)['items'] for i, page in enumerate(record['layout']['pages'])]
     expected = record['revision']
     def current():
         saved = manager.store.get(inbox)
         return saved is not None and saved.get('revision') == expected
     before = sender.confirmed
-    wanted = page_delivery.configuration(record, manager.page_region(inbox))
+    wanted = page_delivery.configuration(record, manager.page_region(inbox), bar)
     # A layout this screen already refused is refused again without a word to it (Sender.failed_revision): the status keeps
     # the reason, instead of saying Applying on every pass and pushing the editor each time.
     if before != wanted and sender.failed_revision != wanted:
         manager.status[inbox] = 'Applying'
         manager.notify()
     try:
-        rev = await sender.synchronize(inbox, record, manager.page_region(inbox), values, bars, current)
+        rev = await sender.synchronize(inbox, record, manager.page_region(inbox), values, bars, current, bar)
     except page_delivery.Superseded:
         manager.ha.changed.set()
         return True
@@ -213,7 +227,7 @@ async def sync_pages(manager, inbox, record, screen, dirty=None, force=False, co
         return True
     manager.sent[inbox] = {'protocol': 2, 'rev': rev, 'saved_revision': expected}
     manager.page_values[inbox] = {'revision': expected, 'context': context, 'dependencies': dependencies, 'values': values, 'bars': bars,
-                                  'lamps': lamps, 'features': features}
+                                  'lamps': lamps, 'features': features, 'bar': bar}
     # The hello of this delivery told us the screen takes lamps, or anything else new: the next round sends them.
     if getattr(sender, 'group_lamps', False) != lamps or frozenset(getattr(sender, 'features', ()) or ()) != features:
         manager.ha.changed.set()

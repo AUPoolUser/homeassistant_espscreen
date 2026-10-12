@@ -346,7 +346,7 @@ class Endpoints(unittest.IsolatedAsyncioTestCase):
         # A duration's word is how the screens write it, in hours and minutes (durations.py, wishlist 107).
         self.manager.ha.states['sensor.left'] = {'state': '0.2', 'attributes': {'device_class': 'duration', 'unit_of_measurement': 'h'}}
         response = await self.client.get('/api/states?entity=sensor.left')
-        self.assertEqual((await response.json())['states']['sensor.left']['word'], '0h 12m')
+        self.assertEqual((await response.json())['states']['sensor.left']['word'], '12m')
 
     async def test_firmware_preview_uses_device_packets_without_saving_or_actions(self):
         from core import Grid

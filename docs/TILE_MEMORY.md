@@ -37,7 +37,10 @@ index. Six is what every screen reads; an app that numbers by more says so in th
 whose hello said it takes more, so an older screen or an older app still means the same slot.
 
 An entity item shows its status, when it last changed, or its icon alone (`content: icon`), which takes the least width:
-the icon follows the state and its colour as on a tile.
+the icon follows the state and its colour as on a tile. A tap on it opens the entity's card (firmware 0.56.0,
+docs/PAGES.md). On a screen that takes that, an entity in a top bar that is on no tile costs one tile of its type as
+well, which the add-on and the editor count with the layout (`core.bar_entities`, `barEntities` in
+`web/src/model/memory.ts`).
 
 ## The memory budget
 

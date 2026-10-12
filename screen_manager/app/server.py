@@ -44,7 +44,7 @@ import plugins
 from aiohttp import ClientError, ClientSession, ClientTimeout, WSMsgType, web
 from core import alarm_extras, lock_extras, ALERT_EVENT, board_of, BROADCAST_EVENTS, BROADCAST_SHOW, BUILTIN, CAMERA_DOMAINS, entity_id, SETTINGS_BESIDE_BLOCK, TILE_EVENTS, TILE_RESULT_EVENT, layout_snapshot, match_screen, HEADER_MIN_FIRMWARE, NAME_TILE_SETTINGS, TRANSPORT_MIN_FIRMWARE, alert_action, alert_camera, alert_choice, alert_data, choice_service, ALERT_CHOICE_ACTION, ALERT_CHOICE_MIN_FIRMWARE, parse_firmware, alert_reference, alert_screen_choice, alert_screen_names, alert_service, alert_targets, backgrounds, builtin_name, controls_catalogue, device_prefixes, discover, discover_screens, encode, entity_slug, extras, media_cover, media_extras, forecast_kinds, header_items, inbox_prefix, message_action, min_firmware, name_clash, packets, revision, screen_items, state_message, validate_header, validate_layout, validate_settings
 from core import ENERGY_TILE, MAP_TILE_MIN_FIRMWARE, WEATHER_WEEK, calibrate_entity, can_standby, dimmable, SETTING_ENTITIES, SETTING_RULES, STANDBY_KEYS, setting_action, setting_entities, setting_from_state, state_word
-from core import BOARD_KEYS, has_battery, is_key, drawn_controls, FAVORITE_KINDS, SCREENSAVER_MIN_FIRMWARE, short, plugin_tile
+from core import BAR_CARDS_FEATURE, BOARD_KEYS, has_battery, is_key, drawn_controls, FAVORITE_KINDS, SCREENSAVER_MIN_FIRMWARE, short, plugin_tile
 from core import (FIRMWARE_MAX_BAR_ITEMS, FIRMWARE_MAX_PAGES, FIRMWARE_MAX_TILES, Grid, page_target, PAGE_TILE_REPEAT_MIN_FIRMWARE, ENTITY_REPEAT_MIN_FIRMWARE, ROTATION_MIN_FIRMWARE, SHAPES, firmware_features, grid_of, orientation_at,
                   packed_slots, run_tile_event, screen_firmware, shape_of, turns_of, update_in_tessera, version_text)
 import header_bar
@@ -1161,7 +1161,8 @@ class Manager:
         sender = self.page_senders.get(inbox)
         live = getattr(sender, 'memory', None)
         memory = live or getattr(sender, 'last_memory', None)
-        return {**memory, 'live': live is not None} if memory else None
+        # Whether its tiles of the top bar count too (core.layout_cost): a screen that takes cards from its top bar.
+        return {**memory, 'live': live is not None, 'bar_cards': BAR_CARDS_FEATURE in (getattr(sender, 'features', None) or ())} if memory else None
 
     def _discovered(self, inbox):
         """The screen as discovery sees it now, or None while it is not in Home Assistant's registry."""
@@ -2242,11 +2243,10 @@ class Manager:
         if ENERGY_TILE in shown:
             summed = energy_flow.sums(self.energy_prefs())
             shown |= set(energy_flow.related_entities(self.energy_prefs())) | set(summed)
-        # A sensor in a page's top bar opens its card as its tile would (app dev, firmware 0.56.0).
+        # An entity in a page's top bar opens its card as its tile does (core.BAR_CARDS_FEATURE, firmware 0.56.0).
         record = self.store.get(inbox)
         if record and record.get('format') == PAGE_FORMAT:
-            shown |= {item['entity'] for page in record['layout']['pages'] for item in bar_items(page)
-                      if item['type'] == 'entity' and item['entity'].startswith('sensor.')}
+            shown |= {item['entity'] for page in record['layout']['pages'] for item in bar_items(page) if item['type'] == 'entity'}
         if entity not in shown:
             return
         what = 'line' if entity in summed else history_card.kind(entity, self.ha.states.get(entity))
@@ -2382,10 +2382,11 @@ class Manager:
                 return item.get('name_by_user') or item.get('name')
         return None
 
-    def header_message(self, layout, features=None):
-        """`features`: the screen's hello (page_delivery.Sender.features); None for this app's own firmware (the preview)."""
+    def header_message(self, layout, features=None, cards=None):
+        """`features`: the screen's hello (page_delivery.Sender.features); None for this app's own firmware (the preview).
+        `cards`: which tile's card each entity's item opens (core.bar_cards)."""
         return header_bar.message(layout, self.ha.states, self.registry_index(), getattr(self.ha, 'units', {}), getattr(self.ha, 'time_zone', None),
-                                  getattr(self.ha, 'state_words', None), features)
+                                  getattr(self.ha, 'state_words', None), features, cards)
 
     def needs_firmware(self, inbox, layout, screen=None):
         """Version string the screen must run first, or None when the layout can be sent."""

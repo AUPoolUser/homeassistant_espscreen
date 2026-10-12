@@ -201,8 +201,7 @@ class MessageTests(unittest.TestCase):
         self.assertEqual(message['op'], 'header')
         self.assertEqual(message['items'], [
             {'k': 'ago', 'i': tile_icons.GLYPHS['account'], 'e': 1789398000, 'c': header_bar.GREEN},
-            # A sensor's item names its sensor, so a tap opens the sensor's card (firmware 0.56.0).
-            {'k': 'text', 't': '21.3 °C', 'd': ['sensor.t', '21.3', '°C', 'sensor.t']}, {'k': 'analog'}, {'k': 'clock'}])
+            {'k': 'text', 't': '21.3 °C'}, {'k': 'analog'}, {'k': 'clock'}])
         states['binary_sensor.door'] = state('on', device_class='door')
         opened = header_bar.message(layout, states)['items'][0]
         self.assertEqual(opened, {'k': 'text', 'i': tile_icons.GLYPHS['door-open'], 't': 'Open', 'c': header_bar.AMBER})
@@ -453,8 +452,7 @@ class ManagerTests(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(saved['settings']['show_clock'], 'older firmware hides its clock when the bar has none')
             await m.sync_one('text.screen', saved)
             self.assertEqual([msg['op'] for msg in m.ha.messages], ['layout', 'header', 'state'])
-            self.assertEqual(m.ha.messages[1]['items'], [{'k': 'text', 'i': tile_icons.GLYPHS['thermometer'], 't': '21.3 °C',
-                                                          'd': ['sensor.t', '21.3', '°C', 'sensor.t']}])
+            self.assertEqual(m.ha.messages[1]['items'], [{'k': 'text', 'i': tile_icons.GLYPHS['thermometer'], 't': '21.3 °C'}])
             await m.sync_one('text.screen', saved)
             self.assertEqual(len(m.ha.messages), 3, 'an unchanged bar is not sent again')
             m.ha.states['binary_sensor.door'] = state('on', device_class='door')

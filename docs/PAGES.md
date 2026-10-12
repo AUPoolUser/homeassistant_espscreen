@@ -109,6 +109,15 @@ firmware configuration. Different formatting remains independent; a change in
 the number of visible items replaces that page's bar. Peers without the
 capability continue receiving individual `bar` messages.
 
+Cards from the top bar negotiate `bar_cards` (firmware 0.56.0). An entity's item in a top bar opens the card that
+holding its tile opens, and nothing else: a switch there opens its card instead of switching. A tile and an item reach
+that card the same way (`runtime_tiles::hold_card`). The item names the tile (`d`, its index). An entity that is on no
+tile gets a tile of the top bar: a tile without a cell, sent after every other tile with `bar` instead of a slot, drawn
+on no page, kept up to date like any tile. The add-on sends these tiles only to a screen whose hello names
+`bar_cards`, and only as many as the screen's tile ceiling leaves room for. Past that, an item keeps its value and
+opens nothing. They count in the memory budget like any tile (docs/TILE_MEMORY.md). The saved layout does not change,
+so a screen without the capability gets the layout as before.
+
 Title, label and background-only saves negotiate `appearance_updates`. The
 add-on compares the remaining configuration before choosing one atomic
 `appearance` packet, bound to the current revision. The receiver checks every

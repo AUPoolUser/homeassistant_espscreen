@@ -127,7 +127,7 @@ export type StateTextOptions = {
   controlled?: boolean;
 };
 /** A number Home Assistant writes in words of its own, as the add-on sends them: a duration in hours and minutes
- * ("0h 12m", durations.py). Its units are in its words. */
+ * ("1h 30m", durations.py). Its units are in its words. */
 export function ownWords(domain: string, live: Live | null | undefined) {
   return domain === "sensor" && live?.word && live.state.trim() !== "" && Number.isFinite(Number(live.state)) ? live.word : "";
 }

@@ -92,8 +92,8 @@ describe("the values a card stands large", () => {
   });
 
   it("writes a duration in the words the add-on sends, its units in them (durations.py)", () => {
-    const left = { state: "0.2", a: { device_class: "duration", unit_of_measurement: "h" }, word: "0h 12m" };
-    expect([bigValue("sensor", left, en), stateText("sensor.left", left, {}, en), ownWords("sensor", left)]).toEqual(["0h 12m", "0h 12m", "0h 12m"]);
+    const left = { state: "0.2", a: { device_class: "duration", unit_of_measurement: "h" }, word: "12m" };
+    expect([bigValue("sensor", left, en), stateText("sensor.left", left, {}, en), ownWords("sensor", left)]).toEqual(["12m", "12m", "12m"]);
     // A state that is not a number keeps Home Assistant's word for it.
     expect(ownWords("sensor", { ...left, state: "unknown" })).toBe("");
   });

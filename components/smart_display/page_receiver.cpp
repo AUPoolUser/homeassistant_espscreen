@@ -23,13 +23,9 @@ static bool parse_bar_item(JsonVariant value, header_bar::Item &item) {
     item.only_weak = (item.kind == header_bar::Kind::wifi || item.kind == header_bar::Kind::battery) &&
                      value["a"].is<unsigned>() && value["a"].as<unsigned>() == 1;
     item.icon_only = item.kind == header_bar::Kind::plugin && value["o"].is<unsigned>() && value["o"].as<unsigned>() == 1;
-    // A sensor's item (firmware 0.56.0+): what its card needs when a tap opens it.
-    if (value["d"].is<JsonArray>()) {
-      const std::string entity = string(value["d"][0], 128);
-      if (entity.rfind("sensor.", 0) == 0 && valid_entity(entity))
-        item.sensor = std::make_shared<header_bar::Item::Sensor>(header_bar::Item::Sensor{
-            entity, string(value["d"][1], 32), string(value["d"][2], 16), string(value["d"][3], 80), string(value["d"][4], 32)});
-    }
+    // An entity's item (firmware 0.56.0+): the index of the tile whose card a tap on it opens, one on a page or a tile of
+    // the top bar (Tile::BAR_TILE).
+    if (value["d"].is<unsigned>() && value["d"].as<unsigned>() < header_bar::NO_CARD) item.card = static_cast<uint16_t>(value["d"].as<unsigned>());
     if (item.kind == header_bar::Kind::ago && item.epoch == 0) return false;
     // A plugin's item names itself: plugin:<plugin>.<item> (docs/PLUGINS.md).
     if (item.kind == header_bar::Kind::plugin && !plugin_key(item.text)) return false;
@@ -323,9 +319,6 @@ std::string receive(const std::string &payload) {
         for (size_t i = 0; same && i < current.count; ++i) same = current.items[i] == next.bar.items[i];
         current = std::move(next.bar);
         if (!same && shown_page && *shown_page == static_cast<int>(index)) refresh_header_only();
-        // A sensor's card opened from the top bar follows its new state.
-        for (size_t i = 0; i < current.count; ++i)
-          if (const auto &s = current.items[i].sensor) sensor_detail_update(s->entity, s->state, s->word);
       }
       last_received = esphome::millis();
       result = transfer.active ? "Synced" : "Loading tiles";
@@ -602,6 +595,8 @@ std::string receive(const std::string &payload) {
       // A key of a bedside clock (firmware 0.8.0+) names its clock ("in") and its place under it ("k") instead of a
       // slot. It is a tile in every other way: its state, its tap, its hold and its card are a tile's.
       const bool key = root["in"].is<unsigned>();
+      // A tile of the top bar (firmware 0.56.0+): no cell and no clock, only its card, which a tap on its item opens.
+      const bool bar = !key && root["bar"].is<unsigned>() && root["bar"].as<unsigned>() == 1;
       // A layout past this screen's memory (firmware 0.34.0+): an app that does not ask the screen's budget can send more
       // than it holds, and a screen that runs out halfway loses its Wi-Fi link while it runs on, out of reach until
       // someone resets it (bench 2026-10-03). Below the floor the transfer stops here: the screen lets go of the tiles it
@@ -612,7 +607,7 @@ std::string receive(const std::string &payload) {
         return false;
       }
       if (transfer.active || index >= model.count || model.tiles[index].received || !valid_entity(entity) ||
-          !(key ? root["k"].is<unsigned>() : root["slot"].is<unsigned>()) || !root["o"].is<JsonObject>()) return false;
+          !(key ? root["k"].is<unsigned>() : bar || root["slot"].is<unsigned>()) || !root["o"].is<JsonObject>()) return false;
       const std::string size = string(root["o"]["size"]);
       if (key) {
         const unsigned parent = root["in"].as<unsigned>(), place = root["k"].as<unsigned>();
@@ -622,6 +617,9 @@ std::string receive(const std::string &payload) {
           if (i != index && model.tiles[i].received && model.tiles[i].parent == static_cast<int16_t>(parent) && model.tiles[i].key == place) return false;
         model.tiles[index].parent = static_cast<int16_t>(parent);
         model.tiles[index].key = static_cast<uint8_t>(place);
+      } else if (bar) {
+        if (!size.empty() || page_entity(entity) || entity.rfind("screen.", 0) == 0 || entity.rfind("plugin:", 0) == 0) return false;
+        model.tiles[index].parent = Tile::BAR_TILE;
       } else {
         if (!page_protocol::accepts_size(size, grid.columns, grid.rows)) return false;
         unsigned span_columns = 0, span_rows = 0;

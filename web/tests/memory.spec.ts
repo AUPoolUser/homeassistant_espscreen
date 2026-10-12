@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fixture from "../../tests/fixtures/memory-conformance.json";
 import { TILE, TYPES } from "../src/model/catalogue";
-import { kilobytes, layoutCost, measuring, memoryCrossing, memoryUse, NEARLY_FULL, noRoom, NO_ROOM_SHARE, tileCost } from "../src/model/memory";
+import { barEntities, kilobytes, layoutCost, measuring, memoryCrossing, memoryUse, NEARLY_FULL, noRoom, NO_ROOM_SHARE, tileCost } from "../src/model/memory";
 import type { ScreenMemory } from "../src/types";
 
 // A screen's memory for tiles (firmware 0.34.0+): priced by the tile catalogue as the screen and the add-on price it
@@ -22,6 +22,13 @@ describe("the memory a layout takes", () => {
     const inside = { ...said, psram: false };
     expect(tileCost({ entity: "weather.home" }, inside)).toBe(price("weather") + 524 + (TYPES.weather.memory.extras ? 1056 : 0));
     expect(tileCost({ entity: "switch.a", options: { tap: "action" } }, said)).toBe(price("switch") + TILE.memory.action);
+  });
+  it("counts the tiles of the top bar on a screen that gets them, as the add-on does (core.bar_entities)", () => {
+    const pages = [{ topbar: { trailing: [{ type: "entity", entity: "switch.coffee" }, { type: "entity", entity: "light.desk" },
+      { type: "entity", entity: "switch.coffee" }, { type: "entity", entity: "zone.home" }, { type: "clock" }] } }];
+    const tiles = [{ entity: "light.desk" }];
+    expect(barEntities(pages, tiles)).toEqual(["switch.coffee"]);
+    expect(layoutCost(tiles, { ...said, bar_cards: true }, pages) - layoutCost(tiles, said, pages)).toBe(price("switch"));
   });
   it("is fine, close, full or over", () => {
     const each = price("switch"), room = 25 * each;

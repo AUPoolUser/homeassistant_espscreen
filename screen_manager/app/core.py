@@ -861,8 +861,10 @@ def page_cost(page, memory):
 
 def layout_cost(tiles, memory, pages=()):
     """What `tiles` (a flat layout's, the keys of a bedside clock included) and the document's `pages` take together
-    inside the screen's chip."""
-    return sum(tile_cost(tile, memory) for tile in tiles) + sum(page_cost(page, memory) for page in pages)
+    inside the screen's chip, with the tiles of the top bar on a screen that gets them (memory `bar_cards`, bar_entities)."""
+    bar = bar_entities(pages, tiles) if memory.get('bar_cards') else ()
+    return (sum(tile_cost(tile, memory) for tile in tiles) + sum(page_cost(page, memory) for page in pages)
+            + sum(tile_cost({'entity': entity}, memory) for entity in bar))
 
 def firmware_features(version, grid=DEFAULT_GRID):
     """What the editor may offer a screen with firmware `version` (a tuple, or None): the tile limit, full-page and
@@ -1159,6 +1161,31 @@ BATTERY_FEATURE = 'battery'
 BATTERY_MIN_FIRMWARE = (0, 41, 0)
 BATTERY_CONTENTS = ('icon', 'percent')
 BATTERY_SHOWS = ('always', 'low')
+# Cards from the top bar (firmware 0.56.0): an entity's item opens the card holding its tile opens (runtime_tiles::hold_card).
+# A screen whose hello names BAR_CARDS_FEATURE gets, after its other tiles, a tile without a cell for every entity in a
+# top bar that is on no tile (bar_entities), and each entity's item names the tile whose card it opens (`d`, bar_cards).
+BAR_CARDS_FEATURE = 'bar_cards'
+
+def bar_entities(pages, tiles):
+    """The entities in the pages' top bars that are on none of `tiles`, once each and in the order the bars name them: the
+    tiles of the top bar a screen gets (BAR_CARDS_FEATURE). Only a type the screen draws a card for (a file in catalogue/).
+    The editor counts the same ones (web/src/model/memory.ts barEntities)."""
+    on_tiles, out = {str(tile.get('entity', '')) for tile in tiles}, []
+    for page in pages:
+        for item in (page.get('topbar') or {}).get('trailing') or []:
+            entity = item.get('entity') if isinstance(item, dict) and item.get('type') == 'entity' else None
+            if (isinstance(entity, str) and entity not in on_tiles and entity not in out and not entity.startswith('screen.')
+                    and entity.split('.', 1)[0] in catalogue.DOMAINS):
+                out.append(entity)
+    return out
+
+def bar_cards(tiles):
+    """Which tile's card each entity's item in the top bar opens (`d`, BAR_CARDS_FEATURE): its first tile, one on a page,
+    a key of a bedside clock or a tile of the top bar."""
+    cards = {}
+    for index, tile in enumerate(tiles):
+        cards.setdefault(tile['entity'], index)
+    return cards
 # A plugin's item (plugin API 0.8): its icon and the words its plugin gives, or its icon alone, as a person chooses.
 PLUGIN_ITEM_CONTENTS = ('all', 'icon')
 # Only shown, never controlled: the top bar takes these besides every tile domain.

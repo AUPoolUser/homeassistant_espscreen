@@ -98,6 +98,22 @@ static void test_explicit_slots() {
   assert(place(m, p) == 3 && p[0].slot == 4 && p[1].page == 1 && p[2].page == 2);
 }
 struct RunSlots { RunSlots() { test_explicit_slots(); } } run_slots;
+// A tile of the top bar (firmware 0.56.0+): no cell, on no page, and in nobody's way; it is there for its card.
+static void test_bar_tile() {
+  using namespace runtime_tiles;
+  Model m;
+  seed(m, {"light.a", "switch.coffee"}, 2);
+  m.slots[1] = 0;  // what a tile of the top bar keeps: no slot of its own
+  m.tiles[1].parent = Tile::BAR_TILE; m.tiles[1].received = true;
+  assert(m.tiles[1].bar_tile() && !m.tiles[1].is_key() && !m.tiles[0].bar_tile());
+  // The first cell is free for a placed tile: the tile of the top bar takes none.
+  assert(m.valid_placement(0, 0, false, false));
+  m.tiles[0].received = true;
+  std::array<Placement, TILES_MAX> p;
+  assert(place(m, p) == 2 && p[0].page == 0 && p[0].slot == 0);
+  assert(p[1].page == 0xFF && p[1].slot == 0xFF);
+}
+struct RunBarTile { RunBarTile() { test_bar_tile(); } } run_bar_tile;
 static void test_rectangular_slots() {
   using namespace runtime_tiles;
   Model m;
