@@ -396,7 +396,7 @@ class Run:
         await self.until(lambda l: 'UI_TEST COMPLETE' in l, 120, 'the self test never completed', start)
         lines = self.lines[start:]
         checks = [l for l in lines if 'page_check=' in l]
-        failed = [l for l in lines if 'page_check=FAIL' in l or 'GEOMETRY FAIL' in l or 'Light sliders: FAIL' in l]
+        failed = [l for l in lines if 'page_check=FAIL' in l or 'GEOMETRY FAIL' in l]
         if not checks:
             self.failures.append('self test: no page_check line')
         self.failures += [f'self test: {l.strip()}' for l in failed]

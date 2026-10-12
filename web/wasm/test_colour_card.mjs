@@ -1,6 +1,9 @@
 // A light with a colour opens the colour card on a hold (app 0.4.86: in C++, so the preview runs it as the screen does):
 // its rows for the modes the light has, under every page's top bar, values that go to Home Assistant on release, and
-// the back key that closes it. On the smallest, a middle and the largest glass.
+// the back key that closes it. Since dev it is a page over the glass like a light's effects page: built when it opens,
+// gone when it closes, painted from the light's tile (a new state from Home Assistant moves its sliders while it is
+// open), its colour and white shade wishes the tile shows at once, its brightness what the tile's own slider sends.
+// On the smallest, a middle and the largest glass.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import createModule from '../src/wasm/firmware_preview.js';
@@ -20,7 +23,8 @@ const warm = { ...both, entity: 'light.hall', name: 'Hall', slot: 1, a: { ...bot
 for (const shape of SHAPES) {
   const m = await createModule({ wasmBinary });
   assert.equal(m._preview_init(shape.width, shape.height, shape.dpi, shape.columns, shape.rows), 1);
-  configure(connection(m), 'Room', 1, [both, warm]);
+  const receive = connection(m);
+  configure(receive, 'Room', 1, [both, warm]);
   let ms = 0;
   const tick = (n = 4) => { for (let i = 0; i < n; i++) { ms += 32; m._preview_time(ms, 1789401840, 7200); m._preview_render(); } };
   const objects = () => JSON.parse(m.ccall('preview_layout', 'string', [], [])).objects;
@@ -45,6 +49,12 @@ for (const shape of SHAPES) {
   assert.equal(sliders.length, 3, `${shape.key}: three sliders`);
   for (const s of sliders) assert.ok(s.x1 >= 0 && s.x2 < shape.width && s.y2 < shape.height, `${shape.key}: a slider on the glass`);
 
+  // A new state of the light while the card is open: the sliders follow it (the card paints itself from the tile).
+  receive({ op: 'state', i: 0, entity: 'light.desk', name: 'Desk', state: 'on', a: { ...both.a, hs_color: [200, 100], color_temp_kelvin: 4500, brightness: 51 } });
+  tick();
+  for (const word of ['200°', '4500 K', '20%'])
+    assert.ok(texts().includes(word), `${shape.key}: the card follows Home Assistant, ${word} (${texts().join(' | ')})`);
+
   // Each slider sends its value on release: a colour as a list Home Assistant renders, a temperature, a brightness.
   const at = (s, part) => [Math.round(s.x1 + (s.x2 - s.x1) * part), Math.round((s.y1 + s.y2) / 2)];
   touch(...at(sliders[0], 0.5), 2);
@@ -57,14 +67,18 @@ for (const shape of SHAPES) {
   sent = actions();
   assert.equal(sent.length, 1);
   assert.ok(+sent[0].data.color_temp_kelvin >= 2000 && +sent[0].data.color_temp_kelvin <= 6500, JSON.stringify(sent[0]));
+  // The colour and the white shade are wishes: the tile shows them at once, before Home Assistant answers.
+  assert.ok(!texts().includes('200°'), `${shape.key}: the colour card keeps the value let go, not the old state`);
+  // The brightness is what the tile's own slider sends (commit_slider): Home Assistant's 0-255.
   touch(...at(sliders[2], 0.75), 2);
   sent = actions();
   assert.equal(sent.length, 1);
-  assert.ok(+sent[0].data.brightness_pct > 50 && +sent[0].data.brightness_pct <= 100, JSON.stringify(sent[0]));
+  assert.ok(+sent[0].data.brightness > 128 && +sent[0].data.brightness <= 255, JSON.stringify(sent[0]));
 
   // The back key closes it; the tiles are back under the finger.
   touch((back.x1 + back.x2) / 2, (back.y1 + back.y2) / 2, 2);
   assert.ok(!texts().includes('Color temperature'), `${shape.key}: the back key closes the colour card`);
+  assert.ok(!objects().some((o) => o.type === 'slider'), `${shape.key}: and nothing of it is left on the glass`);
 
   // A light with a colour temperature alone shows two rows, through the same way the preview opens a card.
   assert.equal(m._preview_card(1), 2, `${shape.key}: preview_card opens the colour card`);
@@ -80,4 +94,4 @@ for (const shape of SHAPES) {
   m._preview_dark(0); tick();
   assert.equal(ground(), light, `${shape.key}: and light again`);
 }
-console.log('PASS colour card: opened by a hold, its rows, its values to Home Assistant and its back key, on cyd, guition, jc8012p4a1');
+console.log('PASS colour card: opened by a hold, its rows, following Home Assistant, its wishes and the tile slider\'s brightness, its back key, on cyd, guition, jc8012p4a1');

@@ -25,7 +25,6 @@ async def main():
         passes = []
         frames = []
         boundaries = []
-        slider_pass = []
         def log(msg):
             text = msg.message.decode(errors='replace') if isinstance(msg.message, bytes) else msg.message
             if any(tag in text for tag in ('ui_test', 'UI_TEST', '[health', 'took a long')):
@@ -34,7 +33,6 @@ async def main():
                 passes.append(text)
                 match = re.search(r'frames=(\d+)', text)
                 if match: frames.append(int(match[1]))
-            if 'Light sliders: PASS' in text: slider_pass.append(text)
             if 'UI_TEST START' in text or 'UI_TEST COMPLETE' in text:
                 match = re.search(r'frames=(\d+)', text)
                 if match: boundaries.append(int(match[1]))
@@ -45,7 +43,6 @@ async def main():
         await asyncio.wait_for(done.wait(), timeout=45)
         assert len(passes) == 10, f'Expected 10 page checks, got {len(passes)}'
         assert not failures, failures
-        assert slider_pass, "Missing light slider event/capability check"
         assert len(frames) == 10 and all(b > a for a, b in zip(frames, frames[1:])), f'Render callbacks stalled: {frames}'
         # Ten intermediate observations span only nine cycles. New firmware
         # reports the actual endpoints so the forty-frame check covers all ten,

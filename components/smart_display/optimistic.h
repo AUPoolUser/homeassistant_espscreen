@@ -62,6 +62,9 @@ enum class Field : uint8_t {
   ROW_OPTION,       // the option of a select on the light's device (item: the select)
   ROW_NUMBER,       // the value of a number on the light's device (item: the number)
   VACUUM_ROW,       // the choice of a vacuum's row (item: the row's kind, 'm' mode, 's' suction, 'w' water)
+  // The light's own colour (its colour card): its hue 0-360 at full saturation, its white shade in kelvin.
+  HUE,
+  KELVIN,
 };
 
 // IDLE: nothing. READY: to go out at the next tick (a step waits for its quiet first). SENT: on its way, `sent` asked

@@ -1173,6 +1173,8 @@ inline std::string wish_read(const Tile &t, optimistic::Field field, const std::
     case F::SHUFFLE: return x.media_shuffle < 0 ? std::string() : x.media_shuffle ? "1" : "0";
     case F::REPEAT: return x.media_repeat;
     case F::MUTED: return t.muted ? "1" : "0";
+    case F::HUE: return std::to_string(t.saturation ? t.hue : 0);
+    case F::KELVIN: return std::to_string(t.kelvin);
   }
   return {};
 }
@@ -1212,12 +1214,15 @@ inline void wish_write(Tile &t, optimistic::Field field, const std::string &valu
     case F::SHUFFLE: t.edit_extra().media_shuffle = value.empty() ? -1 : value == "1" ? 1 : 0; break;
     case F::REPEAT: t.edit_extra().media_repeat = value; break;
     case F::MUTED: t.muted = value == "1"; break;
+    case F::HUE: t.hue = number; t.saturation = 100; t.has_hs_color = true; break;
+    case F::KELVIN: t.kelvin = number; t.saturation = 0; break;
   }
 }
 // Every tile and the open card of the entity show `value`; drawn after the event that asked, whose key a redraw may delete.
 // The open card shows this entity.
-// The pages over a card (a light's effects, a group's lamps) follow a new state of their tile by themselves.
-inline void detail_update(const Tile &t) { effects_page::updated(t); group_page::updated(t); }
+// The pages over a card (a light's colour card, its effects, a group's lamps) follow a new state of their tile by themselves.
+inline void colour_updated(const Tile &t);
+inline void detail_update(const Tile &t) { effects_page::updated(t); group_page::updated(t); colour_updated(t); }
 inline bool wish_card_open(const std::string &entity) {
   return detail_root && !lv_obj_has_flag(detail_root, LV_OBJ_FLAG_HIDDEN) && detail_index < model.count &&
          model.tiles[detail_index].entity == entity;
@@ -5516,119 +5521,130 @@ inline bool finger_at(lv_point_t &point) {
 }
 // ---- The colour card (firmware 0.2.80+; in C++ since app 0.4.86) ----
 // A light with a colour or a colour temperature opens this card on a hold, not the runtime card: three rows of
-// light_controls (colour, temperature, brightness) under the same top bar as every card, with the sparkles key for
-// its effects page and the lamps key for a light group's lamps. It was the last card built as YAML widgets and
-// scripts in packages/core.yaml; here it is the same card, so the browser preview runs it too.
+// light_controls (colour, white shade, brightness) under the same top bar as every card, with the sparkles key for
+// its effects page and the lamps key for a light group's lamps.
 //
-// Like the runtime card it is made the first time it opens and stands on top of the page while it shows.
+// It is a page over the glass the way a light's effects page and a group's lamp page are: built when it opens and
+// thrown away when it closes, so it costs nothing while closed; painted from the light's tile on every change
+// (colour_updated, through detail_update), so it follows Home Assistant and every other way the light changes while
+// it is open; and a slider let go is a wish (docs/OPTIMISTIC.md), so the tile shows the new colour at once. The
+// brightness row sends what the tile's own slider sends (commit_slider). Until dev it was built once, kept the values
+// it opened with and sent its changes past the wishes.
 // `colour_entity` is the light it shows, empty while it is closed: the swipe guards and the way home read it.
 inline std::string colour_entity;
 inline lv_obj_t *colour_root = nullptr;
 inline detail_bar::Bar colour_bar;  // the back key, the name, the sparkles key and the lamps key
 inline bool colour_shown() { return !colour_entity.empty(); }
-// The three values go to Home Assistant as the card always sent them: no busy sheet and no answer awaited, a colour
-// as a list Home Assistant renders itself.
-inline void colour_send(const char *key, const std::string &value, bool rendered) {
-  if (!fresh() || colour_entity.rfind("light.", 0) != 0) return;
-  esphome::api::HomeassistantActionRequest request;
-  request.service = esphome::StringRef("light.turn_on");
-  request.data.init(rendered ? 1 : 2);
-  esphome::api::HomeassistantServiceMap target, field;
-  target.key = esphome::StringRef("entity_id"); target.value = esphome::StringRef(colour_entity); request.data.push_back(target);
-  field.key = esphome::StringRef(key); field.value = esphome::StringRef(value);
-  if (rendered) { request.data_template.init(1); request.data_template.push_back(field); }
-  else request.data.push_back(field);
-  esphome::api::global_api_server->send_homeassistant_action(request);
-  ESP_LOGI("runtime_action", "Sent light.turn_on %s=%s to %s", key, value.c_str(), colour_entity.c_str());
+// The light the card shows: the tile whose hold opened it (active_index), else the first tile of the light, as the
+// pages over a card find theirs. None for the example the screen shows on its own (colour_demo).
+inline int colour_index() {
+  if (active_index >= 0 && static_cast<size_t>(active_index) < model.count && model.tiles[active_index].entity == colour_entity)
+    return active_index;
+  for (size_t i = 0; i < model.count; ++i) if (model.tiles[i].entity == colour_entity) return static_cast<int>(i);
+  return -1;
+}
+// What the rows show of a light: its colour modes, its hue and white shade, and its brightness where the tile's own
+// slider stands (slider_value: the value held while the light fades towards it).
+inline light_controls::Values colour_values(const Tile &t) {
+  auto has = [&](const char *mode) { return t.modes.find(mode) != std::string::npos; };
+  light_controls::Values v;
+  v.color = has("hs") || has("rgb") || has("xy");
+  v.temperature = has("color_temp");
+  v.hue = t.hue; v.kelvin = t.kelvin; v.minimum = t.min_kelvin; v.maximum = t.max_kelvin;
+  v.brightness = t.state == "on" ? std::clamp(static_cast<int>(std::lround(slider_value(t) / 10.0f)), 1, 100) : 0;
+  return v;
 }
 inline void colour_back(lv_event_t *) { if (dismiss) dismiss(); else hide_detail(); }
 inline void colour_effects(lv_event_t *) { effects_page::open(colour_entity); }
 inline void colour_lamps(lv_event_t *) { group_page::open(colour_entity); }
-inline void colour_paint() {
-  if (!colour_root) return;
-  for (auto *key : {colour_bar.back, colour_bar.right[0], colour_bar.right[1]}) {
-    lv_obj_set_style_bg_color(key, theme::color(theme::KEY), 0);
-    lv_obj_set_style_bg_color(key, theme::color(theme::KEY_PRESSED), LV_STATE_PRESSED);
-    lv_obj_set_style_text_color(lv_obj_get_child(key, 0), theme::color(theme::INK), 0);
-  }
-  lv_obj_set_style_text_color(colour_bar.title, theme::color(theme::INK), 0);
+// A slider let go: the light's colour and white shade as wishes, its brightness as the tile's slider sends it.
+inline void colour_commits() {
+  light_controls::commits[0] = [](int hue) {
+    const int i = colour_index();
+    if (i < 0) return;
+    hue = light_controls::clamp(hue, 0, 360);
+    wish(model.tiles[i], optimistic::Field::HUE, std::to_string(hue), "light.turn_on", "hs_color", "[" + std::to_string(hue) + ", 100]", "", "", true);
+  };
+  light_controls::commits[1] = [](int kelvin) {
+    const int i = colour_index();
+    if (i < 0) return;
+    wish(model.tiles[i], optimistic::Field::KELVIN, std::to_string(kelvin), "light.turn_on", "color_temp_kelvin", std::to_string(kelvin));
+  };
+  light_controls::commits[2] = [](int percent) {
+    const int i = colour_index();
+    if (i >= 0) commit_slider(static_cast<unsigned>(i), light_controls::clamp(percent, 1, 100) * 10);
+  };
 }
-inline void colour_build() {
-  if (colour_root) return;
-  // The page under it covers the glass and takes every press: nothing leaks through to the tiles and the page keys
-  // (firmware 0.2.82). The card inside keeps a hand's width and stands in the middle, like every other card.
+// The card drawn anew, for `title` with the values `v`: the page under it covers the glass and takes every press, so
+// nothing leaks through to the tiles and the page keys (firmware 0.2.82); the card inside keeps a hand's width and
+// stands in the middle, like every other card.
+inline void colour_draw(const std::string &title, const light_controls::Values &v) {
+  if (colour_root) { lv_obj_delete(colour_root); light_controls::forget(); }
   colour_root = lv_obj_create(lv_screen_active());
   lv_obj_remove_style_all(colour_root);
   lv_obj_set_size(colour_root, lv_pct(100), lv_pct(100));
   lv_obj_remove_flag(colour_root, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_add_flag(colour_root, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_add_style(colour_root, theme::style(theme::Paint::page_soft), 0);  // follows a change of look by itself
+  lv_obj_add_style(colour_root, theme::style(theme::Paint::page_soft), 0);
   lv_obj_set_style_bg_opa(colour_root, LV_OPA_COVER, 0);
-  lv_obj_add_flag(colour_root, LV_OBJ_FLAG_HIDDEN);
   auto *card = light_controls::card = lv_obj_create(colour_root);
   lv_obj_remove_style_all(card);
   lv_obj_set_height(card, lv_pct(100));
   lv_obj_remove_flag(card, LV_OBJ_FLAG_SCROLLABLE);
   overlay_card::frame(card, overlay_card::controls);
-  // Every page's top bar (detail_bar): the back key, the name, and at the right the sparkles key and the lamps key.
-  colour_bar = detail_bar::make(card, "", {detail_bar::BACK, colour_back}, {"\U000F0674", colour_effects}, {"\U000F1253", colour_lamps});
-  light_controls::setup(card, small_font, overlay_card::content_width(), overlay_card::screen_height(), mini_icon_font);
-  light_controls::commits[0] = [](int value) {
-    colour_send("hs_color", "[" + std::to_string(light_controls::clamp(value, 0, 360)) + ", 100]", true);
-  };
-  light_controls::commits[1] = [](int kelvin) {
-    if (!light_controls::active->temperature_ready()) return;
-    colour_send("color_temp_kelvin", std::to_string(light_controls::clamp(kelvin, light_controls::active->minimum, light_controls::active->maximum)), false);
-  };
-  light_controls::commits[2] = [](int value) { colour_send("brightness_pct", std::to_string(value), false); };
-  colour_paint();
-}
-// Opens the card on a light: which rows it shows (its colour modes), where they stand, and how bright it is.
-inline void colour_show(const std::string &entity, const std::string &title, bool colour, bool temperature, int brightness) {
-  colour_build();
-  colour_entity = entity;
-  light_controls::open(entity, colour, temperature, brightness);
-  // A light with effects or with modes on its device (a WLED's palette, preset, speed) gets the sparkles key, a light
-  // group the lamps key; the keys that show take the bar's places and the name the room they leave.
+  // Every page's top bar (detail_bar): the back key, the name, and at the right the sparkles key and the lamps key,
+  // where the light has effects or modes on its device (a WLED's palette, preset, speed) or is a group with lamps.
+  colour_bar = detail_bar::make(card, title, {detail_bar::BACK, colour_back}, {"\U000F0674", colour_effects}, {"\U000F1253", colour_lamps});
   auto shown = [](lv_obj_t *k, bool on) { if (on) lv_obj_remove_flag(k, LV_OBJ_FLAG_HIDDEN); else lv_obj_add_flag(k, LV_OBJ_FLAG_HIDDEN); };
-  shown(colour_bar.right[0], effects_page::offered(entity));
-  shown(colour_bar.right[1], group_page::offered(entity));
-  lv_label_set_text(colour_bar.title, title.c_str());
-  detail_bar::place(light_controls::card, colour_bar);
-  lv_obj_remove_flag(colour_root, LV_OBJ_FLAG_HIDDEN);
+  shown(colour_bar.right[0], effects_page::offered(colour_entity));
+  shown(colour_bar.right[1], group_page::offered(colour_entity));
+  if (light_controls::demo) lv_obj_add_flag(colour_bar.back, LV_OBJ_FLAG_HIDDEN);
+  detail_bar::place(card, colour_bar);
+  light_controls::setup(card, small_font, overlay_card::content_width(), overlay_card::screen_height(), mini_icon_font);
+  colour_commits();
+  light_controls::place(v);
+  light_controls::paint(v, true);
   lv_obj_move_foreground(colour_root);
 }
 inline void colour_open(Tile &t) {
-  light_controls::fallback = light_controls::State{};
-  light_controls::fallback.hue = t.hue;
-  light_controls::fallback.kelvin = t.kelvin;
-  light_controls::fallback.minimum = t.min_kelvin;
-  light_controls::fallback.maximum = t.max_kelvin;
-  auto has = [&](const char *mode) { return t.modes.find(mode) != std::string::npos; };
-  int brightness = 0;
-  if (t.active()) brightness = std::isnan(t.brightness) ? 100 : static_cast<int>(std::lround(t.brightness / 255.0f * 100.0f));
-  colour_show(t.entity, t.name, has("hs") || has("rgb") || has("xy"), has("color_temp"), std::clamp(brightness, 0, 100));
+  colour_entity = t.entity;
+  colour_draw(t.name.empty() ? t.entity : t.name, colour_values(t));
 }
 inline void colour_close() {
-  if (colour_root) lv_obj_add_flag(colour_root, LV_OBJ_FLAG_HIDDEN);
+  if (colour_root) { lv_obj_delete(colour_root); colour_root = nullptr; light_controls::forget(); }
   colour_entity.clear();
 }
-inline void colour_restyle() { colour_paint(); light_controls::restyle(); }
-// The card as an example for 40 seconds (the screen's light_controls_preview action): a lamp that is no lamp, nothing
-// sent, and no back key, as it closes by itself.
+// A new state of the light while its card is open: the sliders follow it, one under a finger is left alone. A light that
+// gained or lost a colour mode is laid out again, unless a finger is on the card.
+inline void colour_updated(const Tile &t) {
+  if (!colour_root || light_controls::demo || t.entity != colour_entity) return;
+  const auto v = colour_values(t);
+  // Laid out again only while nothing lies over it (a light's effects, a group's lamps) and no finger is on the glass.
+  if (!v.same_rows(light_controls::shown)) {
+    if (!lv_indev_get_active_obj() && !effects_page::visible() && !group_page::visible()) colour_draw(t.name.empty() ? t.entity : t.name, v);
+    return;
+  }
+  light_controls::paint(v, false);
+}
+// A change of look while the card is open: drawn again in place.
+inline void colour_restyle() {
+  if (!colour_root) return;
+  const int i = colour_index();
+  if (i >= 0) colour_open(model.tiles[i]);
+  else colour_draw(lv_label_get_text(colour_bar.title), light_controls::shown);
+  // The pages over it stay over it.
+  for (auto *page : {effects_page::root, group_page::root}) if (page) lv_obj_move_foreground(page);
+}
+// The card as an example for 40 seconds (the screen's light_controls_preview action, the UI self test): a lamp that is
+// no lamp, nothing sent, and no back key, as it closes by itself.
 inline void colour_demo(bool on) {
   light_controls::demo = on;
-  if (on) {
-    light_controls::fallback = light_controls::State{};
-    light_controls::fallback.minimum = 2000; light_controls::fallback.maximum = 6500;
-    light_controls::fallback.kelvin = 3000; light_controls::fallback.hue = 200;
-    colour_show("diagnostic", "Example lamp", true, true, 75);
-    lv_obj_add_flag(colour_bar.back, LV_OBJ_FLAG_HIDDEN);
-  } else {
-    colour_close();
-    if (colour_bar.back) lv_obj_remove_flag(colour_bar.back, LV_OBJ_FLAG_HIDDEN);
-    light_controls::fallback = light_controls::State{};
-  }
+  if (!on) { colour_close(); return; }
+  light_controls::Values v;
+  v.color = v.temperature = true;
+  v.hue = 200; v.kelvin = 3000; v.minimum = 2000; v.maximum = 6500; v.brightness = 75;
+  colour_entity = "diagnostic";
+  colour_draw("Example lamp", v);
 }
 // The pages behind the colour card's keys (a light's effects, firmware 0.2.70+; a group's lamps, 0.3.9+): the tile they
 // show and their ways out, actions to Home Assistant and the question for a picker's names. The board binds their

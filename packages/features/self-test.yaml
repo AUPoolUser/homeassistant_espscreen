@@ -15,7 +15,6 @@ script:
     mode: single
     then:
       - lambda: 'ESP_LOGI("ui_test", "UI_TEST START frames=%u: page/overlay render stress, no HA actions", (unsigned) id(rendered_frames));'
-      - lambda: 'ESP_LOGI("ui_test", "Light sliders: %s", light_controls::self_test() ? "PASS" : "FAIL");'
       - lambda: 'id(calibration_active) = false;'
       - lvgl.page.show: home_page
       - script.execute: wake_display

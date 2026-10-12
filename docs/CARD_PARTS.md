@@ -87,10 +87,12 @@ Their shape is the whole message from Home Assistant, the page or range they sho
 
 ## The pages over a card
 
-A light group's lamp page and a light's effects page (`group_page.h`, `effects_page.h`) are built when they open and
-paint themselves from the tile on every change (`updated`): they rebuild only when the lamps or rows change. Their
-changes are wishes (docs/OPTIMISTIC.md, "Parts of an entity"), so they show what the tile holds and keep no hold of
-their own.
+A light's colour card, a light group's lamp page and a light's effects page (`light_controls.h` with
+`runtime_tiles::colour_open`, `group_page.h`, `effects_page.h`) are built when they open, thrown away when they close,
+and paint themselves from the tile on every change (`colour_updated`, `updated`, all through `detail_update`): they
+rebuild only when their rows or lamps change. Their changes are wishes (docs/OPTIMISTIC.md, "Parts of an entity"; the
+colour card's brightness row sends what the tile's own slider sends), so they show what the tile holds and keep no
+state of Home Assistant of their own.
 
 ## Which cards paint themselves
 

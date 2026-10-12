@@ -47,7 +47,7 @@ nothing. A real change runs `theme::paints`, refills the firmware's own paints, 
 `theme::redraw`, set in `on_boot`, which draws again what code painted by state:
 
 - `runtime_tiles::restyle()`: every tile's palette, the top bar's icons, and an open card, in place;
-- `light_controls::restyle()`, `settings_screen::restyle()`;
+- `runtime_tiles::colour_restyle()` (the colour card, drawn again), `settings_screen::restyle()`;
 - an alert that is up (`theme::surface(id(alert_card_color))`), and the climate card and its mode
   picker when they are open.
 

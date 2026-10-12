@@ -206,7 +206,7 @@ board:
   where they are: the card's top bar stays at the top, the content under it sits in the middle. A page that
   places itself rather than hanging on `centre` keeps the same rule in its own arithmetic and the same
   condition, "only when more than a finger is left over": the effects page in `place()`, the colour card in
-  `light_controls::open`. One behaviour, one rule, wherever it is written.
+  `light_controls::place`. One behaviour, one rule, wherever it is written.
 
 A card that is a *picture* or a *graph* asks for `overlay_card::picture` or `overlay_card::graph` and is not
 capped: the media card's cover art, a camera's image and a day of a sensor are nicer the bigger they are, and

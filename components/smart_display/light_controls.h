@@ -1,4 +1,9 @@
 #pragma once
+// The colour card's three rows: a light's colour, white shade and brightness (firmware 0.2.80+). Since dev the card is
+// built the way the pages over a card are (group_page.h, effects_page.h): made when it opens and thrown away when it
+// closes (runtime_tiles::colour_open, colour_close), painted from the light's tile on every change (paint), and a
+// slider let go is a wish the runtime makes through `commits` (docs/OPTIMISTIC.md). It keeps no state of Home Assistant
+// of its own. The values part stays free of LVGL for tests/test_light_controls.cpp.
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -9,73 +14,36 @@
 
 namespace light_controls {
 inline int clamp(int value, int low, int high) { return std::max(low, std::min(high, value)); }
-// HA serializes list attributes as either JSON lists or Python tuples.
-inline bool first_number(const std::string &text, float &value) {
-  const char *p = text.c_str();
-  while (*p == ' ' || *p == '[' || *p == '(') ++p;
-  char *end;
-  float parsed = std::strtof(p, &end);
-  if (end == p || !std::isfinite(parsed)) return false;
-  value = parsed;
-  return true;
-}
-struct State {
-  const char *entity = "";
-  int hue = 0, kelvin = 3000, minimum = 0, maximum = 0;
+// What the rows show: the light as its tile holds it, a wish included. `color` and `temperature` say which of the
+// first two rows it has (its colour modes); brightness is 0 while it is off.
+struct Values {
+  int hue = 0, kelvin = 3000, minimum = 0, maximum = 0, brightness = 0;
+  bool color = false, temperature = false;
+  // A white-shade slider needs the light's own range; until Home Assistant names it the row waits.
   bool temperature_ready() const { return minimum >= 1000 && maximum <= 15000 && maximum > minimum; }
-  void update(unsigned attribute, const std::string &text) {
-    float number;
-    if (!first_number(text, number)) return;
-    if (attribute == 0 && number >= 0 && number <= 360) hue = clamp(std::lround(number), 0, 360);
-    if (attribute == 1 && number >= 1000 && number <= 15000) kelvin = std::lround(number);
-    if (attribute == 2) minimum = number >= 1000 && number <= 15000 ? std::lround(number) : 0;
-    if (attribute == 3) maximum = number >= 1000 && number <= 15000 ? std::lround(number) : 0;
-  }
+  // Which rows show and where: what decides whether the card is laid out again.
+  bool same_rows(const Values &o) const { return color == o.color && temperature == o.temperature; }
 };
 }
 
 #ifndef LIGHT_CONTROLS_TEST
-#include "esphome/components/api/api_server.h"
 #include "esphome/core/log.h"
 #include "lvgl.h"
 #include "screen_input.h"
 #include "theme.h"
 #include <functional>
 namespace light_controls {
-inline State states[8];
-inline State fallback;
-inline State *active = &fallback;
 struct Row { lv_obj_t *box{}, *slider{}, *value{}, *icon{}; bool dirty = false; unsigned index{}; bool off = false; int held = 0; };
 inline Row rows[3];
 // The card the rows stand on: a hand's width, in the middle of the overlay that covers the glass.
 inline lv_obj_t *card = nullptr;
 inline std::function<void(int)> commits[3];
-inline bool ready = false;
 inline bool demo = false;
-inline void state_updated(State *state);
+// What the rows show now (paint): a white shade let go is held to the light's own range.
+inline Values shown;
 // Where the three rows start, their pitch, the gap between them and the height of the glass they were built
-// for: open() puts the rows that show in the middle of the room under the title with them.
+// for: place() puts the rows that show in the middle of the room under the title with them.
 inline int top, spacing, row_gap, glass_h;
-inline void subscribe(const char *const *entities, size_t count) {
-#ifdef USE_API_HOMEASSISTANT_STATES
-  static const char *attributes[] = {"hs_color", "color_temp_kelvin", "min_color_temp_kelvin", "max_color_temp_kelvin"};
-  size_t slot = 0;
-  for (size_t i = 0; i < count && slot < 8; ++i) {
-    if (std::string(entities[i]).rfind("light.", 0) != 0) continue;
-    bool duplicate = false;
-    for (size_t j = 0; j < slot; ++j) if (std::string(states[j].entity) == entities[i]) duplicate = true;
-    if (duplicate) continue;
-    State *state = &states[slot++];
-    state->entity = entities[i];
-    for (unsigned a = 0; a < 4; ++a)
-      esphome::api::global_api_server->subscribe_home_assistant_state(state->entity, attributes[a],
-        [state, a](esphome::StringRef value) { state->update(a, std::string(value.c_str(), value.size())); state_updated(state); });
-  }
-#else
-  (void) entities;
-  (void) count;
-#endif
-}
 // The picker's own spectrum: the colours a light can take, not a look, so they stay the same in dark.
 constexpr uint32_t WARM = 0xFF9C32, COOL = 0xC6E6FF;
 inline constexpr uint32_t RAINBOW[] = {0xFF0000, 0xFFFF00, 0x00FF00, 0x00FFFF, 0x0000FF, 0xFF00FF, 0xFF0000};
@@ -139,11 +107,9 @@ inline void event(lv_event_t *e) {
       }
     }
     int value = lv_slider_get_value(row.slider);
-    if (row.index == 0) active->hue = value;
     if (row.index == 1) {
-      if (!active->temperature_ready()) return;
-      value = clamp(value, active->minimum, active->maximum);
-      active->kelvin = value;
+      if (!shown.temperature_ready()) return;
+      value = clamp(value, shown.minimum, shown.maximum);
     }
     if (row.index == 2) value = clamp(value, 1, 100);
     if (!demo && commits[row.index]) commits[row.index](value);
@@ -163,8 +129,8 @@ inline lv_obj_t *round_end(lv_obj_t *parent, int x, int y, int size, uint32_t co
   lv_obj_set_style_bg_color(end, lv_color_hex(color), 0);
   return end;
 }
-// The colours of the three cards, for setup() and for a change of look.
-inline void paint(Row &row) {
+// The colours of a row's card, set when it is built (a change of look builds the card again).
+inline void colours(Row &row) {
   lv_obj_set_style_bg_color(row.box, theme::color(theme::CARD), 0);
   lv_obj_set_style_border_color(row.box, theme::color(theme::LINE), 0);
   lv_obj_set_style_text_color(row.box, theme::color(theme::INK), 0);
@@ -172,10 +138,6 @@ inline void paint(Row &row) {
   if (row.icon) lv_obj_set_style_text_color(row.icon, theme::color(theme::MUTED), 0);
   if (row.index < 2) lv_obj_set_style_border_color(row.slider, theme::color(theme::KNOB), LV_PART_KNOB);
   else lv_obj_set_style_bg_color(row.slider, theme::color(theme::KNOB), LV_PART_KNOB);
-}
-inline void restyle() {
-  if (!ready) return;
-  for (auto &row : rows) { paint(row); preview(row); }
 }
 // Three white cards like the tiles: an icon, the name and the value, then a pill-shaped track.
 // Colour and temperature are gradient pills with a round knob in the chosen colour; brightness
@@ -186,8 +148,6 @@ inline void restyle() {
 // before firmware 0.2.82 it got the whole screen and a ten-inch panel drew three sliders twenty-one
 // centimetres wide across the top with two thirds of the glass empty under them.
 inline void setup(lv_obj_t *parent, const lv_font_t *font, int width, int height, const lv_font_t *icon_font = nullptr) {
-  if (ready) return;
-  ready = true;
   // The look decides the class, never the glass: a wide panel draws the same rows, only at its own density.
   const bool large = ui::large();
   top = ui::px(large ? 100 : 52);
@@ -286,87 +246,51 @@ inline void setup(lv_obj_t *parent, const lv_font_t *font, int width, int height
       lv_slider_set_range(row.slider, 1 - below, 100);
     }
     lv_obj_add_event_cb(row.slider, event, LV_EVENT_ALL, &row);
-    paint(row);
+    colours(row);
     preview(row);
   }
 }
-// Late capability attributes may arrive after opening the card. Enable the
-// waiting temperature slider without disturbing an in-progress gesture.
-inline void state_updated(State *state) {
-  if (!ready || state != active || !state->temperature_ready()) return;
-  auto &row = rows[1];
-  if (!lv_obj_has_state(row.slider, LV_STATE_DISABLED)) return;
-  lv_slider_set_range(row.slider, state->minimum, state->maximum);
-  lv_slider_set_value(row.slider, state->kelvin, LV_ANIM_OFF);
-  lv_obj_remove_state(row.slider, LV_STATE_DISABLED);
-  preview(row); row.dirty = false;
-}
-inline void open(const std::string &entity, bool color, bool temperature, int brightness) {
-  active = &fallback;
-  for (auto &state : states) if (entity == state.entity) { active = &state; break; }
-  // The rows that show stand in the middle of the room under the title, the way every card centres what it
-  // draws (overlay_card::centre), and only when that leaves more than a finger over: on a CYD and a Guition
-  // three rows already fill the glass, so nothing there moves.
-  int showing = (color ? 1 : 0) + (temperature ? 1 : 0) + 1;
+// The rows the light has, in the middle of the room under the title, and only when that leaves more than a finger
+// over: on a CYD and a Guition three rows already fill the glass, so nothing there moves. The way every card centres
+// what it draws (overlay_card::centre).
+inline void place(const Values &v) {
+  const int showing = (v.color ? 1 : 0) + (v.temperature ? 1 : 0) + 1;
   const int block = showing * spacing - row_gap;
   const int over = glass_h - top - ui::px(ui::large() ? 18 : 8) - block;
   int y = over > ui::touch_min() ? top + over / 2 : top;
   for (unsigned i = 0; i < 3; ++i) {
     auto &row = rows[i];
-    bool visible = i == 0 ? color : i == 1 ? temperature : true;
+    const bool visible = i == 0 ? v.color : i == 1 ? v.temperature : true;
     if (!visible) { lv_obj_add_flag(row.box, LV_OBJ_FLAG_HIDDEN); continue; }
     lv_obj_remove_flag(row.box, LV_OBJ_FLAG_HIDDEN); lv_obj_set_y(row.box, y); y += spacing;
-    lv_obj_remove_state(row.slider, LV_STATE_DISABLED);
-    if (i == 1 && !active->temperature_ready()) lv_obj_add_state(row.slider, LV_STATE_DISABLED);
-    if (i == 1 && active->temperature_ready()) lv_slider_set_range(row.slider, active->minimum, active->maximum);
-    lv_slider_set_value(row.slider, i == 0 ? active->hue : i == 1 ? active->kelvin : clamp(brightness, 1, 100), LV_ANIM_OFF);
-    row.off = i == 2 && brightness <= 0;
-    preview(row); row.dirty = false;
-    if (i == 1 && !active->temperature_ready()) lv_label_set_text(row.value, screen_text::tr(screen_text::txt::light_waiting));
   }
 }
-inline bool self_test() {
-  auto *previous = active;
-  State saved_fallback = fallback;
-  int saved_values[3]; bool saved_hidden[3];
-  std::function<void(int)> saved[3];
-  int calls[3] = {0, 0, 0};
+// The light as it is now: each slider where the tile says, unless a finger holds it or has just let it go (its wish
+// is on its way and comes back through the tile). A white shade waits for the light's range; an off light shows only
+// the brightness track, as in Home Assistant.
+inline void paint(const Values &v, bool fresh_card) {
+  shown = v;
+  const int values[3] = {clamp(v.hue, 0, 360), v.temperature_ready() ? clamp(v.kelvin, v.minimum, v.maximum) : v.kelvin,
+                         clamp(v.brightness, 1, 100)};
   for (unsigned i = 0; i < 3; ++i) {
-    saved[i] = commits[i]; saved_values[i] = lv_slider_get_value(rows[i].slider);
-    saved_hidden[i] = lv_obj_has_flag(rows[i].box, LV_OBJ_FLAG_HIDDEN);
-    commits[i] = [&, i](int value) { if (value == (i == 0 ? 180 : i == 1 ? 4000 : 65)) ++calls[i]; };
+    auto &row = rows[i];
+    if (!row.slider || (!fresh_card && (row.dirty || lv_obj_has_state(row.slider, LV_STATE_PRESSED)))) continue;
+    if (i == 1) {
+      if (v.temperature_ready()) {
+        lv_obj_remove_state(row.slider, LV_STATE_DISABLED);
+        lv_slider_set_range(row.slider, v.minimum, v.maximum);
+      } else lv_obj_add_state(row.slider, LV_STATE_DISABLED);
+    }
+    if (lv_slider_get_value(row.slider) != values[i]) lv_slider_set_value(row.slider, values[i], LV_ANIM_OFF);
+    row.off = i == 2 && v.brightness <= 0;
+    preview(row); row.dirty = false;
+    if (i == 1 && !v.temperature_ready()) lv_label_set_text(row.value, screen_text::tr(screen_text::txt::light_waiting));
   }
-  fallback.minimum = 2200; fallback.maximum = 5000;
-  open("diagnostic", true, true, 50);
-  bool ok = true;
-  for (unsigned i = 0; i < 3; ++i) {
-    auto *slider = rows[i].slider;
-    lv_slider_set_value(slider, i == 0 ? 180 : i == 1 ? 4000 : 65, LV_ANIM_OFF);
-    for (int n = 0; n < 20; ++n) lv_obj_send_event(slider, LV_EVENT_VALUE_CHANGED, nullptr);
-    ok &= calls[i] == 0;
-    lv_obj_send_event(slider, LV_EVENT_RELEASED, nullptr);
-    lv_obj_send_event(slider, LV_EVENT_RELEASED, nullptr);
-    ok &= calls[i] == 1;
-    lv_obj_send_event(slider, LV_EVENT_VALUE_CHANGED, nullptr);
-    lv_obj_send_event(slider, LV_EVENT_PRESS_LOST, nullptr);
-    lv_obj_send_event(slider, LV_EVENT_RELEASED, nullptr);
-    ok &= calls[i] == 1;
-  }
-  for (unsigned mask = 0; mask < 4; ++mask) {
-    open("diagnostic", mask & 1, mask & 2, 50);
-    ok &= lv_obj_has_flag(rows[0].box, LV_OBJ_FLAG_HIDDEN) == !(mask & 1);
-    ok &= lv_obj_has_flag(rows[1].box, LV_OBJ_FLAG_HIDDEN) == !(mask & 2);
-    ok &= !lv_obj_has_flag(rows[2].box, LV_OBJ_FLAG_HIDDEN);
-  }
-  fallback = saved_fallback;
-  open(previous->entity, !saved_hidden[0], !saved_hidden[1], saved_values[2]);
-  active = previous;
-  for (unsigned i = 0; i < 3; ++i) {
-    commits[i] = saved[i];
-    lv_slider_set_value(rows[i].slider, saved_values[i], LV_ANIM_OFF);
-    preview(rows[i]); rows[i].dirty = false;
-  }
-  return ok;
+}
+// The card is gone with its page (runtime_tiles::colour_close): nothing here points into it any more.
+inline void forget() {
+  for (auto &row : rows) row = Row{};
+  card = nullptr;
 }
 
 }
