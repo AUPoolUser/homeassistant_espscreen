@@ -907,7 +907,8 @@
       },
       "extras": {
         "request": "Deze extra kan op dit scherm niet zo worden gewijzigd."
-      }
+      },
+      "display_precision_unregistered": "Home Assistant bewaart geen instellingen voor deze sensor omdat hij geen unieke ID heeft, dus de weergaveprecisie kan alleen in zijn YAML worden ingesteld."
     },
     "status": {
       "first_tiles": "Kies je eerste tegels",
@@ -2218,6 +2219,12 @@
           "blue-grey": "Blauwgrijs"
         }
       }
+    },
+    "precision": {
+      "label": "Precisie weergeven",
+      "default": "Standaard ( {value} )",
+      "note": "Dit is de eigen instelling van Home Assistant voor deze sensor, dus die verandert daar ook.",
+      "unregistered": "Deze sensor heeft geen unieke ID, dus Home Assistant bewaart er geen instellingen voor."
     },
     "tile_card": {
       "label": "{name}, plek {slot} op pagina {page}. Enter: instellen, pijltjestoetsen: verplaatsen",

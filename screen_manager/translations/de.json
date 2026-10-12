@@ -907,7 +907,8 @@
       },
       "extras": {
         "request": "Diese Änderung eines Extras ist auf diesem Bildschirm nicht möglich."
-      }
+      },
+      "display_precision_unregistered": "Home Assistant speichert keine Einstellungen für diesen Sensor, weil er keine eindeutige ID hat. Seine Anzeigegenauigkeit lässt sich daher nur in seinem YAML festlegen."
     },
     "status": {
       "first_tiles": "Wähle deine ersten Kacheln",
@@ -2579,6 +2580,12 @@
           "blue-grey": "Blaugrau"
         }
       }
+    },
+    "precision": {
+      "label": "Anzeigegenauigkeit",
+      "default": "Standard ({value})",
+      "note": "Das ist die Einstellung von Home Assistant für diesen Sensor, sie ändert sich also auch dort.",
+      "unregistered": "Dieser Sensor hat keine eindeutige ID, daher speichert Home Assistant keine Einstellungen für ihn."
     },
     "tile_card": {
       "label": "{name}, Platz {slot} auf Seite {page}. Enter: einstellen, Pfeiltasten: verschieben",

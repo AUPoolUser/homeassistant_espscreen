@@ -23,6 +23,12 @@ sensor, so it runs from 0 to 100 as Home Assistant's own gauge card does, and a 
 needs a range of its own: the editor says so when the value falls outside the range, and fills in a range to start
 from. **Custom** sets a minimum and a maximum for the tile. A value outside the range stands at its end.
 
+## The decimals
+
+The value shows as many decimals as Home Assistant's own Display precision for the sensor says, as on its dashboards.
+The editor offers that setting beside the sensor's tile, as Home Assistant's entity settings do (Default, or 0 to 6),
+and changes it in Home Assistant. A duration in minutes, hours or days reads as Home Assistant writes it ("1h 30m").
+
 ## The colour
 
 One, two or three segments:

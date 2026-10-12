@@ -907,7 +907,8 @@
       },
       "extras": {
         "request": "Questa modifica di un extra non è possibile su questo schermo."
-      }
+      },
+      "display_precision_unregistered": "Home Assistant non conserva impostazioni per questo sensore perché non ha un ID univoco, quindi la sua precisione di visualizzazione si può impostare solo nel suo YAML."
     },
     "status": {
       "first_tiles": "Scegli i tuoi primi riquadri",
@@ -2579,6 +2580,12 @@
           "blue-grey": "Grigio blu"
         }
       }
+    },
+    "precision": {
+      "label": "Visualizza la precisione",
+      "default": "Predefinito ({value})",
+      "note": "È l'impostazione di Home Assistant per questo sensore, quindi cambia anche lì.",
+      "unregistered": "Questo sensore non ha un ID univoco, quindi Home Assistant non conserva impostazioni per esso."
     },
     "tile_card": {
       "label": "{name}, spazio {slot} a pagina {page}. Enter: configura, tasti freccia: sposta",

@@ -220,6 +220,11 @@ def _screen(name):
     return screen[name] if screen and name in screen else SCREENS[name]
 
 
+def screen_language():
+    """The language of the screen being written for, else of all screens ("nl", "pt-BR")."""
+    return _screen('language')
+
+
 def legacy_screen():
     screen = SCREEN.get()
     return bool(screen and screen.get('legacy'))

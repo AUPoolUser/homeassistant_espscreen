@@ -18,6 +18,7 @@ import FavoriteSection from "./inspector/FavoriteSection.vue";
 import MapSection from "./inspector/MapSection.vue";
 import MeterSection from "./inspector/MeterSection.vue";
 import NameField from "./inspector/NameField.vue";
+import PrecisionRow from "./inspector/PrecisionRow.vue";
 import TitleButton from "./inspector/TitleButton.vue";
 import PropRow from "./ui/PropRow.vue";
 import Icon from "./ui/Icon.vue";
@@ -29,6 +30,7 @@ import UiMenu from "./ui/UiMenu.vue";
 import UiMenuItem from "./ui/UiMenuItem.vue";
 import UiMenuSeparator from "./ui/UiMenuSeparator.vue";
 import rules from "../model/page-rules.json";
+import { precisionOffered } from "../model/display-precision";
 import { controlChoices, controlHint, displayChoices, displayHint, goesToChoices, goesToHint, offeredChoices, sliderOffered, subChoices,
   tapChoices, tapHint, tileControls, tileDisplay, tiltOffered, type TilePanel } from "../model/tile-options";
 import { useUiStore } from "../stores/ui";
@@ -107,6 +109,8 @@ const calendarCard = computed(() => domain.value === "calendar" && !key.value);
 const favoriteCard = computed(() => display.value === "favorite" && domain.value === "media_player");
 // A sensor's meter (firmware 0.56.0): its look, its range and its colours, in its own sections.
 const meterCard = computed(() => display.value === "meter" && domain.value === "sensor");
+// A sensor's display precision: Home Assistant's own setting of the entity, so the same row on any of its cards, a key's too.
+const precisionShown = computed(() => precisionOffered(props.tile.entity, entities.liveOf(props.tile.entity)));
 // How the energy card shows power along a line: running dots, or calm lines that grow with it and an arrow each.
 const flowChoices = computed(() => offer("flow", rules.energyFlow.map((value) => [value, t(`editor.tile.energy.flow.${value}`)] as [string, string]), current("flow", rules.energyFlow[0])));
 const pictureChoices = (key: "fit" | "overlay") => offer(key, rules.picture[key].map((value) => [value, t(`editor.tile.picture.${key}.${value}`)] as [string, string]), current(key, rules.picture[key][0]));
@@ -226,6 +230,7 @@ const backgroundName = computed(() => inv.inventory.backgrounds?.[props.tile.opt
     <Section v-if="key && scr.supports(0, 17, 0)" :title="t('editor.tile.sections.look')">
       <SwitchRow class="key-name-choice" :label="t('editor.tile.keys.name_shown')" :description="t('editor.tile.keys.name_shown_hint')"
         :model-value="tile.options?.overlay !== 'none'" @update:model-value="(on) => setTileOption(tile, 'overlay', on ? 'name' : 'none')" />
+      <PrecisionRow v-if="precisionShown" :entity="tile.entity" />
     </Section>
 
     <!-- What the card shows first, then where it stands, what a finger does to it, and last its icon and colour. -->
@@ -252,6 +257,7 @@ const backgroundName = computed(() => inv.inventory.backgrounds?.[props.tile.opt
             @input="writeSubText(($event.target as HTMLInputElement).value)" />
         </template>
       </PropRow>
+      <PrecisionRow v-if="lookShown && precisionShown" :entity="tile.entity" />
       <PropRow v-if="lookShown && display === 'live'" :label="t('editor.tile.refresh.label')" icon="refresh">
         <ChoiceField :choices="refreshChoices" :value="refresh" :aria-label="t('editor.tile.refresh.label')" @pick="(v) => setTileOption(tile, 'refresh', Number(v))" />
       </PropRow>

@@ -23,6 +23,13 @@ static bool parse_bar_item(JsonVariant value, header_bar::Item &item) {
     item.only_weak = (item.kind == header_bar::Kind::wifi || item.kind == header_bar::Kind::battery) &&
                      value["a"].is<unsigned>() && value["a"].as<unsigned>() == 1;
     item.icon_only = item.kind == header_bar::Kind::plugin && value["o"].is<unsigned>() && value["o"].as<unsigned>() == 1;
+    // A sensor's item (firmware 0.56.0+): what its card needs when a tap opens it.
+    if (value["d"].is<JsonArray>()) {
+      const std::string entity = string(value["d"][0], 128);
+      if (entity.rfind("sensor.", 0) == 0 && valid_entity(entity))
+        item.sensor = std::make_shared<header_bar::Item::Sensor>(header_bar::Item::Sensor{
+            entity, string(value["d"][1], 32), string(value["d"][2], 16), string(value["d"][3], 80), string(value["d"][4], 32)});
+    }
     if (item.kind == header_bar::Kind::ago && item.epoch == 0) return false;
     // A plugin's item names itself: plugin:<plugin>.<item> (docs/PLUGINS.md).
     if (item.kind == header_bar::Kind::plugin && !plugin_key(item.text)) return false;
@@ -316,6 +323,9 @@ std::string receive(const std::string &payload) {
         for (size_t i = 0; same && i < current.count; ++i) same = current.items[i] == next.bar.items[i];
         current = std::move(next.bar);
         if (!same && shown_page && *shown_page == static_cast<int>(index)) refresh_header_only();
+        // A sensor's card opened from the top bar follows its new state.
+        for (size_t i = 0; i < current.count; ++i)
+          if (const auto &s = current.items[i].sensor) sensor_detail_update(s->entity, s->state, s->word);
       }
       last_received = esphome::millis();
       result = transfer.active ? "Synced" : "Loading tiles";

@@ -4482,7 +4482,9 @@ inline void render_history_detail(const Tile &t,bool large,int width,int height,
   if(line){
     int decimals=0;const auto dot=t.state.find('.');if(dot!=std::string::npos)decimals=static_cast<int>(std::min<size_t>(4,t.state.size()-dot-1));
     if(c.ready)decimals=h.decimals;
-    c.value_text=!t.available()?std::string(tr(txt::ha_unavailable)):numeric?history_view::number(current,decimals,t.unit):t.state;
+    // Home Assistant's own words for a value where it has them (a duration in hours and minutes, firmware 0.56.0+).
+    c.value_text=!t.available()?std::string(tr(txt::ha_unavailable)):numeric&&!t.extra().state_word.empty()?t.extra().state_word
+                :numeric?history_view::number(current,decimals,t.unit):t.state;
     if(c.ready){
       // The value now counts too: it can lie beyond the history (the running hour is not in the statistics yet).
       if(h.has_high){c.high=h.high;c.high_at=h.high_at;}
@@ -5362,14 +5364,19 @@ inline void history_received(){
      detail_tile()->entity==history.entity&&history_hours==history.hours)refresh_detail(detail_index);
 }
 // An energy card's circle opens its sensor (firmware 0.47.0+), and the card's next moment brings the sensor's state.
-inline void open_sensor_detail(const std::string &entity,const std::string &name,const std::string &state,const std::string &unit){
+// A top bar's sensor (0.56.0+) brings the words Home Assistant writes its value in as well, as a tile's state_word.
+inline void open_sensor_detail(const std::string &entity,const std::string &name,const std::string &state,const std::string &unit,
+                               const std::string &word=""){
   detail_sensor=Tile{};detail_sensor.entity=entity;detail_sensor.name=name;detail_sensor.state=state;detail_sensor.unit=unit;
+  if(!word.empty())detail_sensor.edit_extra().state_word=word;
   detail_sensor.received=true;
   show_detail(SENSOR_DETAIL);
 }
-inline void sensor_detail_update(const std::string &entity,const std::string &state){
-  if(detail_index!=SENSOR_DETAIL||detail_sensor.entity!=entity||detail_sensor.state==state)return;
-  detail_sensor.state=state;refresh_detail(SENSOR_DETAIL);
+inline void sensor_detail_update(const std::string &entity,const std::string &state,const std::string &word=""){
+  if(detail_index!=SENSOR_DETAIL||detail_sensor.entity!=entity||(detail_sensor.state==state&&detail_sensor.extra().state_word==word))return;
+  detail_sensor.state=state;
+  if(word!=detail_sensor.extra().state_word)detail_sensor.edit_extra().state_word=word;
+  refresh_detail(SENSOR_DETAIL);
 }
 inline void refresh_detail(unsigned index){
   if(!detail_root || lv_obj_has_flag(detail_root,LV_OBJ_FLAG_HIDDEN) || detail_index!=index)return;
@@ -8228,7 +8235,8 @@ inline void render_slot(size_t slot) {
   label(w.title, t.name.empty() ? t.entity : t.name);
   label(w.icon, icon_for(t));
   bool watch=t.display=="watch";
-  std::string unit=watch?t.unit:"";
+  // Home Assistant's own words for the value (a duration in hours and minutes, firmware 0.56.0+) carry their units.
+  std::string unit=watch&&t.extra().state_word.empty()?t.unit:"";
   std::string value = t.state;
   // What the second line was set to wins over every word the screen would work out itself (firmware 0.2.90+),
   // but not over the two that say the screen cannot answer: an unavailable entity and a refused tap still say so.
@@ -9305,6 +9313,14 @@ inline void render_header() {
   header_renderer.on_status([]() {
     if (!allowed(esphome::millis(), 14, "header navigation")) return;
     if (open_this_screen) open_this_screen();
+  });
+  // A sensor in the top bar (firmware 0.56.0+) opens the card its tile opens, its history.
+  header_renderer.on_sensor([](size_t item) {
+    const auto *bar = shown_bar();
+    if (!bar || item >= bar->count || !bar->items[item].sensor) return;
+    if (!allowed(esphome::millis(), 14, "header sensor")) return;
+    const auto &s = *bar->items[item].sensor;
+    open_sensor_detail(s.entity, s.name, s.state, s.unit, s.word);
   });
   draw_header(ha_connected() && feed_alive());
 }

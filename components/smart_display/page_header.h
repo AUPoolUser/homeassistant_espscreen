@@ -103,6 +103,9 @@ class Renderer {
   // and says what is connected; the runtime supplies it, guarded like the leading key.
   void (*status_action)() = nullptr;
   lv_obj_t *status_tap = nullptr;
+  // A tap on a sensor's item (firmware 0.56.0+) opens the card its tile opens; the runtime supplies it, given the item.
+  void (*sensor_action)(size_t item) = nullptr;
+  std::array<lv_obj_t *, header_bar::MAX_ITEMS> sensor_taps{};
   static void label(lv_obj_t *obj, const std::string &text) {
     if (text != lv_label_get_text(obj)) lv_label_set_text(obj, text.c_str());
   }
@@ -145,11 +148,13 @@ class Renderer {
 public:
   lv_obj_t *leading_target() const { return header_home_tap; }
   void on_status(void (*action)()) { status_action = action; }
+  void on_sensor(void (*action)(size_t item)) { sensor_action = action; }
   void restyle() { for (auto &slot : header_slots) { slot.own = true; slot.icon_color = UINT32_MAX; } }
   // Used only when a host renderer replaces its preview surface.
   void reset() {
     if (header_home_tap) lv_obj_delete(header_home_tap);
     if (status_tap) lv_obj_delete(status_tap);
+    for (auto *tap : sensor_taps) if (tap) lv_obj_delete(tap);
     if (header_root) lv_obj_delete(header_root);
     *this = Renderer{};
   }
@@ -214,6 +219,20 @@ public:
         auto *renderer = static_cast<Renderer *>(lv_event_get_user_data(event));
         if (renderer->status_action) renderer->status_action();
       }, LV_EVENT_CLICKED, this);
+      // And one over each item, for a sensor's: the item it covers rides on the area's own user data.
+      for (auto *&tap : sensor_taps) {
+        tap = lv_obj_create(page);
+        lv_obj_remove_style_all(tap);
+        lv_obj_remove_flag(tap, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_flag(tap, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_flag(tap, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_move_to_index(tap, lv_obj_get_index(status_tap) + 1);
+        lv_obj_add_event_cb(tap, [](lv_event_t *event) {
+          auto *renderer = static_cast<Renderer *>(lv_event_get_user_data(event));
+          const auto item = reinterpret_cast<uintptr_t>(lv_obj_get_user_data(static_cast<lv_obj_t *>(lv_event_get_current_target(event))));
+          if (renderer->sensor_action) renderer->sensor_action(static_cast<size_t>(item));
+        }, LV_EVENT_CLICKED, this);
+      }
       header_ring = lv_obj_create(header_root);
       lv_obj_remove_style_all(header_ring);
       lv_obj_remove_flag(header_ring, LV_OBJ_FLAG_CLICKABLE);
@@ -350,7 +369,10 @@ public:
     lv_obj_set_width(room_label, std::max(1, std::min<int>(name_size.x, placement.name_room)));
     lv_obj_set_height(room_label, lv_font_get_line_height(name_font));
 
-    std::array<bool, header_bar::MAX_ITEMS> icon_on{}, text_on{};
+    std::array<bool, header_bar::MAX_ITEMS> icon_on{}, text_on{}, sensor_on{};
+    // The finger's area of the items: the whole height of the bar and half an item's gap either side, as the home key's.
+    const int tap_pad = gaps.item / 2;
+    const int tap_band = tile_grid && lv_obj_get_y(tile_grid) > 0 ? lv_obj_get_y(tile_grid) : baseline + name_font->line_height;
     bool dial_on = false;
     // The screen's own items on the bar, left edge to right edge, for the finger's area over them.
     int status_left = -1, status_right = -1;
@@ -362,6 +384,13 @@ public:
       if (kind == header_bar::Kind::wifi || kind == header_bar::Kind::link || kind == header_bar::Kind::battery) {
         if (status_left < 0) status_left = x;
         status_right = x + p.width;
+      }
+      // A sensor's item, while Home Assistant's values show: a tap opens its card.
+      if (live && sensor_action && bar.items[p.item].sensor && sensor_taps[k]) {
+        lv_obj_set_pos(sensor_taps[k], std::max(0, x - tap_pad), 0);
+        lv_obj_set_size(sensor_taps[k], p.width + 2 * tap_pad, tap_band);
+        lv_obj_set_user_data(sensor_taps[k], reinterpret_cast<void *>(static_cast<uintptr_t>(p.item)));
+        sensor_on[k] = true;
       }
       if (p.dial) {
         int top = (middle2 - dial) / 2, stroke = std::max(1, (dial + 5) / 10), hand = std::max(1, (dial * 75 + 500) / 1000);
@@ -410,6 +439,7 @@ public:
       }
     }
     for (size_t k = 0; k < header_slots.size(); ++k) { set_visible(header_slots[k].icon, icon_on[k]); set_visible(header_slots[k].text, text_on[k]); }
+    for (size_t k = 0; k < sensor_taps.size(); ++k) if (sensor_taps[k]) set_visible(sensor_taps[k], sensor_on[k]);
     if (status_tap) {
       const bool on = status_left >= 0 && status_action;
       if (on) {

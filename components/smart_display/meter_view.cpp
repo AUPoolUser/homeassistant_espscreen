@@ -131,7 +131,10 @@ void render(Widgets &w, const Tile &t, int width, int height) {
   mc::Data d;
   d.name = t.name.empty() ? t.entity : t.name;
   d.icon = v.icon;
-  if (std::isfinite(v.value)) {
+  if (std::isfinite(v.value) && !t.extra().state_word.empty()) {
+    // Home Assistant's own words for the value (a duration in hours and minutes): they carry their units.
+    d.words = d.number = t.extra().state_word;
+  } else if (std::isfinite(v.value)) {
     d.number = screen_text::localize(t.state);
     d.unit = t.unit;
     d.words = screen_text::with_unit(d.number, d.unit);

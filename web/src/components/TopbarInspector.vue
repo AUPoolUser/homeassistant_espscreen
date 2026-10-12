@@ -18,6 +18,8 @@ import Icon from './ui/Icon.vue';
 import InspectorHead from './ui/InspectorHead.vue';
 import Section from './ui/Section.vue';
 import HelpTip from './HelpTip.vue';
+import PrecisionRow from './inspector/PrecisionRow.vue';
+import { precisionOffered } from "../model/display-precision";
 import { useUiStore } from "../stores/ui";
 import { useRegionStore } from "../stores/region";
 import { useEntitiesStore } from "../stores/entities";
@@ -93,6 +95,10 @@ const liveNote = computed(() => {
   const view = topbar.topbarView(item.value);
   return !view.shown ? (item.value.type === "entity" ? t("editor.topbar.live.hidden") : hiddenText(item.value)) : overflow.value.has(props.index) ? t("editor.topbar.live.overflow") : t("editor.topbar.live.looks");
 });
+// A sensor's display precision: Home Assistant's own setting of the entity, which the bar writes its value with (not
+// its icon alone, nor when it last changed).
+const precisionShown = computed(() => item.value?.type === "entity" && (item.value.content || "state") === "state"
+  && precisionOffered(item.value.entity || "", entities.liveOf(item.value.entity || "")));
 const samples = computed(() => {
   const clock = clockSample(ui.now, region.clock24, region.screenLanguage);
   return { clock: clock.time, analog: t("editor.topbar.analog_sample"), date: clock.date } as Record<string, string>;
@@ -161,6 +167,7 @@ function onKey(e: KeyboardEvent, i: number) {
           <span class="f-label">{{ t("editor.topbar.show.label") }}<HelpTip :text="t('editor.topbar.show.hint')" /></span>
           <Segmented :choices="(inv.inventory.header?.shows || []).map((s) => [s.key, s.label] as [string, string])" :value="item.show" @pick="(v) => update({ show: v })" />
         </div>
+        <PrecisionRow v-if="precisionShown" :entity="item.entity!" stack />
       </template>
       <!-- The screen's own Wi-Fi signal (firmware 0.38.0): what stands beside the bars, and when it shows. -->
       <template v-else-if="item.type === 'wifi'">

@@ -907,7 +907,8 @@
       },
       "extras": {
         "request": "This change of an extra is not possible on this screen."
-      }
+      },
+      "display_precision_unregistered": "Home Assistant keeps no settings for this sensor because it has no unique ID, so its display precision can only be set in its YAML."
     },
     "status": {
       "first_tiles": "Choose your first tiles",
@@ -2218,6 +2219,12 @@
           "blue-grey": "Blue grey"
         }
       }
+    },
+    "precision": {
+      "label": "Display precision",
+      "default": "Default ({value})",
+      "note": "This is Home Assistant's own setting for this sensor, so it changes there too.",
+      "unregistered": "This sensor has no unique ID, so Home Assistant keeps no settings for it."
     },
     "tile_card": {
       "label": "{name}, slot {slot} on page {page}. Enter: configure, arrow keys: move",

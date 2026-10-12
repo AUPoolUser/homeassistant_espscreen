@@ -8,6 +8,7 @@ import { computed, ref } from "vue";
 import theme from "virtual:esp-screens-theme";
 import { glyph } from "../../model/topbar";
 import { numberText } from "../../i18n";
+import { ownWords } from "../../model/tile-text";
 import { arcPath, ems, meterLayout, meterRange, meterSegments, meterStyle, POINTER, share, tapeTicks, tint, zoneColor, type TextBox } from "../../model/meter";
 import type { TileCardView } from "../../composables/useTileCard";
 import { useEntitiesStore } from "../../stores/entities";
@@ -30,7 +31,8 @@ const style = computed(() => meterStyle(options.value));
 const range = computed(() => meterRange(options.value));
 const value = computed(() => (card.gone ? NaN : Number(card.current?.state)));
 const known = computed(() => Number.isFinite(value.value));
-const unit = computed(() => String(card.current?.a?.unit_of_measurement ?? ""));
+// A duration's own words carry their units (tile-text ownWords).
+const unit = computed(() => (ownWords("sensor", card.current) ? "" : String(card.current?.a?.unit_of_measurement ?? "")));
 const percent = computed(() => unit.value === "%");
 const glass = computed(() => card.glassScale || 1);
 // The colour of the value: its segment's, or the tile's own; a tape's pointer is deep orange unless the tile has colours.

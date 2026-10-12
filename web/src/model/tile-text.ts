@@ -126,6 +126,11 @@ export type StateTextOptions = {
   /** A control on the card: a thermostat then says what it is doing (tile_controls::status_text). */
   controlled?: boolean;
 };
+/** A number Home Assistant writes in words of its own, as the add-on sends them: a duration in hours and minutes
+ * ("0h 12m", durations.py). Its units are in its words. */
+export function ownWords(domain: string, live: Live | null | undefined) {
+  return domain === "sensor" && live?.word && live.state.trim() !== "" && Number.isFinite(Number(live.state)) ? live.word : "";
+}
 /** The text under the name: Home Assistant's word where it has one, the value with its unit for a sensor. */
 export function stateText(entity: string, live: Live | null | undefined, options: StateTextOptions, words: ScreenWords) {
   const domain = entity.split(".")[0], note = options.note || "";
@@ -146,7 +151,7 @@ export function stateText(entity: string, live: Live | null | undefined, options
   // A calendar names the event of the moment (Home Assistant's `message`) and says Free while none runs, as its card does
   // (screen.calendar.free; the page carries the same word as editor.mockup.calendar_free).
   if (domain === "calendar") return live.state === "on" && a.message ? String(a.message) : live.state === "off" ? screenText(words, "editor.mockup.calendar_free") : word;
-  if (domain === "sensor" || NUMERIC.includes(domain)) return valueText(domain, live.state, a.unit_of_measurement, words);
+  if (domain === "sensor" || NUMERIC.includes(domain)) return ownWords(domain, live) || valueText(domain, live.state, a.unit_of_measurement, words);
   return word;
 }
 /** The second line as chosen in the tile panel (app 0.2.105; drawn on the mockup since app 0.4.1): the screen's own
@@ -164,6 +169,7 @@ export function subLine(sub: string, live: Live | null | undefined, status: stri
 /** The big value of a Big number card; its unit stands beside it in small letters. */
 export function bigValue(domain: string, live: Live | null | undefined, words: ScreenWords) {
   if (!live || isGone(live)) return "—";
+  if (ownWords(domain, live)) return ownWords(domain, live);
   return live.a?.unit_of_measurement || NUMERIC.includes(domain) ? numberOf(live.state, words) : live.state;
 }
 /** What a bedside clock's key shows in its circle: its value where that is what it is for (a temperature), else nothing

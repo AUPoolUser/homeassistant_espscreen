@@ -16,6 +16,7 @@ from datetime import datetime, timedelta, timezone
 import math
 from urllib.parse import urlsplit
 import calendar_feed
+import durations
 import camera_feed
 import live_feed
 import claude_skill
@@ -344,6 +345,30 @@ class HomeAssistant:
     def state_words(self, words):
         """One set of words for every language (tests, a Home Assistant that answers in one language only)."""
         self.words_by_language = {'*': dict(words or {})}
+
+    def display_precision(self, entity):
+        """A sensor's display precision as Home Assistant's entity settings show it (entity-registry-settings-editor.ts):
+        the one chosen there (`own`, None for Default), the one its integration suggests (`suggested`, what Default
+        means), and whether it can be chosen at all: only an entity in the registry has settings."""
+        entry = next((item for item in self.registry or [] if isinstance(item, dict) and item.get('entity_id') == entity), None)
+        options = ((entry or {}).get('options') or {}).get('sensor') or {}
+        whole = lambda value: value if type(value) is int and 0 <= value <= 6 else None
+        return {'own': whole(options.get('display_precision')), 'suggested': whole(options.get('suggested_display_precision')),
+                'editable': entry is not None}
+
+    async def set_display_precision(self, entity, precision):
+        """The display precision of a sensor, set in Home Assistant itself as its entity settings set it
+        (config/entity_registry/update with the sensor's options): every dashboard, tile and top bar follows it. None is
+        Default. The registry entry is changed here at once; Home Assistant's registry event brings the rest."""
+        # Home Assistant replaces the sensor's options as a whole, so they go back as they are with only the precision
+        # changed, as its dialog sends them (the integration's suggested precision stays).
+        entry = next((item for item in self.registry or [] if isinstance(item, dict) and item.get('entity_id') == entity), None)
+        options = {**(((entry or {}).get('options') or {}).get('sensor') or {}), 'display_precision': precision}
+        answer = await self.request('config/entity_registry/update', entity_id=entity, options_domain='sensor', options=options)
+        entry = (answer or {}).get('entity_entry') if isinstance(answer, dict) else None
+        if isinstance(entry, dict):
+            self.registry = [entry if isinstance(item, dict) and item.get('entity_id') == entity else item for item in self.registry or []]
+        return self.display_precision(entity)
 
     async def registries(self):
         self.registry, self.devices, self.areas = await asyncio.gather(
@@ -2217,6 +2242,11 @@ class Manager:
         if ENERGY_TILE in shown:
             summed = energy_flow.sums(self.energy_prefs())
             shown |= set(energy_flow.related_entities(self.energy_prefs())) | set(summed)
+        # A sensor in a page's top bar opens its card as its tile would (app dev, firmware 0.56.0).
+        record = self.store.get(inbox)
+        if record and record.get('format') == PAGE_FORMAT:
+            shown |= {item['entity'] for page in record['layout']['pages'] for item in bar_items(page)
+                      if item['type'] == 'entity' and item['entity'].startswith('sensor.')}
         if entity not in shown:
             return
         what = 'line' if entity in summed else history_card.kind(entity, self.ha.states.get(entity))
@@ -4173,6 +4203,25 @@ def create_app(manager, development=False):
         words = getattr(ha, 'words_by_language', {}) or {}
         named = words.get(language) or words.get('en') or words.get('*') or ha.state_words or {}
         return web.json_response({'values': ha_catalogue.subtitle_attributes(entity, ha.states.get(entity), named)})
+    async def display_precision(request):
+        """A sensor's display precision (Home Assistant's entity setting, app dev): GET reads it, PUT {entity, precision}
+        sets it in Home Assistant, precision 0-6 or null for Default. The value on every tile, meter and top bar item of
+        the sensor follows Home Assistant's setting, as on its own dashboards."""
+        data = await request.json() if request.method == 'PUT' else dict(request.query)
+        entity = data.get('entity', '') if isinstance(data, dict) else ''
+        ha = manager.ha
+        if not entity_id(entity) or not entity.startswith('sensor.') or not hasattr(ha, 'display_precision'):
+            raise ValueError(t('addon.errors.layout.invalid_setting', setting='entity'))
+        # Home Assistant's dialog labels each choice with the state as it is now, unrounded: it travels with the answer.
+        now = lambda answer: {**answer, 'state': (ha.states.get(entity) or {}).get('state')}
+        if request.method == 'GET':
+            return web.json_response(now(ha.display_precision(entity)))
+        precision = data.get('precision')
+        if precision is not None and (type(precision) is not int or not 0 <= precision <= 6):
+            raise ValueError(t('addon.errors.layout.invalid_setting', setting='precision'))
+        if not ha.display_precision(entity)['editable']:
+            raise ValueError(t('addon.errors.display_precision_unregistered'))
+        return web.json_response(now(await ha.set_display_precision(entity, precision)))
     async def change_language(request):
         """Settings -> Language & region (app 0.2.90): the language, clock and number format of every screen."""
         data = await request.json()
@@ -4363,8 +4412,11 @@ def create_app(manager, development=False):
             if eid.startswith('automation.') and isinstance(state.get('attributes', {}).get('current'), int):
                 # How many runs go on right now: a tile set to run its actions is coloured while they do.
                 attributes['current'] = state['attributes']['current']
+            # A duration in hours and minutes as the screens write it (durations.py), else Home Assistant's word.
+            word = (durations.text(message['state'], (state.get('attributes') or {}).get('unit_of_measurement'), i18n.screen_language())
+                    if eid.startswith('sensor.') and durations.is_duration(state.get('attributes')) else None)
             result[eid] = {'state': message['state'], 'a': attributes,
-                           'word': state_word(eid, state.get('state'), state.get('attributes'), entry, getattr(manager.ha, 'state_words', None))}
+                           'word': word or state_word(eid, state.get('state'), state.get('attributes'), entry, getattr(manager.ha, 'state_words', None))}
         return web.json_response({'states': result})
     async def firmware_preview(request):
         """The device's normal packets, for an unsaved layout. No device registration or HA actions."""
@@ -4739,6 +4791,8 @@ def create_app(manager, development=False):
     app.router.add_post('/api/alerts/test', test_alert)
     app.router.add_get('/api/entity-actions', entity_actions)
     app.router.add_get('/api/entity-subtitle', entity_subtitle)
+    app.router.add_get('/api/display-precision', display_precision)
+    app.router.add_put('/api/display-precision', display_precision)
     app.router.add_post('/api/header-preview', header_preview)
     app.router.add_post('/api/claude-skill', install_claude_skill)
     app.router.add_get('/api/claude-skill.zip', download_claude_skill)

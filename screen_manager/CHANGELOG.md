@@ -5,6 +5,14 @@
   percentage) or is the tile's own, and the colour is one, or two or three segments (green, orange and red by default)
   up to thresholds in the sensor's own unit, each colour and threshold yours to change. Choose Meter under Display. The
   screen needs this firmware.
+- **Decimals the way Home Assistant does them.** A sensor's tile and its top bar item have Home Assistant's own Display
+  precision: Default, or 0 to 6 decimals, each shown with the sensor's value now. It is Home Assistant's setting for the
+  sensor, so choosing it in the editor changes it in Home Assistant too, and every tile, meter, top bar item and
+  dashboard follows.
+- **Durations in hours and minutes.** A duration sensor in minutes, hours or days shows as Home Assistant shows it:
+  "0h 12m" instead of "0.20 h", in the screen's language, on tiles, meters, cards and the top bar (wishlist 107).
+- **A sensor in the top bar opens its card.** A tap on a sensor's item in the top bar opens the same card a tap on its
+  tile opens, with its history.
 - **The colour card follows the light while it is open.** A light's colour, white shade or brightness changed elsewhere
   (in Home Assistant, by an automation, on another screen) now moves its sliders at once, and a colour or white shade
   you set shows on the light's tile straight away. The brightness slider sends what the tile's own slider sends. The

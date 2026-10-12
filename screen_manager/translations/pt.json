@@ -907,7 +907,8 @@
       },
       "extras": {
         "request": "Esta alteração de um extra não é possível neste ecrã."
-      }
+      },
+      "display_precision_unregistered": "O Home Assistant não guarda definições para este sensor porque ele não tem um ID único, por isso a precisão de apresentação só pode ser definida no YAML dele."
     },
     "status": {
       "first_tiles": "Escolha os primeiros mosaicos",
@@ -2579,6 +2580,12 @@
           "blue-grey": "Cinzento azulado"
         }
       }
+    },
+    "precision": {
+      "label": "Mostrar precisão",
+      "default": "Predefinição ({value})",
+      "note": "É a definição do próprio Home Assistant para este sensor, por isso muda lá também.",
+      "unregistered": "Este sensor não tem um ID único, por isso o Home Assistant não guarda definições para ele."
     },
     "tile_card": {
       "label": "{name}, espaço {slot} da página {page}. Enter: configurar; teclas de seta: mover",

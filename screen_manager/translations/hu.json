@@ -907,7 +907,8 @@
       },
       "extras": {
         "request": "Ez a módosítás ezen a kijelzőn nem lehetséges."
-      }
+      },
+      "display_precision_unregistered": "A Home Assistant nem tárol beállításokat ehhez az érzékelőhöz, mert nincs egyedi azonosítója, így a pontossága csak a YAML-jában állítható be."
     },
     "status": {
       "first_tiles": "Válaszd ki az első csempéidet",
@@ -2579,6 +2580,12 @@
           "blue-grey": "Kékesszürke"
         }
       }
+    },
+    "precision": {
+      "label": "Pontosság",
+      "default": "Alapértelmezett ({value})",
+      "note": "Ez a Home Assistant saját beállítása ehhez az érzékelőhöz, így ott is megváltozik.",
+      "unregistered": "Ennek az érzékelőnek nincs egyedi azonosítója, ezért a Home Assistant nem tárol hozzá beállításokat."
     },
     "tile_card": {
       "label": "{name}, {slot}. hely a(z) {page}. oldalon. Enter: beállítás, nyílbillentyűk: áthelyezés",

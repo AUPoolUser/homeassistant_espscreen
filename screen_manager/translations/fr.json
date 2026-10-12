@@ -907,7 +907,8 @@
       },
       "extras": {
         "request": "Ce changement d’un extra n’est pas possible sur cet écran."
-      }
+      },
+      "display_precision_unregistered": "Home Assistant ne conserve aucun réglage pour ce capteur, car il n'a pas d'identifiant unique. Sa précision d'affichage ne peut donc être définie que dans son YAML."
     },
     "status": {
       "first_tiles": "Choisissez vos premières tuiles",
@@ -2579,6 +2580,12 @@
           "blue-grey": "Gris bleu"
         }
       }
+    },
+    "precision": {
+      "label": "Précision d'affichage",
+      "default": "Par défaut ({value})",
+      "note": "C'est le réglage de Home Assistant pour ce capteur, il change donc aussi là-bas.",
+      "unregistered": "Ce capteur n'a pas d'identifiant unique, Home Assistant ne conserve donc aucun réglage pour lui."
     },
     "tile_card": {
       "label": "{name}, emplacement {slot} de la page {page}. Enter : configurer, touches fléchées : déplacer",

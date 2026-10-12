@@ -10,7 +10,7 @@ import { clockSample } from "../model/clock";
 import rules from "../model/page-rules.json";
 import { energyPaints, tileActive, tilePalette } from "../model/tile-palette";
 import { displayOf, sameFace, tileFace, type Face } from "../model/tile-face";
-import { bigKeyLine, bigValue, bodyText, favoriteLine, fillPercent, headLine, isGone, isOn, mediaSubtitle, pageLink, rangeChip, readingText,
+import { bigKeyLine, bigValue, bodyText, ownWords, favoriteLine, fillPercent, headLine, isGone, isOn, mediaSubtitle, pageLink, rangeChip, readingText,
   roundValue, runText, sameLive, sameWords, screenText, setpointText, stateText, subLine, type Live, type ScreenWords } from "../model/tile-text";
 import { glyph, clockText } from "../model/topbar";
 import { resolveControls } from "../model/catalogue";
@@ -75,7 +75,7 @@ export function useTileCard(props: TileCardProps) {
   // A Big number card as the glass lays it out in this card's room on this grid (ui-scale watchCard, app 0.4.74): the
   // icon and the name above the number in the largest face that fits, or in a low cell the name small in the corner and
   // the number under it. A card of another screen (the overview) keeps the old drawing.
-  const unit = computed(() => current.value?.a?.unit_of_measurement as string | undefined);
+  const unit = computed(() => (ownWords(domain.value, current.value) ? undefined : current.value?.a?.unit_of_measurement as string | undefined));
   const value = computed(() => bigValue(domain.value, current.value, words.value));
   const watchFace = computed(() => {
     if (display.value !== "watch" || isFull(props.tile) || foreign.value || props.round || goesTo.value || props.slot < 0) return null;

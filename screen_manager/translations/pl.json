@@ -907,7 +907,8 @@
       },
       "extras": {
         "request": "Tej zmiany dodatku nie można wprowadzić na tym ekranie."
-      }
+      },
+      "display_precision_unregistered": "Home Assistant nie przechowuje ustawień tego czujnika, ponieważ nie ma on unikalnego identyfikatora, więc jego precyzję można ustawić tylko w jego YAML."
     },
     "status": {
       "first_tiles": "Wybierz pierwsze kafelki",
@@ -2579,6 +2580,12 @@
           "blue-grey": "Niebieskoszary"
         }
       }
+    },
+    "precision": {
+      "label": "Precyzja",
+      "default": "Domyślna ({value})",
+      "note": "To ustawienie samego Home Assistant dla tego czujnika, więc zmienia się także tam.",
+      "unregistered": "Ten czujnik nie ma unikalnego identyfikatora, więc Home Assistant nie przechowuje dla niego ustawień."
     },
     "tile_card": {
       "label": "{name}, miejsce {slot} na stronie {page}. Enter: konfiguruj, strzałki: przenieś",

@@ -1,7 +1,7 @@
 // What a card on the mockup writes (model/tile-text.ts): the line under its name, the second line, the values a large card
 // stands tall, and the firmware's number rules it ports (tests/test_editor_parity.py runs those against the C++ too).
 import { describe, expect, it } from "vitest";
-import { bigKeyLine, bigValue, bodyText, decimalText, favoriteLine, fillPercent, haWord, headLine, humidityText, isOn, pageLink, rangeChip,
+import { bigKeyLine, bigValue, bodyText, decimalText, favoriteLine, fillPercent, haWord, headLine, humidityText, isOn, ownWords, pageLink, rangeChip,
   readingText, roundValue, runText, sameLive, setpointText, stateText, subLine, temperatureText, unitSuffix, type ScreenWords } from "../src/model/tile-text";
 
 const en: ScreenWords = { locale: "en", marks: { decimal: ".", group: ",", from: 4 } };
@@ -89,6 +89,13 @@ describe("the values a card stands large", () => {
     expect(roundValue("sensor", climate("21", { unit_of_measurement: "°C" }), en)).toBe("21°");
     expect(roundValue("sensor", climate("48", { unit_of_measurement: "%" }), en)).toBe("48%");
     expect(roundValue("light", climate("on", {}), en)).toBe("");
+  });
+
+  it("writes a duration in the words the add-on sends, its units in them (durations.py)", () => {
+    const left = { state: "0.2", a: { device_class: "duration", unit_of_measurement: "h" }, word: "0h 12m" };
+    expect([bigValue("sensor", left, en), stateText("sensor.left", left, {}, en), ownWords("sensor", left)]).toEqual(["0h 12m", "0h 12m", "0h 12m"]);
+    // A state that is not a number keeps Home Assistant's word for it.
+    expect(ownWords("sensor", { ...left, state: "unknown" })).toBe("");
   });
 
   it("fills a slider with what the entity reports, a blind with its closed part", () => {

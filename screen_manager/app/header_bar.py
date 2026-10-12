@@ -8,12 +8,14 @@ without any traffic.
 
 Wire format, one message after the layout: {"v":1,"op":"header","items":[...]} with per item
 "k" (clock, analog, date, text, ago), "i" (icon codepoint), "t" (text), "e" (unix time) and
-"c" (accent colour RRGGBB).
+"c" (accent colour RRGGBB). A sensor's item also has "d": [entity, state, unit, name] and, for a duration, its words
+("0h 12m"), so a tap on it opens the card its tile opens (firmware 0.56.0+; older firmware ignores it).
 """
 import math
 import unicodedata
 from datetime import datetime, time
 
+import durations
 import tile_icons
 from core import (BAR_STATUS_FEATURE, BAR_STATUS_MIN_FIRMWARE, BATTERY_CONTENTS, BATTERY_FEATURE, BATTERY_MIN_FIRMWARE, BATTERY_SHOWS,
                   HEADER_BUILTIN, HEADER_CONTENTS, HEADER_MAX_ITEMS, HEADER_MIN_FIRMWARE, HEADER_SHOWS, HEADER_STATUS, PLUGIN_ITEM_CONTENTS,
@@ -222,6 +224,9 @@ def value(entity, state, entry=None, units=None, tz=None, words=None):
         except ValueError:
             return raw, None
     number = numeric(raw)
+    # A duration as Home Assistant writes it, in hours and minutes (durations.py, wishlist 107).
+    if number is not None and domain == 'sensor' and durations.is_duration(attrs):
+        return durations.text(raw, attrs['unit_of_measurement'], i18n.screen_language(), precision_of(entry)), None
     if number is not None and domain in ('sensor', 'number', 'input_number', 'counter', 'zone'):
         return with_unit(number_text(number, precision_of(entry)), attrs.get('unit_of_measurement')), None
     if domain in ('input_text', 'input_select', 'select'):
@@ -325,7 +330,23 @@ def entity_item(item, states, registry=None, units=None, tz=None, words=None):
     color = accent(entity, state)
     if color:
         wire['c'] = color
+    if entity.startswith('sensor.') and state:
+        wire['d'] = sensor_detail(entity, state, (registry or {}).get(entity) if isinstance(registry, dict) else None)
     return wire, item['show'] == 'always' or active(entity, state)
+
+def sensor_detail(entity, state, entry=None):
+    """What a sensor's card needs when a tap on its top bar item opens it (runtime_tiles::open_sensor_detail): the entity,
+    its state as its tile gets it (Home Assistant's display precision), its unit, its name, and the words a duration says
+    itself in (durations.py), as a tile's `w`, when it has them."""
+    from core import rounded_state
+    attributes = state.get('attributes') or {}
+    raw, unit = rounded_state(state.get('state', 'unavailable'), precision_of(entry)), str(attributes.get('unit_of_measurement') or '')
+    wire = [entity, short(raw, 32), short(unit, 16), short(str(attributes.get('friendly_name') or entity), 80)]
+    # A duration says itself in hours and minutes there too, as Home Assistant's own card does; the card keeps the number
+    # for its graph.
+    if durations.is_duration(attributes) and numeric(raw) is not None:
+        wire.append(short(clean_text(durations.text(raw, unit, i18n.screen_language())), 32))
+    return wire
 
 # What the Wi-Fi item's text says beside its bars on the screen (header_bar.h device_item): nothing, a percentage or dBm;
 # and the battery's beside its icon (firmware 0.41.0): nothing or its percentage.
