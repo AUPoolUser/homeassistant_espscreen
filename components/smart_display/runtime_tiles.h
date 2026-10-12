@@ -11164,8 +11164,12 @@ inline void live_stop_covered() {
     if (l.handle < 0) continue;
     Widgets *card = nullptr;
     each_card([&](Widgets &w) { if (w.index == l.index && w.tile) card = &w; });
-    if (!card || drawn_over(card->tile, l.room.x, l.room.y, l.room.w, l.room.h)) {
-      ESP_LOGI("camera", "tile %u stops streaming: %s over it", (unsigned) l.index, drawn_over_by ? drawn_over_by : "nothing");
+    // Its picture lies at the room it asked for, on the glass: a card that moved (a page animated, a layout made anew)
+    // leaves the picture where it was, so it stops before LVGL draws, and asks again from where the card is now.
+    const bool moved = card && !(card_room(*card) == l.room);
+    if (!card || moved || drawn_over(card->tile, l.room.x, l.room.y, l.room.w, l.room.h)) {
+      ESP_LOGI("camera", "tile %u stops streaming: %s", (unsigned) l.index,
+               moved ? "its card moved" : drawn_over_by ? drawn_over_by : "nothing over it");
       live_tile_stop(l);
       l.asked_at = esphome::millis();
     }

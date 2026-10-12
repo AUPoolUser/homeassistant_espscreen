@@ -220,6 +220,7 @@ class P4Build(unittest.TestCase):
         self.assertRegex(source, r'if _esp32_p4\(\):\n\s+await _p4\(config\)')
         self.assertIn('return get_esp32_variant() == VARIANT_ESP32P4', source)
         self.assertIn('-Wl,--wrap=esp_lcd_new_panel_dpi', source)
+        self.assertIn('-Wl,--wrap=ppa_register_client', source)  # every PPA burst shorter: live_view.cpp
         # A screen's own sdkconfig_options keep the last word.
         self.assertIn('if name not in own', source)
 

@@ -97,6 +97,9 @@ async def _p4(config):
         return
     cg.add_define("USE_LIVE_VIEW")
     cg.add_build_flag("-Wl,--wrap=esp_lcd_new_panel_dpi")
+    # Every PPA client on the screen moves in shorter bursts, so the panel's own DMA keeps up (live_view.cpp, "The
+    # panel's share of the memory bus").
+    cg.add_build_flag("-Wl,--wrap=ppa_register_client")
     from esphome.const import CONF_ID
 
     component = await cg.get_variable(lvgl[CONF_ID])

@@ -27,6 +27,11 @@
 #include <esp_heap_caps.h>
 #include <esp_lcd_mipi_dsi.h>
 #include <esp_timer.h>
+// The DSI bridge's own registers, for its underrun flag (panel_misses below); ESP-IDF keeps the chip's registers here.
+#if __has_include(<soc/mipi_dsi_bridge_struct.h>)
+#include <soc/mipi_dsi_bridge_struct.h>
+#define LIVE_VIEW_COUNTS_MISSES 1
+#endif
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <freertos/stream_buffer.h>
@@ -59,6 +64,41 @@ void panel_made(esp_lcd_panel_handle_t made, const esp_lcd_dpi_panel_config_t *c
 static int turn_now() { return lvgl ? static_cast<int>(lvgl->get_rotation()) : 0; }
 
 bool available() { return panel != nullptr && panel_rgb565 && lvgl != nullptr; }
+
+// ---- The panel's share of the memory bus ----
+// The DSI bridge reads the frame buffer from PSRAM without pause, a frame every 16 ms; when another DMA (the PPA, the
+// JPEG decoder, the DMA2D that copies what LVGL drew) holds the bus too long, the bridge runs dry and the panel shows
+// a frame of blue, its colour for no data (ESP-IDF's own words in esp_lcd_panel_dpi.c: "the LCD display may already
+// becomes blue"). ESP-IDF only logs that from its interrupt, on the UART and for every frame. Here the bridge's
+// underrun flag is read every tick instead (its interrupt is turned off, so the flag stays up until it is read) and
+// counted: panel_misses, in every report of a stream, so a tester's log says whether a change helped (the Guition
+// 10.1 P4, pixel clock 70 MHz, saw the flashes; the D1001 at 80 MHz counts none).
+// What keeps the bridge fed: every PPA client on this screen moves in bursts of PPA_BURST bytes instead of ESP-IDF's
+// 128, so the bus turns to the bridge between bursts. LVGL's own PPA draw unit took the same way for the same underrun
+// (lvgl/lvgl #9590, its burst a setting since #9612), at some cost in copy time. The streams' clients ask for it in
+// open(); ESPHome's LVGL, which turns every flush of a turned glass with the PPA, gets it through the wrap of
+// ppa_register_client at the end of this file (smart_display/__init__.py adds the wrap on a P4).
+constexpr ppa_data_burst_length_t PPA_BURST = PPA_DATA_BURST_LENGTH_64;
+constexpr int PPA_BURST_BYTES = 64;  // the same, for the log
+static uint32_t panel_misses = 0;
+#ifdef LIVE_VIEW_COUNTS_MISSES
+static bool counting_misses = false;
+static void count_misses() {
+  if (!counting_misses) {
+    MIPI_DSI_BRIDGE.int_ena.underrun_int_ena = 0;
+    MIPI_DSI_BRIDGE.int_clr.underrun_int_clr = 1;
+    counting_misses = true;
+    return;
+  }
+  if (MIPI_DSI_BRIDGE.int_raw.underrun_int_raw) {
+    MIPI_DSI_BRIDGE.int_clr.underrun_int_clr = 1;
+    ++panel_misses;
+  }
+}
+#else
+static void count_misses() {}
+#endif
+uint32_t misses() { return panel_misses; }
 
 // ---- The camera's sound: the board's speaker (features/audio.yaml binds it) ----
 #ifdef USE_SPEAKER
@@ -106,7 +146,15 @@ struct Stream {
   uint32_t reported_at = 0, reported_shown = 0, reported_bytes = 0, reported_decode = 0, reported_copy = 0;
 };
 static Stream *streams[MAX_STREAMS] = {};
+// One writer on the glass at a time: LVGL for the whole of each refresh (REFR_START to REFR_READY: deciding what to
+// draw, drawing it, flushing it to the panel), a stream's task for each copy of a picture. Without it a stream's first
+// picture could land while LVGL was still drawing the still and the name it had decided on before the stream armed,
+// and that drawing then lay over the picture until the next one (2026-10-12, the D1001: the name over a live tile after
+// the camera full screen closed). Recursive: close() takes it too, and runs inside a refresh when something covers a
+// stream (live_stop_covered, on REFR_START).
 static SemaphoreHandle_t glass = nullptr;
+static void hold_glass(lv_event_t *) { xSemaphoreTakeRecursive(glass, portMAX_DELAY); }
+static void release_glass(lv_event_t *) { xSemaphoreGiveRecursive(glass); }
 static jpeg_decoder_handle_t decoder = nullptr;
 static void *frame_buffer = nullptr;
 
@@ -216,7 +264,13 @@ static void keep_out(lv_event_t *) {
   }
   display->inv_p = count;
 }
+static bool holding = false;  // LVGL holds the glass while it refreshes, from the first stream on and for good
 static void watch_lvgl() {
+  if (!holding) {
+    lv_display_add_event_cb(lv_display_get_default(), hold_glass, LV_EVENT_REFR_START, nullptr);
+    lv_display_add_event_cb(lv_display_get_default(), release_glass, LV_EVENT_REFR_READY, nullptr);
+    holding = true;
+  }
   if (filtering) return;
   lv_display_add_event_cb(lv_display_get_default(), keep_out, LV_EVENT_RENDER_START, nullptr);
   filtering = true;
@@ -348,26 +402,26 @@ static void show(Stream &s, size_t length) {
     if (err == ESP_OK) {
       compose(s.canvas, cw, cw, ch, s.look);
       const Rect target = on_panel(s.area, s.turn, panel_w, panel_h);
-      xSemaphoreTake(glass, portMAX_DELAY);
+      xSemaphoreTakeRecursive(glass, portMAX_DELAY);
       if (!s.stopping) {
         set_spot(s, s.area);
         s.armed = true;  // from now on LVGL draws nothing here
         err = copy(s, s.canvas, cw, ch, 0, 0, cw, ch, frame_buffer, glass_size, panel_w, panel_h, target.x, target.y, 16,
                    s.turn);
       }
-      xSemaphoreGive(glass);
+      xSemaphoreGiveRecursive(glass);
     }
   } else {
     // The full view: scaled to fill its room on the way (the app sends the camera's own size where that is smaller).
     const Rect target = on_panel(where, s.turn, panel_w, panel_h);
-    xSemaphoreTake(glass, portMAX_DELAY);
+    xSemaphoreTakeRecursive(glass, portMAX_DELAY);
     if (!s.stopping) {
       set_spot(s, where);
       s.armed = true;
       err = copy(s, s.picture, stride_w, rows, 0, 0, w, h, frame_buffer, glass_size, panel_w, panel_h, target.x,
                  target.y, sixteenths, s.turn);
     }
-    xSemaphoreGive(glass);
+    xSemaphoreGiveRecursive(glass);
   }
   if (err != ESP_OK) {
     ESP_LOGW(TAG, "copy to the glass failed: %s", esp_err_to_name(err));
@@ -458,7 +512,7 @@ Handle open(const std::string &url, const Rect &area, const Look &look, bool sou
   for (int i = 0; i < MAX_STREAMS && slot < 0; ++i)
     if (!streams[i]) slot = i;
   if (slot < 0) return -1;
-  if (!glass) glass = xSemaphoreCreateMutex();
+  if (!glass) glass = xSemaphoreCreateRecursiveMutex();
   if (!decoder) {
     jpeg_decode_engine_cfg_t engine{.intr_priority = 0, .timeout_ms = 200};
     if (jpeg_new_decoder_engine(&engine, &decoder) != ESP_OK) decoder = nullptr;
@@ -478,6 +532,7 @@ Handle open(const std::string &url, const Rect &area, const Look &look, bool sou
   ppa_client_config_t client{};
   client.oper_type = PPA_OPERATION_SRM;
   client.max_pending_trans_num = 1;
+  client.data_burst_length = PPA_BURST;
   jpeg_decode_memory_alloc_cfg_t in{.buffer_direction = JPEG_DEC_ALLOC_INPUT_BUFFER};
   s->input = static_cast<uint8_t *>(jpeg_alloc_decoder_mem(look.tile ? TILE_PICTURE : MAX_PICTURE, &in, &s->input_size));
   bool ok = s->input && ppa_register_client(&client, &s->ppa) == ESP_OK;
@@ -512,8 +567,8 @@ Handle open(const std::string &url, const Rect &area, const Look &look, bool sou
     return -1;
   }
   watch_lvgl();
-  ESP_LOGI(TAG, "stream %d into %dx%d at %d,%d%s, turned %d", slot, area.w, area.h, area.x, area.y,
-           look.tile ? (look.contain ? " (a tile, whole picture)" : " (a tile)") : "", s->turn);
+  ESP_LOGI(TAG, "stream %d into %dx%d at %d,%d%s, turned %d, PPA bursts of %d bytes", slot, area.w, area.h, area.x, area.y,
+           look.tile ? (look.contain ? " (a tile, whole picture)" : " (a tile)") : "", s->turn, PPA_BURST_BYTES);
   return slot;
 }
 
@@ -562,9 +617,9 @@ void close(Handle handle) {
   Stream &s = *streams[handle];
   s.stopping = true;
   // A copy on its way finishes; none starts after this, and LVGL draws there again.
-  xSemaphoreTake(glass, portMAX_DELAY);
+  xSemaphoreTakeRecursive(glass, portMAX_DELAY);
   const bool was_armed = s.armed.exchange(false);
-  xSemaphoreGive(glass);
+  xSemaphoreGiveRecursive(glass);
   if (was_armed) invalidate(lv_rect(s.area));
 }
 
@@ -573,10 +628,11 @@ static void report(int slot, Stream &s, uint32_t now, bool last) {
   if (span == 0) return;
   const uint32_t shown = s.shown, bytes = s.bytes, decode = s.decode_us, copied = s.copy_us;
   const uint32_t frames = shown - s.reported_shown;
-  ESP_LOGI(TAG, "%s %d: %.1f pictures/s, %u KB/s, decoding %.1f ms and laying out %.1f ms a picture, %u skipped in all",
+  ESP_LOGI(TAG, "%s %d: %.1f pictures/s, %u KB/s, decoding %.1f ms and laying out %.1f ms a picture, %u skipped in all, "
+           "the panel ran dry %u times since boot",
            last ? "ended" : "stream", slot, frames * 1000.0f / span, (unsigned) ((bytes - s.reported_bytes) / span),
            frames ? (decode - s.reported_decode) / 1000.0f / frames : 0.0f,
-           frames ? (copied - s.reported_copy) / 1000.0f / frames : 0.0f, (unsigned) s.skipped);
+           frames ? (copied - s.reported_copy) / 1000.0f / frames : 0.0f, (unsigned) s.skipped, (unsigned) panel_misses);
   s.reported_at = now;
   s.reported_shown = shown;
   s.reported_bytes = bytes;
@@ -587,6 +643,7 @@ static void report(int slot, Stream &s, uint32_t now, bool last) {
 void tick(const std::function<void(Handle, Event)> &tell) {
   const uint32_t now = esphome::millis();
   const int turn = turn_now();
+  if (available()) count_misses();
   for (int slot = 0; slot < MAX_STREAMS; ++slot) {
     Stream *s = streams[slot];
     if (!s) continue;
@@ -639,5 +696,16 @@ extern "C" esp_err_t __wrap_esp_lcd_new_panel_dpi(esp_lcd_dsi_bus_handle_t bus, 
   const esp_err_t err = __real_esp_lcd_new_panel_dpi(bus, config, made);
   if (err == ESP_OK && made && config) live_view::panel_made(*made, config);
   return err;
+}
+// Every PPA client on this screen, ESPHome's for LVGL's turned flushes included, moves in PPA_BURST bytes a burst, so
+// the panel's DMA gets its turn on the bus ("The panel's share of the memory bus" above). The streams' own clients ask
+// for it already; a client that asks for less keeps its own.
+extern "C" esp_err_t __real_ppa_register_client(const ppa_client_config_t *config, ppa_client_handle_t *ret_client);
+extern "C" esp_err_t __wrap_ppa_register_client(const ppa_client_config_t *config, ppa_client_handle_t *ret_client) {
+  if (!config) return __real_ppa_register_client(config, ret_client);
+  ppa_client_config_t own = *config;
+  // A zeroed config means ESP-IDF's default, the longest burst.
+  if (own.data_burst_length == 0 || own.data_burst_length > live_view::PPA_BURST) own.data_burst_length = live_view::PPA_BURST;
+  return __real_ppa_register_client(&own, ret_client);
 }
 #endif

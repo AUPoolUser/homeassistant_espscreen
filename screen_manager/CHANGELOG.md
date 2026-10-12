@@ -1,5 +1,13 @@
 ## Unreleased
 
+- **Live camera on the P4 boards: the panel keeps up, and a live tile never stays where its card was.** The PPA, which
+  scales and turns every live picture and, on a turned glass, every flush of LVGL, moves in bursts of 64 bytes instead
+  of 128, so the panel's own DMA gets its turn on the memory bus; a frame of blue (the panel's colour for no data, seen
+  on the Guition 10.1-inch P4 while a camera streamed) is what it showed when it did not. The screen counts how often
+  the panel ran dry and writes it in every stream report, so a log tells whether it still happens. LVGL and the streams
+  take turns on the glass (LVGL for a whole refresh, a stream for a copy), so a tile's name no longer stands over its
+  live picture after the camera full screen closes. A live tile whose card moved on the glass stops at once and asks
+  again from where the card is.
 - **Meters for sensors.** A sensor tile can show where its value stands as a ring, a tape or a bar of cells, on any size
   from one cell to the whole page, growing with the room it gets. The range comes from Home Assistant (0 to 100 for a
   percentage) or is the tile's own, and the colour is one, or two or three segments (green, orange and red by default)

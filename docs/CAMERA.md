@@ -326,6 +326,29 @@ goes through the display's own rounding, as LVGL's own areas do. When a picture 
 doorbell's 16:9 snapshot first, then its 4:3 stream), LVGL draws where the last one lay again, so nothing of it stays
 beside the new one. When a stream ends, LVGL draws its room again.
 
+**The panel's share of the memory bus.** The DSI bridge reads the frame buffer from PSRAM without pause, a frame
+every 16 ms. When another DMA holds the bus too long (the PPA scaling and turning a picture, the JPEG decoder, the
+DMA2D that copies what LVGL drew), the bridge runs dry and the panel shows a frame of blue, its colour for no data;
+ESP-IDF only logs that from its interrupt, on the UART. A tester with a Guition 10.1-inch P4 (pixel clock 70 MHz) saw
+such flashes while a camera streamed. So the firmware does two things on a P4 (`live_view.cpp`, "The panel's share of
+the memory bus"). It counts: the bridge's underrun flag is read every 50 ms and the count stands in every stream report
+(`the panel ran dry N times since boot`), so a log says whether a change helped. And it shortens every PPA burst on the
+screen from ESP-IDF's 128 bytes to 64, the streams' own clients and ESPHome's LVGL (which turns every flush of a turned
+glass with the PPA) alike, through a linker wrap of `ppa_register_client`: between shorter bursts the bus turns to the
+bridge. LVGL took the same way for the same underrun under its own PPA draw unit (lvgl/lvgl #9590). A copy takes a
+little longer for it. The reTerminal D1001 (pixel clock 80 MHz) counts none, with or without the change.
+
+**One writer on the glass at a time.** LVGL holds the glass for the whole of each refresh (from `LV_EVENT_REFR_START`
+to `LV_EVENT_REFR_READY`: deciding what to draw, drawing it, flushing it to the panel) and a stream's task holds it for
+each copy of a picture, one recursive mutex in `live_view.cpp` (`glass`). Without it a stream's first picture could land
+while LVGL was still drawing the still and the name it had decided on before the stream armed, and that drawing then lay
+over the picture until the next one: a tile's name stood over its live picture after the camera full screen closed
+(2026-10-12, the D1001). `close()` takes the same lock, so once it returns nothing of the stream writes the glass.
+
+**A live picture stays where its card was.** A stream writes at the room its card had when it asked. The moment that
+card lies elsewhere (a page animated, a layout made anew) the tile stops before LVGL draws, LVGL draws the old room
+again, and the tile asks again from where its card is now (`live_stop_covered`).
+
 **The network of a P4.** Every P4 board reaches its Wi-Fi through an ESP32-C6 over SDIO, where a packet's round trip
 takes long enough that ESP-IDF's default TCP receive window (5,760 bytes) held a download at about 0.7 MB/s. The P4
 boards build with a window of 64 KB (`components/smart_display/__init__.py`, keyed on the chip): about 2.6 MB/s, for the

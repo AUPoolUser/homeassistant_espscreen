@@ -325,6 +325,8 @@ void mute(Handle handle, bool muted);
 void close(Handle handle);
 // The main loop, every 50 ms: frees what finished tasks left and tells each stream's owner what happened.
 void tick(const std::function<void(Handle, Event)> &tell);
+// How often the panel ran dry since boot (a frame of blue: live_view.cpp, "The panel's share of the memory bus").
+uint32_t misses();
 #else
 inline bool available() { return false; }
 inline Handle open(const std::string &, const Rect &, const Look & = Look{}, bool = false) { return -1; }
@@ -332,6 +334,7 @@ inline bool has_speaker() { return false; }
 inline void mute(Handle, bool) {}
 inline void close(Handle) {}
 inline void tick(const std::function<void(Handle, Event)> &) {}
+inline uint32_t misses() { return 0; }
 #endif
 
 }  // namespace live_view
