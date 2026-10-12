@@ -35,6 +35,14 @@ ESP32-C6 for Wi-Fi, running on a 2500 mAh battery. Board key `reterminald1001`, 
   pin off, so a touch that started first found no chip: its firmware writes failed (`I2C write reg ... failed (2)` in
   the USB log) and the screen never saw a finger. A restart hid it, as the expander keeps its pins. The board file
   gives the touch `setup_priority: 500`, after the display's 600 and before LVGL's 395.
+- **The battery is measured only while nothing charges it.** The level comes from the cell's voltage and Seeed's
+  curve, and a charging cell reads above what it holds: about 0.1 V from the charge current at once, and more that
+  fades over minutes, so after half an hour on the charger the level ran 15 % ahead. Pausing the charger for a reading
+  (pin 12) takes away only the first part: on the bench 3.704 V while charging, 3.586 V 0.2 s into a pause and still
+  3.570 V after a minute. So while the battery charges the board file gives no level (Home Assistant shows it as
+  unknown, the top bar the charging bolt without a number), and measures again, once a minute, two minutes after
+  charging stops: against the steady fall of the screen's use, the cell read 48 mV high a minute after unplugging,
+  6 mV at two minutes and nothing at three. On the battery the level only goes down.
 - **The log is on USB.** `hardware/esp32p4-c6.yaml` puts the log on UART0, whose pins on the ESP32-P4 are GPIO37 and
   GPIO38, the touch bus on this board; UART0 there crashed the first boot. The board file moves the log to the USB port.
 - **16 MB of the 32.** ESPHome takes OTA on 32 MB of flash only with ESP-IDF's experimental features, so the firmware

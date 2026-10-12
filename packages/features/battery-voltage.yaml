@@ -33,7 +33,7 @@ sensor:
       const float v = id(screen_battery_voltage).state;
       if (std::isnan(v)) return {};
       return ${BATTERY_LEVEL_FORMULA};
+    # 0 to 100; a level that is not known stays unknown (ESPHome's clamp makes it 0), as on a board whose level is not
+    # read while it charges (the reTerminal D1001).
     filters:
-      - clamp:
-          min_value: 0
-          max_value: 100
+      - lambda: 'return std::isnan(x) ? x : std::min(100.0f, std::max(0.0f, x));'

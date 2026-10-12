@@ -31,6 +31,11 @@
 - **reTerminal D1001: touch works after a flat battery.** When the screen started from no power at all (an empty
   battery, or the first time it is switched on), it showed its pages but did not react to a finger until it was
   restarted. The touch now starts after the panel has its power. The screen needs this firmware.
+- **reTerminal D1001: no false battery level while it charges.** Plugged in, the level jumped up by as much as 20 %,
+  because a charging battery reads higher than it holds, and fell back after unplugging. Now the top bar shows only the
+  charging bolt while it charges, without a number, and the level comes back two minutes after unplugging, once the
+  battery has settled. On the battery it only goes down. On any screen, charging without a known level now shows the
+  charging bolt instead of an unknown battery. The screen needs this firmware.
 
 ## 0.4.87 (firmware 0.55.0)
 
