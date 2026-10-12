@@ -145,6 +145,22 @@ beside the pages, without a new build: the 10.1-inch Guition holds up to forty t
 </p>
 <p align="center"><sub>The energy card shows the power of your house right now, the way Home Assistant's own live Energy view and power-flow-card-plus show it: solar, the grid and the battery around the house, dots that run faster as more power flows, and the devices that draw the most. It reads the Energy settings you already have in Home Assistant, so there is nothing to set up, and a tap on a circle opens that sensor's history. It fits every screen, upright on one standing up (<a href="docs/ENERGY.md">how</a>). Rendered from the firmware's own LVGL code with a made-up house.</sub></p>
 
+## Meters for every sensor
+
+<p align="center">
+  <img src="docs/images/meters-jc8012p4a1-bars-dark.png" width="98%" alt="The 10.1-inch Guition in Dark mode with a page of sensors as LCD bars: the living room at 21.4 degrees on a big amber bar, the office CO2 at 840 ppm, the bathroom humidity and the phone's battery standing up, the house's power in purple, the CPU, the disk and the memory, the wind, the outside temperature in light blue and the bedroom CO2 at 1,260 ppm, whose cells turn from green to orange to red where its thresholds are">
+</p>
+<p align="center">
+  <img src="docs/images/meters-jc8012p4a1-rings.png" width="49%" alt="The 10.1-inch Guition with a page of rings: the living room and the solar power two by two, each with its ring on the left and the last 24 hours as a line on the right, the office CO2, the bathroom and the phone's battery as big rings, and smaller rings for the CPU, the disk, the memory, the outside temperature, the wind, the pressure, the grid, the fridge and the freezer">
+  <img src="docs/images/meters-jc8012p4a1-tapes-dark.png" width="49%" alt="The same screen in Dark mode with a page of tapes in the style of Teenage Engineering: the name in small capitals, the value large, a still ruler of fine marks over the sensor's range with one pointer at the value, for the rooms, the outside, the humidity, the pressure, the solar power, the wind, the fridge, the noise, the daylight and the office CO2">
+</p>
+<p align="center">
+  <img src="docs/images/meters-guition.png" width="24.5%" alt="The 4-inch Guition: the phone's battery as a ring, the humidity as a tape, the house's power as a bar of cells, and the living room as a ring with its day beside it">
+  <img src="docs/images/meters-waveshare43-dark.png" width="40.8%" alt="The 4.3-inch Waveshare in Dark mode: the living room as a ring with its day, the phone's battery, the office CO2 as a big value over a bar of cells, the house's power as a tape, the CPU as a ring and the humidity as a tape">
+  <img src="docs/images/meters-cyd.png" width="32.7%" alt="The 2.8-inch CYD: the office CO2 as a bar, the living room as a tape, the outside temperature as a ring and the pressure as a tape over its range from 980 to 1040 hPa">
+</p>
+<p align="center"><sub>Any sensor whose state is a number can show where its value stands: as a ring with the tile's icon inside, as a tape with a pointer on a ruler, or as a bar of LCD cells that fills the tile. Every look fills the tile it gets, from one cell to the whole page, and grows with it. The range comes from Home Assistant (0 to 100 for a percentage) or is the tile's own, and the colour is the sensor's own, one you choose, or two or three segments, green, orange and red by default, that change at thresholds in the sensor's own unit, such as 800 and 1200 ppm. Choose Meter under Display. New in the next release; already on the dev channel. Rendered from the firmware's own LVGL code with made-up sensors.</sub></p>
+
 ## Taller tiles, richer cards
 
 <p align="center">
