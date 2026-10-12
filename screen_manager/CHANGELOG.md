@@ -28,6 +28,9 @@
   screen: every board with an ESP32-P4, whose ESP32-C6 does Wi-Fi and Bluetooth. A plugin that needs it, such as the
   new Bluetooth proxy plugin for Home Assistant, is offered only on those screens. ESP32-S3 screens with an RGB panel
   are left out: they lack the memory for it.
+- **reTerminal D1001: touch works after a flat battery.** When the screen started from no power at all (an empty
+  battery, or the first time it is switched on), it showed its pages but did not react to a finger until it was
+  restarted. The touch now starts after the panel has its power. The screen needs this firmware.
 
 ## 0.4.87 (firmware 0.55.0)
 

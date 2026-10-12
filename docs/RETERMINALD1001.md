@@ -30,6 +30,11 @@ ESP32-C6 for Wi-Fi, running on a 2500 mAh battery. Board key `reterminald1001`, 
   The BSP's line 8 (the power hold) is pin 10 in ESPHome, its line 10 (the charger) pin 12, its line 12 (the touch
   reset) pin 14.
 - **The power hold.** On the battery, the board turns itself off unless pin 10 stays high; the board file holds it on.
+- **The touch starts after the display.** The panel's power on expander pins 0 and 7 also feeds the touch chip, and
+  the display switches it on. From no power at all (a flat battery, the first start) the expander starts with every
+  pin off, so a touch that started first found no chip: its firmware writes failed (`I2C write reg ... failed (2)` in
+  the USB log) and the screen never saw a finger. A restart hid it, as the expander keeps its pins. The board file
+  gives the touch `setup_priority: 500`, after the display's 600 and before LVGL's 395.
 - **The log is on USB.** `hardware/esp32p4-c6.yaml` puts the log on UART0, whose pins on the ESP32-P4 are GPIO37 and
   GPIO38, the touch bus on this board; UART0 there crashed the first boot. The board file moves the log to the USB port.
 - **16 MB of the 32.** ESPHome takes OTA on 32 MB of flash only with ESP-IDF's experimental features, so the firmware
