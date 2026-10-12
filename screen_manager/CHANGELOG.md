@@ -5,6 +5,10 @@
   percentage) or is the tile's own, and the colour is one, or two or three segments (green, orange and red by default)
   up to thresholds in the sensor's own unit, each colour and threshold yours to change. Choose Meter under Display. The
   screen needs this firmware.
+- **The colour card follows the light while it is open.** A light's colour, white shade or brightness changed elsewhere
+  (in Home Assistant, by an automation, on another screen) now moves its sliders at once, and a colour or white shade
+  you set shows on the light's tile straight away. The brightness slider sends what the tile's own slider sends. The
+  screen needs this firmware.
 - **Plugins have pictures.** A plugin whose maker added one shows a picture across the top of its card on the Plugins
   page and large above its details: the plugin on a few screens, with its name and what it does. Makers make one with
   the plugins repository's new `tools/store_image.py`, from the real firmware of the bench.
