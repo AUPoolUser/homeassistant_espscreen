@@ -76,6 +76,9 @@ substitutions:
   SCROLL_Y: ${ (GRID_MARGIN | int) + (BAR_BAND | int) + (BAR_SPACE | int) }
   FONT_ICON_BIG_SIZE: ${ [8, (40 * LOOK_SCALE | float) | round | int] | max }     # full-page tiles
   FONT_WATCH_ICON_SIZE: ${ [8, (12 * LOOK_SCALE | float) | round | int] | max }
+  # The icon fonts at 2 bits a pixel (four steps of edge) instead of 4: their bitmaps take half the flash, about 75 KB
+  # on the boards with 4 MB, which all have this look. Compared on the glyphs of the CYD's sizes before (2026-10-12).
+  FONT_ICON_BPP: 2
   # The starting screen's Tessera lockup: the mosaic mark beside the name, as on the website (firmware 0.3.8+)
   FONT_BRAND_SIZE: ${ [8, (30 * LOOK_SCALE | float) | round | int] | max }
   BRAND_MARK_SIZE: ${ [8, (30 * 1.1 * LOOK_SCALE | float) | round | int] | max }

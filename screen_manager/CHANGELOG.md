@@ -9,6 +9,9 @@
   (in Home Assistant, by an automation, on another screen) now moves its sliders at once, and a colour or white shade
   you set shows on the light's tile straight away. The brightness slider sends what the tile's own slider sends. The
   screen needs this firmware.
+- **More room on the CYD and the other 4 MB screens.** Their icons are stored with four shades of edge instead of
+  sixteen, which frees about 80 KB of their firmware for plugins and later features. The icons look the same at the
+  size these screens draw them. Larger screens keep the finer icons. The screen needs this firmware.
 - **Plugins have pictures.** A plugin whose maker added one shows a picture across the top of its card on the Plugins
   page and large above its details: the plugin on a few screens, with its name and what it does. Makers make one with
   the plugins repository's new `tools/store_image.py`, from the real firmware of the bench.

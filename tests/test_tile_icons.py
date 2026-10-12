@@ -26,7 +26,7 @@ class IconSetTests(unittest.TestCase):
         wanted = [f'\\U000{code}' for code in tile_icons.GLYPHS.values()]
         for name in ('checkout/cyd.yaml', 'checkout/guition.yaml', 'packages/cyd.yaml', 'packages/guition.yaml'):
             text = profiles.resolved(name)
-            fonts = re.findall(r'materialdesignicons-webfont\.ttf["\']\n    id: (\w+)\n    size: \d+\n    bpp: 4\n    glyphs: (.*)\n', text)
+            fonts = re.findall(r'materialdesignicons-webfont\.ttf["\']\n    id: (\w+)\n    size: \d+\n    bpp: [24]\n    glyphs: (.*)\n', text)
             # Back's font carries the chevron and nothing else, written out by hand in the shared core; every other icon
             # font carries the whole set. The home key is the Tessera mark (firmware 0.10.0+), a picture, not a glyph.
             self.assertEqual([font for font, _ in fonts], ['materialdesign_icons', 'materialdesign_icons_mini',
@@ -36,7 +36,7 @@ class IconSetTests(unittest.TestCase):
             # The top bar's Wi-Fi bars (firmware 0.38.0): struck through, then one to four bars, the order header_bar.h counts;
             # then the battery's icons the tile icons lack (firmware 0.41.0, battery_status.h): charging per ten up to 90,
             # the charging outline and the alert outline.
-            status = re.search(r'id: materialdesign_icons_status\n    size: \d+\n    bpp: 4\n    glyphs: (\[.*?\])', text, re.S)[1]
+            status = re.search(r'id: materialdesign_icons_status\n    size: \d+\n    bpp: [24]\n    glyphs: (\[.*?\])', text, re.S)[1]
             self.assertEqual(re.findall(r'\\U000(F[0-9A-F]{4})', status),
                              ['F092E', 'F091F', 'F0922', 'F0925', 'F0928', 'F089C', 'F0086', 'F0087', 'F0088', 'F089D', 'F0089',
                               'F089E', 'F008A', 'F008B', 'F089F', 'F10CD'], name)
