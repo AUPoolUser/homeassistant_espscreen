@@ -1,61 +1,71 @@
 #include "components/smart_display/screen_power.h"
 #include <cassert>
 #include <cstdio>
-#include <string>
 using namespace screen_power;
 
-static std::string calls;
-static bool lvgl_on = true, wifi_fast = true, dark_now = false;
-static int wakes = 0, rests = 0, settles = 0;
+static bool paused = false, dark_now = false;
+static int pauses = 0, wakes = 0;
+static uint32_t waited = 0;
 
 int main() {
-  draw = [](bool on) { lvgl_on = on; calls += on ? "D" : "d"; };
-  fast_wifi = [](bool fast) { wifi_fast = fast; calls += fast ? "W" : "w"; };
-  wake = [] { wakes++; dark_now = false; leave(); };
-  rest = [] { rests++; };
+  freeze = [](bool on) { paused = on; pauses++; };
+  later = [](uint32_t ms) { waited = ms; };
   dark = [] { return dark_now; };
-  settle = [] { settles++; };
+  wake = [] { wakes++; dark_now = false; leave(); };
 
-  // Going dark: Wi-Fi lets go before drawing pauses; twice is once.
+  // Going dark: a wait, then saving; twice is once.
   dark_now = true;
-  enter();
-  enter();
-  assert(saving && !lvgl_on && !wifi_fast && calls == "wd");
-  // Waking: Wi-Fi and drawing back; twice is once; leave() without saving does nothing.
+  rest();
+  assert(waited == REST_MS && !saving);
+  due();
+  due();
+  assert(saving && paused && pauses == 1);
+  // A wake before the wait ran: nothing saves.
   leave();
   leave();
-  assert(!saving && lvgl_on && wifi_fast && calls == "wdWD");
-
-  // A touch on the dark glass resumes drawing at once; the overlay woke the screen before settled().
-  enter();
-  touched(1000);
-  assert(!saving && lvgl_on);
-  released(1080);
-  assert(settles == 1 && was_tap);
+  assert(!saving && !paused && pauses == 2);
   dark_now = false;
-  settled();
-  assert(wakes == 0 && rests == 0);
+  due();
+  assert(!saving);
+
+  // A touch on the dark glass resumes drawing at once; the overlay woke the screen before due().
+  dark_now = true;
+  due();
+  touched(1000);
+  assert(!saving && !paused);
+  released(1080);
+  assert(waited == SETTLE_MS && settling && was_tap);
+  rest();  // the minute's check while settling waits for the settling
+  assert(waited == SETTLE_MS);
+  dark_now = false;
+  due();
+  assert(wakes == 0 && !settling && !saving);
 
   // A tap LVGL did not see wakes the screen here.
   dark_now = true;
-  enter();
+  due();
   touched(2000);
   released(2000 + TAP_MS);
-  settled();
-  assert(wakes == 1 && rests == 0 && !dark_now);
+  due();
+  assert(wakes == 1 && !dark_now && !saving);
 
   // Noise shorter than a tap rests again.
   dark_now = true;
-  enter();
+  due();
   touched(3000);
   released(3000 + TAP_MS - 1);
-  settled();
-  assert(wakes == 1 && rests == 1);
+  waited = 0;
+  due();
+  assert(wakes == 1 && waited == REST_MS && !saving);
+  due();
+  assert(saving);
 
   // A touch while awake changes nothing.
+  leave();
+  dark_now = false;
   touched(4000);
   released(4100);
-  assert(settles == 3 && !woken_by_touch);
+  assert(!touching && !settling);
 
   std::puts("screen_power OK");
 }

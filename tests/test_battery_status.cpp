@@ -12,8 +12,8 @@ using header_bar::Item;
 using header_bar::Kind;
 
 int main() {
-  // No number: battery-unknown, charging or not.
-  assert(icon(NAN, false) == 0xF0091 && icon(NAN, true) == 0xF0091);
+  // No number: battery-unknown; while it charges the charging outline (a board that does not read its level then).
+  assert(icon(NAN, false) == 0xF0091 && icon(NAN, true) == 0xF089F);
   // The level in tens, halves up as JavaScript's Math.round does; the full battery from 95 %.
   assert(icon(100, false) == 0xF0079 && icon(95, false) == 0xF0079);
   assert(icon(94, false) == 0xF0082);                                // battery-90
@@ -61,10 +61,14 @@ int main() {
   assert(header_bar::device_item(battery, device).text == "76%");
   device.battery.charging = 1;
   assert(header_bar::device_item(battery, device).icon == 0xF008A);  // battery-charging-80
-  // Without a reading yet: battery-unknown and no number.
+  // Without a reading: no number; the charging outline while it charges, battery-unknown when it does not.
   device.battery.level = NAN;
   shown = header_bar::device_item(battery, device);
+  assert(shown.shown && shown.icon == 0xF089F && shown.text.empty());
+  device.battery.charging = 0;
+  shown = header_bar::device_item(battery, device);
   assert(shown.shown && shown.icon == 0xF0091 && shown.text.empty());
+  device.battery.charging = 1;
   // Only when low: gone above 20 %, there at 20 % or less.
   battery.only_weak = true;
   device.battery.charging = 0;

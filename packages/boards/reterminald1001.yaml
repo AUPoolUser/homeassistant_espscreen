@@ -196,7 +196,9 @@ binary_sensor:
             - button.press: wake_button
           else:
             - button.press: sleep_button
-  # Low while the charger charges the battery (GPIO15, pulled up).
+  # Low while the charger charges the battery (GPIO15, pulled up). While it charges the level is not known
+  # (board_battery_measure: the top bar shows the charging bolt alone); when charging stops (unplugged or full), the
+  # battery settles before it is measured again.
   - platform: gpio
     id: board_battery_charging
     name: "Battery Charging"
@@ -205,6 +207,16 @@ binary_sensor:
       number: GPIO15
       inverted: true
       mode: {input: true, pullup: true}
+    on_state:
+      - lambda: |-
+          static bool was = false;
+          if (x) {
+            id(screen_battery_voltage).publish_state(NAN);
+            id(screen_battery_level).publish_state(NAN);
+          } else if (was) {
+            id(board_battery_settled_at) = millis() + 2 * 60 * 1000;
+          }
+          was = x;
 
 # The backlight, a PWM pin; 1220 Hz, where this panel does not flicker at low levels (HA community thread). The RGB
 # LED's three lines light when low (Seeed's BSP drives them at 100 % minus the level).
@@ -297,6 +309,12 @@ sensor:
     internal: true
     filters:
       - lambda: 'static float last = NAN; if (!std::isnan(last) && fabsf(x - last) > 1.0f) id(board_moved).execute(); last = x; return {};'
+  # The battery's voltage and level (features/battery-adc.yaml, battery-voltage.yaml) come from board_battery_measure
+  # below, not on intervals of their own.
+  - id: !extend screen_battery_voltage
+    update_interval: never
+  - id: !extend screen_battery_level
+    update_interval: never
 
 # The board moved: wake the screen the way Home Assistant's Wake button does, when Wake when moved is on and the screen
 # is in standby; once in two seconds at most.
@@ -312,6 +330,35 @@ script:
             - button.press: wake_button
       - delay: 2s
 
+  # The battery, once a minute: its voltage, then the level from it, measured only while nothing charges it. The level
+  # comes from the voltage (Seeed's curve), and a charging cell reads above what it holds: 0.1 V from the current at
+  # once, and more that fades over minutes. On the bench the level ran 15 % ahead after half an hour on the charger, and
+  # a pause of the charger for the reading took away only the first part (3.704 V charging, 3.586 V 0.2 s into a pause,
+  # 3.570 V at 60 s, then 3.630 V a minute after unplugging). So:
+  # - while it charges, the level and the voltage are not known (board_battery_charging), and the top bar shows the
+  #   charging bolt without a number;
+  # - when charging stops, the cell settles for two minutes first: on the bench, against the steady fall of 12 mV a
+  #   minute as the screen used it, it read 48 mV high one minute after unplugging, 6 mV at two and nothing at three;
+  # - on the battery the level only falls, so a screen going to standby (less current, a little more voltage) does not
+  #   raise it.
+  - id: board_battery_measure
+    mode: single
+    then:
+      - lambda: |-
+          if (id(board_battery_charging).state) return;
+          if ((int32_t) (millis() - id(board_battery_settled_at)) < 0) return;
+          // publish_state takes the pin's voltage and applies the sensor's divider.
+          const float pin = id(screen_battery_voltage).sample();
+          const float held = id(screen_battery_voltage).state / ${BATTERY_DIVIDER}f;
+          id(screen_battery_voltage).publish_state(std::isnan(held) ? pin : std::min(pin, held));
+          id(screen_battery_level).update();
+
+globals:
+  # When the battery has settled after charging (millis, board_battery_measure).
+  - id: board_battery_settled_at
+    type: uint32_t
+    initial_value: '0'
+
 # The PCF8563 clock keeps the time while the board is off or Home Assistant away: read at the start, so a clock shows
 # the time before Home Assistant has given it, and written once an hour from Home Assistant's time.
 time:
@@ -320,6 +367,10 @@ time:
     i2c_id: board_bus
 
 interval:
+  - interval: 1min
+    startup_delay: 5s
+    then:
+      - script.execute: board_battery_measure
   - interval: 1h
     then:
       - if:

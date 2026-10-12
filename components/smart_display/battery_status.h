@@ -46,8 +46,10 @@ constexpr float LOW = 20;
 
 // The icon Home Assistant draws for a battery level (frontend src/common/entity/battery_icon.ts, batteryLevelIcon):
 // the level rounded to tens, the charging set from 10 % up and its outline below, the alert outline at 5 % or less,
-// and battery-unknown without a number. The level icons, battery-unknown and the full charging one are tile icons; the
-// other charging ones and the alert outline are in the top bar's status font (packages/core.yaml).
+// and battery-unknown without a number. One step of our own: charging without a number is the charging outline, as a
+// board may not read its level while it charges (the reTerminal D1001) and the bolt says what is known. The level
+// icons, battery-unknown and the full charging one are tile icons; the other charging ones and the alert outline are in
+// the top bar's status font (packages/core.yaml).
 constexpr uint32_t UNKNOWN_GLYPH = 0xF0091;           // battery-unknown
 constexpr uint32_t ALERT_GLYPH = 0xF10CD;             // battery-alert-variant-outline
 constexpr uint32_t CHARGING_OUTLINE_GLYPH = 0xF089F;  // battery-charging-outline
@@ -62,7 +64,7 @@ constexpr uint32_t CHARGING_GLYPHS[11] = {0, 0xF089C, 0xF0086, 0xF0087, 0xF0088,
 inline int tens(float level) { return static_cast<int>(std::floor(level / 10.0f + 0.5f)); }
 
 inline uint32_t icon(float level, bool charging) {
-  if (!std::isfinite(level)) return UNKNOWN_GLYPH;
+  if (!std::isfinite(level)) return charging ? CHARGING_OUTLINE_GLYPH : UNKNOWN_GLYPH;
   const int round = tens(level);
   if (charging && level >= 10) return CHARGING_GLYPHS[round < 1 ? 1 : round > 10 ? 10 : round];
   if (charging) return CHARGING_OUTLINE_GLYPH;

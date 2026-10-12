@@ -14,11 +14,12 @@ export const BUILTIN_ICONS: Record<string, string> = { clock: "clock-outline", a
 export const WIFI_GLYPHS = ["F092E", "F091F", "F0922", "F0925", "F0928"];
 export const LINK_GLYPH = "F0319";
 // The battery (firmware 0.41.0, battery_status.h): Home Assistant's battery icons (frontend battery_icon.ts,
-// batteryLevelIcon), the level in tens, the charging set from 10 % up, the alert outline at 5 % or less.
+// batteryLevelIcon), the level in tens, the charging set from 10 % up, the alert outline at 5 % or less, and charging
+// without a number as the charging outline.
 const BATTERY_GLYPHS = ["", "F007A", "F007B", "F007C", "F007D", "F007E", "F007F", "F0080", "F0081", "F0082", "F0079"];
 const BATTERY_CHARGING_GLYPHS = ["", "F089C", "F0086", "F0087", "F0088", "F089D", "F0089", "F089E", "F008A", "F008B", "F0084"];
 export function batteryIcon(level: number, charging = false) {
-  if (!Number.isFinite(level)) return "F0091";
+  if (!Number.isFinite(level)) return charging ? "F089F" : "F0091";
   const round = Math.min(10, Math.max(1, Math.round(level / 10)));
   if (charging && level >= 10) return BATTERY_CHARGING_GLYPHS[round];
   if (charging) return "F089F";
