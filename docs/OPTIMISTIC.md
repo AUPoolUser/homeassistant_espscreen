@@ -139,6 +139,8 @@ A wish writes its value into the tile and paints every tile and the open card of
 | `ROW_OPTION` | the option | a select of the light's device (`item`: the select) |
 | `ROW_NUMBER` | the number | a number of the light's device (`item`: the number) |
 | `VACUUM_ROW` | the choice | a vacuum's mode, suction or water row (`item`: `m`, `s` or `w`) |
+| `HUE` | 0-360 | a light's own colour at full saturation (its colour card) |
+| `KELVIN` | kelvin | a light's own white shade (its colour card) |
 
 ### Adding a field
 

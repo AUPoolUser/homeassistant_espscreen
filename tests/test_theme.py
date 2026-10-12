@@ -126,7 +126,8 @@ class Paints(unittest.TestCase):
         # Dark mode is kept in a preference of its own, next to the others outside the frozen settings block.
         self.assertIn('make_preference<uint32_t>(0x44524B31)', tiles)
         self.assertIn('inline void restyle() {', (COMPONENT / 'settings_screen.h').read_text())
-        self.assertIn('inline void restyle() {', (COMPONENT / 'light_controls.h').read_text())
+        # The colour card is built when it opens, so a change of look draws it again (runtime_tiles::colour_restyle).
+        self.assertIn('inline void colour_restyle() {', tiles)
 
 
 class RedrawnTheSame(unittest.TestCase):
