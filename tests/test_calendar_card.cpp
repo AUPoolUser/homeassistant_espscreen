@@ -126,6 +126,18 @@ int main() {
     const View v = plan_full(f, m, b.width, b.height, 14, d, now, o, wd, "Family", st);
     if (std::string(b.name) == "d1001" || std::string(b.name) == "jc8012p4a1") assert(v == WEEK);
     if (std::string(b.name) == "cyd") assert(v == BLOCKS);
+    // Forward and back move by the days on show: on glass with three days the next step starts on the fourth, none skipped.
+    auto days_shown = [&](int week, bool from_monday) {
+      State ws; ws.view = WEEK; ws.week = week; Full wf; Options wo; wo.from_monday = from_monday;
+      plan_full(wf, m, b.width, b.height, 14, d, now, wo, wd, "Family", ws);
+      std::vector<int> days;
+      for (auto &h : wf.fixed.hits) if (h.kind == HIT_DAY) days.push_back(h.arg);
+      return days;
+    };
+    for (bool from_monday : {false, true}) {
+      const auto here = days_shown(0, from_monday), next = days_shown(1, from_monday), back = days_shown(-1, from_monday);
+      assert(!here.empty() && next.front() == here.back() + 1 && back.back() == here.front() - 1);
+    }
   }
   // Overlapping events stand side by side.
   const auto lanes = lanes_of(d, 2);

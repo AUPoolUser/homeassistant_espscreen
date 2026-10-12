@@ -974,7 +974,7 @@ struct State {
   View view = UP_NEXT;  // the view on show
   bool chosen = false;  // the view key was used: the full screen keeps that view while it stays open
   int day = 0;          // the day the day view (and the month's list) shows, from today
-  int week = 0;         // weeks forward or back from this one
+  int week = 0;         // steps forward or back in the week view, each as many days as the glass shows
   int month = 0;        // months forward or back
   bool menu = false;    // the view key's choice is open
   int sheet = -1;       // the event whose sheet is open
@@ -1331,9 +1331,11 @@ inline View plan_full(Full &f, const Measure &m, int width, int height, int marg
   View v = st.view;
   const bool week_ok = week_fits(m, bw, bh, false);
   if (v == WEEK && !week_ok) v = BLOCKS;
+  // The week moves by the days it shows: three days on narrow glass, so forward shows the next three, none skipped.
+  const int week_days = v == BLOCKS ? 7 : fit_days(m, bw), week_d0 = week_start(d, t, o) + week_days * st.week;
   std::string second;
   if (v == WEEK || v == BLOCKS) {
-    const Date wk = date_of(d, t.day + 7 * st.week);
+    const Date wk = date_of(d, week_d0);
     second = wd.months[wk.month - 1] + " " + std::to_string(wk.year);
   } else if (v == MONTH) {
     const Date dt = date_of(d, t.day);
@@ -1346,7 +1348,7 @@ inline View plan_full(Full &f, const Measure &m, int width, int height, int marg
   auto month_short = [&](int month) { return wd.months_short[month - 1].empty() ? wd.months[month - 1] : wd.months_short[month - 1]; };
   std::string period;
   if (v == WEEK || v == BLOCKS) {
-    const Date a = date_of(d, t.day + 7 * st.week), z = date_of(d, t.day + 7 * st.week + 6);
+    const Date a = date_of(d, week_d0), z = date_of(d, week_d0 + week_days - 1);
     period = a.month == z.month ? std::to_string(a.day) + " – " + std::to_string(z.day) + " " + month_short(z.month)
                                 : std::to_string(a.day) + " " + month_short(a.month) + " – " + std::to_string(z.day) + " " + month_short(z.month);
   } else if (v == DAY || v == UP_NEXT) {
@@ -1390,8 +1392,8 @@ inline View plan_full(Full &f, const Measure &m, int width, int height, int marg
     // The week: the heads and all-day rows stay, the hours scroll; it opens an hour before now.
     WeekShape ws;
     ws.bare = v == BLOCKS;
-    ws.days = ws.bare ? 7 : fit_days(m, bw);
-    ws.d0 = week_start(d, t, o) + 7 * st.week;
+    ws.days = week_days;
+    ws.d0 = week_d0;
     ws.gw = ws.bare ? m.width(SMALL, "00") + P(10, 6) : gutter(m, &wd);
     ws.cw = (bw - ws.gw) / ws.days;
     int y = body_y + week_heads(p, margin, body_y, ws, d, t, wd);
