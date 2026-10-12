@@ -75,6 +75,7 @@ substitutions:
   SCROLL_Y: ${ (GRID_MARGIN | int) + (BAR_BAND | int) + (BAR_SPACE | int) }
   FONT_ICON_BIG_SIZE: ${ [8, (64 * LOOK_SCALE | float) | round | int] | max }     # full-page tiles
   FONT_WATCH_ICON_SIZE: ${ [8, (18 * LOOK_SCALE | float) | round | int] | max }
+  FONT_ICON_BPP: 4                # the icon fonts' bits a pixel (the compact look keeps 2 for flash)
   # The starting screen's Tessera lockup: the mosaic mark beside the name, as on the website (firmware 0.3.8+)
   FONT_BRAND_SIZE: ${ [8, (46 * LOOK_SCALE | float) | round | int] | max }
   BRAND_MARK_SIZE: ${ [8, (46 * 1.1 * LOOK_SCALE | float) | round | int] | max }

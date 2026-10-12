@@ -34,7 +34,7 @@ NAME_TABLE = ROOT / 'components/smart_display/tile_icon_names.h'
 UI_ICONS = ROOT / 'web/src/model/ui-icons.json'
 WEB_EXTRA = {name: code for name, code in json.loads(UI_ICONS.read_text()).items() if not name.startswith('_')}
 # Four bits per pixel: the default of one draws a thin ring like mdi:power as a lumpy circle on the CYD.
-FONT_BLOCK = re.compile(r"(  - file: \"\$\{FONT_DIR\}/materialdesignicons-webfont\.ttf\"\n    id: \w+\n    size: [^\n]+\n    bpp: 4\n)    glyphs:.*\n(?:      .*\n)*")
+FONT_BLOCK = re.compile(r"(  - file: \"\$\{FONT_DIR\}/materialdesignicons-webfont\.ttf\"\n    id: \w+\n    size: [^\n]+\n    bpp: \$\{FONT_ICON_BPP\}\n)    glyphs:.*\n(?:      .*\n)*")
 
 def verify():
     """Names and codepoints must match the TTF the firmware is built from."""
