@@ -189,7 +189,7 @@ brightness of 0 (`components/smart_display/screen_power.h`). Two seconds after t
 
 A touch on the dark glass resumes drawing at once and wakes the screen as before; the light fades in over 200 ms. A
 standby or night brightness above 0 keeps the screen drawing, since its glass still shows something. The log says
-every step under the tag `power`.
+when the saving starts (`dark: saving`) and stops (`awake`), under the tag `power`.
 
 ## Places a change touches
 

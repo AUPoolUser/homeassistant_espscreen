@@ -40,7 +40,7 @@ script:
   - id: wake_display
     mode: restart
     then:
-      - script.stop: screen_power_rest
+      - script.stop: screen_power_wait
       - lambda: |-
           // Drawing and full-speed Wi-Fi come back before the light (screen_power.h).
           screen_power::leave();

@@ -255,20 +255,10 @@ esphome:
           // card (firmware 0.3.3+): Back to page 1 counts from now.
           runtime_tiles::alarm_wake = []() { id(last_use_ms) = millis(); id(wake_display).execute(); };
           // Saving power while the glass is dark (screen_power.h): LVGL pauses, and Wi-Fi dozes.
-          screen_power::note = [](const char *what) { ESP_LOGI("power", "%s", what); };
-          screen_power::draw = [](bool on) {
-            id(screen_lvgl).set_paused(!on, false);
-            ESP_LOGI("power", "LVGL %s", on ? "draws" : "paused");
-            id(screen_power_report).execute();
-          };
-          screen_power::fast_wifi = [](bool fast) {
-            const char *what = screen_power::doze_wifi(!fast);
-            if (what) ESP_LOGI("power", "Wi-Fi: %s", what);
-          };
-          screen_power::wake = []() { id(wake_display).execute(); };
-          screen_power::rest = []() { id(screen_power_rest).execute(); };
+          screen_power::freeze = [](bool on) { id(screen_lvgl).set_paused(on, false); ESP_LOGI("power", on ? "dark: saving" : "awake"); };
+          screen_power::later = [](uint32_t ms) { id(screen_power_wait).execute(ms); };
           screen_power::dark = []() { return id(display_dimmed) && runtime_tiles::standby_level() == 0; };
-          screen_power::settle = []() { id(screen_power_settle).execute(); };
+          screen_power::wake = []() { id(wake_display).execute(); };
           {
             // A touch on the dark glass resumes drawing before LVGL reads it, so the wake overlay gets the tap.
             struct WakeListener : public esphome::touchscreen::TouchListener {
@@ -343,7 +333,7 @@ esphome:
           };
           // An update wakes the screen before it says how far it is (ota_status.h): lit, out of standby, no screensaver.
           ota_status::wake = []() {
-            id(screen_power_rest).stop();
+            id(screen_power_wait).stop();
             screen_power::leave();
             // Sleep stays asked for: the screen restarts after the update, and a failed one dims again on its own time.
             id(display_dimmed) = false;
@@ -2325,8 +2315,8 @@ script:
           ${APPLY_BACKLIGHT}
           // Dark (standby or Sleep at level 0): the power saving of screen_power.h, once the backlight has faded out.
           // ESPHome puts its own Wi-Fi mode back when it connects again: a dark screen dozes again within the minute.
-          if (id(display_dimmed) && level == 0) { if (!screen_power::saving) id(screen_power_rest).execute(); else screen_power::fast_wifi(false); }
-          else { id(screen_power_rest).stop(); screen_power::leave(); }
+          if (id(display_dimmed) && level == 0) { if (screen_power::saving) screen_power::doze_wifi(true); else screen_power::rest(); }
+          else { id(screen_power_wait).stop(); screen_power::leave(); }
           if (id(display_dimmed)) { lv_obj_clear_flag(id(dim_wake_overlay), LV_OBJ_FLAG_HIDDEN); lv_obj_move_foreground(id(dim_wake_overlay)); }
           else lv_obj_add_flag(id(dim_wake_overlay), LV_OBJ_FLAG_HIDDEN);
           // The screensaver (firmware 0.29.0+) in standby, at the standby level: it lies over everything on the top layer
@@ -2502,31 +2492,14 @@ script:
             # After the cards closed: the screensaver (firmware 0.29.0+) may open the camera's full view itself.
             - lambda: 'id(apply_screen_settings).execute();'
 
-  # The screen went dark (apply_screen_settings): after the backlight's 1.5 s fade, drawing pauses and Wi-Fi may doze
-  # (screen_power.h). Every wake stops this and leaves the saving first.
-  - id: screen_power_rest
-    mode: single
-    then:
-      - delay: 2s
-      - lambda: |-
-          if (screen_power::dark && screen_power::dark()) screen_power::enter();
-
-  # What really runs a second after a change (screen_power.h), for the log: ESPHome applies the Wi-Fi mode in its loop.
-  - id: screen_power_report
+  # The power saving's one wait (screen_power.h): after the backlight's fade out, or after a touch on the dark glass.
+  - id: screen_power_wait
     mode: restart
+    parameters:
+      ms: int
     then:
-      - delay: 1s
-      - lambda: |-
-          ESP_LOGI("power", "report: saving=%d lvgl_paused=%d dimmed=%d level=%d wifi_ps=%s frames=%u",
-                   (int) screen_power::saving, (int) id(screen_lvgl).is_paused(), (int) id(display_dimmed),
-                   runtime_tiles::standby_level(), screen_power::wifi_mode(), (unsigned) id(rendered_frames));
-
-  # A touch on the dark glass lifted (screen_power.h): LVGL has its release by now.
-  - id: screen_power_settle
-    mode: restart
-    then:
-      - delay: 100ms
-      - lambda: 'screen_power::settled();'
+      - delay: !lambda return ms;
+      - lambda: 'screen_power::due();'
 
   # Isolated 40-second preview; every light commit is suppressed in the helper.
   - id: light_controls_preview
