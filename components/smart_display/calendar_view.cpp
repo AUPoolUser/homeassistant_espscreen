@@ -42,7 +42,7 @@ static const cc::Words &words() {
   w.tomorrow = tr(txt::calendar_tomorrow); w.nothing = tr(txt::calendar_nothing); w.nothing_more = tr(txt::calendar_nothing_more);
   w.until = tr(txt::calendar_until); w.next = tr(txt::calendar_next); w.left = tr(txt::calendar_left); w.in = tr(txt::calendar_in);
   w.more = tr(txt::calendar_more); w.earlier = tr(txt::calendar_earlier); w.later = tr(txt::calendar_later);
-  w.more_week = tr(txt::calendar_more_week); w.today_key = tr(txt::calendar_today_key);
+  w.more_week = tr(txt::calendar_more_week); w.days_view = tr(txt::calendar_days_view); w.today_key = tr(txt::calendar_today_key);
   w.booking = tr(txt::calendar_booking); w.calendars = tr(txt::calendar_calendars); w.also = tr(txt::calendar_also);
   // The date words start on Sunday (screen.date); the card's weeks start on Monday.
   for (int i = 0; i < 7; ++i) {

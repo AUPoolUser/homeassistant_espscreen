@@ -75,7 +75,7 @@ struct Options {
 // ---- What the card says, in the screen's language (calendar_view.cpp fills it from the screen's texts).
 struct Words {
   std::string free, busy, starts_soon, private_title, all_day, today, tomorrow, nothing, nothing_more;
-  std::string until, next, left, in, more, earlier, later, week, more_week;  // with {x} where a value goes
+  std::string until, next, left, in, more, earlier, later, week, more_week, days_view;  // with {x} where a value goes
   std::array<std::string, 7> days, days_long, letters;
   std::array<std::string, 12> months, months_short;
   std::array<std::string, 4> views, view_notes;  // Up next, Day, Week, Month and a line under each in the choice
@@ -1268,7 +1268,7 @@ inline void sheet(Pen &p, int width, int height, int margin, const Data &d, Mome
 // The view key's choice: four views, the one on show ticked, in a sheet under the key.
 // The view key's choice: the four views, and under them the card's calendars when it has more than one, a tap showing
 // or hiding one while the full screen stays open (only where the glass has room for the row).
-inline void choice(Pen &p, int width, int height, int margin, const HeaderPlace &hp, View on, const Words &wd, const Data &d, uint8_t hidden) {
+inline void choice(Pen &p, int width, int height, int margin, const HeaderPlace &hp, View on, const Words &wd, const Data &d, uint8_t hidden, const std::string &week_word) {
   const auto &m = p.m;
   p.box(0, hp.bottom + P(6, 3), width, height - hp.bottom - P(6, 3), Paint{SCRIM}, 0, 76);
   p.hit(0, 0, width, height, HIT_SCRIM);
@@ -1289,7 +1289,7 @@ inline void choice(Pen &p, int width, int height, int margin, const HeaderPlace 
     const bool chosen = views[i] == on || (views[i] == WEEK && on == BLOCKS);
     if (chosen) p.box(x + P(8, 4), ry, w - 2 * P(8, 4), rh, Paint{ACCENT_TINT}, P(12, 6));
     const int ix = P(20, 10), cw = L(m, ICON);
-    p.text(x + ix, ry + P(12, 6), w - 2 * ix - cw, tf, Paint{INK}, wd.views[i]);
+    p.text(x + ix, ry + P(12, 6), w - 2 * ix - cw, tf, Paint{INK}, views[i] == WEEK ? week_word : wd.views[i]);
     p.text(x + ix, ry + P(12, 6) + L(m, tf), w - 2 * ix - cw, mf, Paint{MUTED}, wd.view_notes[i]);
     if (chosen) p.sc.texts.push_back({x + w - ix - cw, ry + (rh - L(m, ICON)) / 2, cw, ICON, Paint{ACCENT}, CENTRE, GLYPH_CHECK});
     p.hit(x, ry, w, rh, HIT_VIEW, (int) views[i]);
@@ -1333,6 +1333,9 @@ inline View plan_full(Full &f, const Measure &m, int width, int height, int marg
   if (v == WEEK && !week_ok) v = BLOCKS;
   // The week moves by the days it shows: three days on narrow glass, so forward shows the next three, none skipped.
   const int week_days = v == BLOCKS ? 7 : fit_days(m, bw), week_d0 = week_start(d, t, o) + week_days * st.week;
+  // Fewer days than a week are named by their count, "3 days", as Google's calendar does; the key and its choice agree.
+  const int fits = week_ok ? fit_days(m, bw) : 7;
+  const std::string week_word = fits < 7 ? with(wd.days_view, std::to_string(fits)) : wd.views[2];
   std::string second;
   if (v == WEEK || v == BLOCKS) {
     const Date wk = date_of(d, week_d0);
@@ -1361,7 +1364,7 @@ inline View plan_full(Full &f, const Measure &m, int width, int height, int marg
     while (mo > 11) { mo -= 12; ++yr; }
     period = month_short(mo + 1) + " " + std::to_string(yr);
   }
-  const HeaderPlace hp = header(p, width, margin, name, second, view_word(wd, v), wd, period);
+  const HeaderPlace hp = header(p, width, margin, name, second, v == WEEK ? week_word : std::string(view_word(wd, v)), wd, period);
   const Status s = status(d, t, o);
   if (v == UP_NEXT) {
     const int uh = std::max(up_next_min(m), std::min(bh / 2, up_next_min(m) + 2 * L(m, VALUE)));
@@ -1421,7 +1424,7 @@ inline View plan_full(Full &f, const Measure &m, int width, int height, int marg
     }
   }
   Pen op{f.overlay, m};
-  if (st.menu) choice(op, width, height, margin, hp, v, wd, all, st.hidden);
+  if (st.menu) choice(op, width, height, margin, hp, v, wd, all, st.hidden, week_word);
   else if (st.sheet >= 0) sheet(op, width, height, margin, d, t, wd, st.sheet);
   f.view = v;
   return v;

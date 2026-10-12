@@ -605,6 +605,7 @@
       "earlier": "{x} korábbi",
       "later": "{x} későbbi",
       "more_week": "{x} további a héten",
+      "days_view": "{x} nap",
       "views": [
         "Következő",
         "Nap",

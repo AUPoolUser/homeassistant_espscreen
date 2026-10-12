@@ -605,6 +605,7 @@
       "earlier": "{x} plus tôt",
       "later": "{x} plus tard",
       "more_week": "{x} de plus cette semaine",
+      "days_view": "{x} jours",
       "views": [
         "À suivre",
         "Jour",

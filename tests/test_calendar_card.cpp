@@ -45,7 +45,7 @@ static Words words() {
   w.free = "Free"; w.busy = "Busy"; w.starts_soon = "Starts soon"; w.private_title = "Busy"; w.all_day = "All day";
   w.today = "Today"; w.tomorrow = "Tomorrow"; w.nothing = "Nothing planned"; w.nothing_more = "Nothing else this week";
   w.until = "Until {x}"; w.next = "Next {x}"; w.left = "{x} left"; w.in = "in {x}"; w.more = "{x} more";
-  w.earlier = "{x} earlier"; w.later = "{x} later"; w.week = "Week {x}"; w.more_week = "{x} more this week";
+  w.earlier = "{x} earlier"; w.later = "{x} later"; w.week = "Week {x}"; w.more_week = "{x} more this week"; w.days_view = "{x} days";
   w.days = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
   w.days_long = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
   w.letters = {"Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"};
@@ -137,6 +137,17 @@ int main() {
     for (bool from_monday : {false, true}) {
       const auto here = days_shown(0, from_monday), next = days_shown(1, from_monday), back = days_shown(-1, from_monday);
       assert(!here.empty() && next.front() == here.back() + 1 && back.back() == here.front() - 1);
+    }
+    // A view of fewer days than seven is named by their count on its key and in the view choice, not "Week".
+    {
+      State ws; ws.view = WEEK; ws.menu = true; Full wf;
+      plan_full(wf, m, b.width, b.height, 14, d, now, o, wd, "Family", ws);
+      int n = 0; for (auto &h : wf.fixed.hits) n += h.kind == HIT_DAY;
+      const std::string word = n < 7 ? std::to_string(n) + " days" : "Week";
+      bool key = false, listed = false;
+      for (auto &x : wf.fixed.texts) key |= x.s == word;
+      for (auto &x : wf.overlay.texts) listed |= x.s == word;
+      assert(key && listed);
     }
   }
   // Overlapping events stand side by side.

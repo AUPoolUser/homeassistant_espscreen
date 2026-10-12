@@ -605,6 +605,7 @@
       "earlier": "{x} earlier",
       "later": "{x} later",
       "more_week": "{x} more this week",
+      "days_view": "{x} days",
       "views": [
         "Up next",
         "Day",
