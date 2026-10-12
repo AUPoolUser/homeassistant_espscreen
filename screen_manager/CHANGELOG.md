@@ -1,5 +1,8 @@
 ## Unreleased
 
+- **Plugins have pictures.** A plugin whose maker added one shows a picture across the top of its card on the Plugins
+  page and large above its details: the plugin on a few screens, with its name and what it does. Makers make one with
+  the plugins repository's new `tools/store_image.py`, from the real firmware of the bench.
 - **A dark screen saves power.** In standby or Sleep at brightness 0 the screen stops drawing and lets its Wi-Fi doze
   between the router's beacons, so a screen on a battery lasts longer. It stays connected: Home Assistant still sees it
   and can wake it, alerts still arrive, and a tap wakes it as before. Waking fades the light in over 200 ms instead of

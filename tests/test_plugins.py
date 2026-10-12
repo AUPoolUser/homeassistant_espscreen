@@ -316,6 +316,37 @@ class LinkFolder(unittest.IsolatedAsyncioTestCase):
         entry = await service.resolve_link('https://github.com/someone/plugins/tree/main/plugins/bus')
         self.assertEqual(entry.ref, 'm' * 40)
 
+    async def test_its_picture_for_the_plugins_page(self):
+        # store.png beside the manifest, at most a megabyte, is the plugin's picture; the app fetches it when shown.
+        import yaml
+        import plugins as plugin_service
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        service = plugin_service.Plugins(type('Manager', (), {'page_senders': {}})(), Path(tmp.name) / 'data',
+                                         Path(tmp.name) / 'esphome')
+        listing = [{'name': 'README.md', 'size': 10}, {'name': 'store.png', 'size': 300_000}]
+
+        async def github(url, text=False):
+            if url.endswith('/releases/latest'):
+                return {'tag_name': 'v1.0.0'}
+            if '/commits/' in url:
+                return {'sha': 'r' * 40}
+            if url.endswith('tessera-plugin.yaml'):
+                return yaml.safe_dump(manifest())
+            if '/contents/' in url and 'translations' in url:
+                return [{'name': 'en.json'}]
+            if url.endswith('translations/en.json'):
+                return json.dumps(ENGLISH)
+            if '/contents/' in url:
+                return listing
+            return '# Bus'
+        service._github = github
+        entry = await service.resolve_link('https://github.com/someone/tessera-bus')
+        self.assertEqual(service.editor_plugin(entry)['image'], f'api/plugins/{entry.id}/image?v={"r" * 40}')
+        listing[1]['size'] = 2_000_000
+        entry = await service.resolve_link('https://github.com/someone/tessera-bus')
+        self.assertIsNone(entry.image, 'larger than the page takes')
+
 
 class ImageRoom(unittest.TestCase):
     """The editor's room for a plugin on a 4 MB board comes from the screen's own last image and its slot."""

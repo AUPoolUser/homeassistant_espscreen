@@ -2,7 +2,9 @@
 // One plugin as a card: its icon, its maker, one line of what it does, its label and one line of state. The Plugins
 // page and a screen's Plugins tab draw the same card; only the state they hand it differs. Where a plugin can go on a
 // screen, the card has a round Add, the way a store has Get: it sets the plugin aside in the tray (PluginTray) without opening
-// its details, and turns into a tick until it is taken out again. The card itself opens the details.
+// its details, and turns into a tick until it is taken out again. The card itself opens the details. A plugin with a
+// picture (store.png in its repository) shows it across the top of the card; one the add-on cannot serve folds away.
+import { ref } from "vue";
 import { t } from "../i18n";
 import { text, type Plugin } from "../model/plugins";
 import { glyph } from "../model/topbar";
@@ -10,14 +12,16 @@ import Icon from "./ui/Icon.vue";
 import { usePluginsStore, type Status } from "../stores/plugins";
 
 const plugins = usePluginsStore();
+const pictureFailed = ref(false);
 
 defineProps<{ plugin: Plugin; status: Status; chosen: boolean; staged?: boolean | null }>();
 defineEmits<{ open: []; add: [] }>();
 </script>
 
 <template>
-  <div role="listitem" tabindex="0" class="plugin-card" :class="[status.kind, { chosen, staged, addable: staged != null }]" :data-plugin="plugin.id"
+  <div role="listitem" tabindex="0" class="plugin-card" :class="[status.kind, { chosen, staged, addable: staged != null, pictured: plugin.image && !pictureFailed }]" :data-plugin="plugin.id"
     @click="$emit('open')" @keydown.enter.self="$emit('open')">
+    <img v-if="plugin.image && !pictureFailed" class="plugin-picture" :src="plugin.image" alt="" loading="lazy" decoding="async" @error="pictureFailed = true" />
     <span class="plugin-icon" :class="{ tessera: plugin.tessera }" aria-hidden="true"><span class="mdi">{{ glyph(plugin.icon) }}</span></span>
     <span class="plugin-words">
       <b>{{ text(plugin.name) }}</b>

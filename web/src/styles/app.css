@@ -1719,6 +1719,10 @@ section.advanced code { font-size: 11.5px; }
 .plugin-card:focus-visible { outline: none; box-shadow: var(--focus); }
 .plugin-card.staged { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
 .plugin-card.addable { grid-template-columns: auto minmax(0, 1fr) auto; }
+/* A plugin's picture (store.png, 16:9) across the top of its card, to the card's edges, and large in its details. */
+.plugin-card.pictured { grid-template-rows: auto auto 1fr auto; }
+.plugin-picture { grid-column: 1 / -1; display: block; width: calc(100% + 32px); margin: -16px -16px 2px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 13px 13px 0 0; background: var(--seg); }
+.pd-picture { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; margin: 12px 0 4px; border-radius: 12px; border: 1px solid var(--line); background: var(--seg); }
 .plugin-get { align-self: center; width: 32px; height: 32px; border-radius: 999px; display: grid; place-items: center; background: var(--seg); color: var(--accent); font-size: 19px; transition: background 0.15s, color 0.15s, transform 0.12s; }
 .plugin-get:hover { background: var(--accent-soft); }
 .plugin-get:active { transform: scale(0.9); }

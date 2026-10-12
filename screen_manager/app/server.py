@@ -3837,6 +3837,9 @@ def create_app(manager, development=False):
         `private`: behind ingress the request carries Home Assistant's session. index.html and api/ stay no-store."""
         if request.path.startswith('/assets/') and response.status in (200, 304):
             response.headers['Cache-Control'] = 'private, max-age=31536000, immutable'
+        # A plugin's picture is asked for under its commit (plugins.image_url), so it too can be kept: a day.
+        elif request.path.startswith('/api/plugins/') and request.path.endswith('/image') and response.status == 200:
+            response.headers['Cache-Control'] = 'private, max-age=86400'
     app.on_response_prepare.append(cache_assets)
 
     # The page is the Vite build of web/ (npm run build writes it here): index.html names its script and styles
@@ -4653,6 +4656,15 @@ def create_app(manager, development=False):
             return web.json_response(await manager.plugins.preview(request.match_info['plugin'], request.match_info['tile'], options,
                                                                    request.query.get('_screen')))
         app.router.add_get('/api/plugins/{plugin}/preview/{tile}', plugins_preview)
+
+        async def plugins_image(request):
+            # A plugin's picture for the Plugins page (store.png), served by the app: the editor shows no picture of
+            # another address (its img-src is 'self').
+            body = await manager.plugins.store_image(request.match_info['plugin'])
+            if body is None:
+                raise web.HTTPNotFound()
+            return web.Response(body=body, content_type='image/png')
+        app.router.add_get('/api/plugins/{plugin}/image', plugins_image)
 
         async def plugins_link(request):
             data = await request.json()

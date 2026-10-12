@@ -53,6 +53,13 @@ GITHUB_API = 'https://api.github.com/repos/{owner}/{repo}'
 GITHUB_REPOSITORY = 'https://api.github.com/repositories/{id}'
 GITHUB_RAW = 'https://raw.githubusercontent.com/{owner}/{repo}/{ref}/{path}'
 FOLDER = 'tessera-plugins'
+# A plugin's picture on the Plugins page: store.png beside its manifest, made with the plugins repository's
+# tools/store_image.py or by hand (its docs/PUBLISHING.md). The app fetches it at the plugin's commit and serves it to
+# the editor itself, as the editor shows no picture from another address.
+STORE_IMAGE = 'store.png'
+STORE_IMAGE_MAX = 1024 * 1024
+STORE_IMAGE_SIZE = (2560, 1440)   # the largest it takes; the tool makes 1280 x 720
+PNG_SIGNATURE = b'\x89PNG\r\n\x1a\n'
 PLUGIN_ICON = 'F0A66'         # puzzle-outline, for a plugin whose icon is not in Tessera's set
 X_BUDGET = 2600               # bytes of a tile's data on the wire: the message carries more and stays under 4 KB
 # How far lists are shortened, each to the same length from the end, until an answer or a tile's entity fits its bytes:
@@ -155,12 +162,29 @@ def trimmed(data):
     return data
 
 
+def store_image_ok(body):
+    """Whether `body` is a PNG the Plugins page takes: the signature, a header Pillow reads, and at most STORE_IMAGE_SIZE.
+    Only the header is read, so a picture that claims an enormous size is refused before anything is decoded."""
+    if not body or len(body) > STORE_IMAGE_MAX or not body.startswith(PNG_SIGNATURE):
+        return False
+    try:
+        from io import BytesIO
+        from PIL import Image
+        with Image.open(BytesIO(body)) as image:
+            width, height = image.size
+            return image.format == 'PNG' and 0 < width <= STORE_IMAGE_SIZE[0] and 0 < height <= STORE_IMAGE_SIZE[1]
+    except Exception:
+        return False
+
+
 class Entry:
     """One plugin the app knows, from the index, a snapshot of an installed release, or a folder."""
 
     def __init__(self, raw, translations, readme, source, label, repo=None, path='.', ref=None, folder=None, status='ok',
-                 repo_id=None, branch=None, date=None, changelog=None):
+                 repo_id=None, branch=None, date=None, changelog=None, image=None):
         self.raw, self.translations, self.readme = raw, translations, readme
+        # STORE_IMAGE when the plugin has a picture for the Plugins page, else None.
+        self.image = STORE_IMAGE if image == STORE_IMAGE else None
         self.source, self.label, self.repo, self.path, self.ref = source, label, repo, path or '.', ref
         self.folder, self.status = folder, status
         # GitHub's number of the repository (it follows a rename, and a new repository under an old name has another),
@@ -196,7 +220,7 @@ class Entry:
     def snapshot(self):
         return {'raw': self.raw, 'translations': self.translations, 'readme': self.readme, 'source': self.source,
                 'label': self.label, 'repo': self.repo, 'path': self.path, 'ref': self.ref, 'repo_id': self.repo_id,
-                'branch': self.branch, 'date': self.date, 'changelog': self.changelog}
+                'branch': self.branch, 'date': self.date, 'changelog': self.changelog, 'image': self.image}
 
 
 def read_folder(folder):
@@ -214,7 +238,8 @@ def read_folder(folder):
         for path in sorted(folder.glob(f'{name}*.md')):
             language = path.stem.split('.', 1)[1] if '.' in path.stem else 'en'
             into[language] = path.read_text(encoding='utf-8')[:64 * 1024]
-    return Entry(raw, translations, readme, 'folder', 'test', folder=folder, changelog=changelog)
+    return Entry(raw, translations, readme, 'folder', 'test', folder=folder, changelog=changelog,
+                 image=STORE_IMAGE if (folder / STORE_IMAGE).is_file() else None)
 
 
 class Plugins:
@@ -275,7 +300,8 @@ class Plugins:
                 entry = Entry(item['manifest'], item.get('translations') or {}, item.get('readme') or {}, 'index', label,
                               repo=repo, path=item.get('path') or '.', ref=release.get('sha'), status=item.get('status', 'ok'),
                               repo_id=item.get('repo_id'), date=release.get('date'),
-                              changelog=item.get('changelog') if isinstance(item.get('changelog'), dict) else None)
+                              changelog=item.get('changelog') if isinstance(item.get('changelog'), dict) else None,
+                              image=item.get('image'))
             except (pm.ManifestError, KeyError, TypeError, ValueError) as error:
                 LOG.warning('Index plugin %s skipped: %s', (item or {}).get('id') if isinstance(item, dict) else '?', error)
                 continue
@@ -354,7 +380,7 @@ class Plugins:
                 self.snapshots[key] = Entry(data['raw'], data['translations'], data.get('readme') or {}, data['source'],
                                             data['label'], repo=data.get('repo'), path=data.get('path'), ref=data.get('ref'),
                                             repo_id=data.get('repo_id'), branch=data.get('branch'), date=data.get('date'),
-                                            changelog=data.get('changelog'))
+                                            changelog=data.get('changelog'), image=data.get('image'))
             except (OSError, ValueError, KeyError, pm.ManifestError):
                 return None
         return self.snapshots[key]
@@ -574,10 +600,12 @@ class Plugins:
                     translations[name[:-5]] = json.loads(await self._github(raw('translations/' + name), text=True))
                 except ValueError:
                     continue
-        readme, changelog = {}, {}
+        readme, changelog, image = {}, {}, None
         files = await self._github(f'{api}/contents/{path if path != "." else ""}?ref={sha}')
         for item in files if isinstance(files, list) else []:
             name = item.get('name', '')
+            if name == STORE_IMAGE and isinstance(item.get('size'), int) and item['size'] <= STORE_IMAGE_MAX:
+                image = STORE_IMAGE
             found = re.fullmatch(r'(README|CHANGELOG)(?:\.([a-z]{2}(?:-[A-Za-z]{2})?))?\.md', name)
             if found:
                 into = readme if found.group(1) == 'README' else changelog
@@ -586,7 +614,7 @@ class Plugins:
         label = 'test' if wanted else ('tessera' if repo_url.lower().startswith(TESSERA_OWNER.lower()) else 'community')
         try:
             entry = Entry(manifest, translations, readme, 'branch' if wanted else 'link', label, repo=repo_url, path=path,
-                          ref=sha, repo_id=repo_id, branch=wanted, changelog=changelog)
+                          ref=sha, repo_id=repo_id, branch=wanted, changelog=changelog, image=image)
         except pm.ManifestError as error:
             raise ValueError(t('addon.errors.plugins.manifest', why=str(error)[:200]))
         self.links[entry.id] = entry
@@ -676,6 +704,9 @@ class Plugins:
                             'network': manifest['permissions']['network'],
                             'read_entities': manifest['permissions']['read_entities']},
             'privacy': manifest.get('privacy'), 'readme': entry.readme, 'changelog': entry.changelog,
+            # Its picture for the Plugins page, through the app (store_image), named after its commit so a browser keeps
+            # it until the plugin changes.
+            'image': self.image_url(entry),
             'languages': pm.complete_languages(manifest, entry.translations),
             'inputs': [{'id': i['id'], 'kind': i['kind'], 'scope': i['scope'], 'label': words(i['label']),
                         'hint': words(i['hint']), 'domains': i['domains']} for i in manifest['inputs']],
@@ -718,6 +749,65 @@ class Plugins:
         for entry in [*self.index.values(), *self.links.values(), *self.folders.values()]:
             listed[entry.id] = entry
         return listed
+
+    def image_url(self, entry):
+        """The editor's address of a plugin's picture, or None: named after its commit (a folder: the file's time), so a
+        new picture is a new address."""
+        if not entry.image:
+            return None
+        version = entry.ref
+        if entry.folder is not None:
+            try:
+                version = int((Path(entry.folder) / STORE_IMAGE).stat().st_mtime)
+            except OSError:
+                return None
+        return f'api/plugins/{entry.id}/image?v={version or 0}'
+
+    async def store_image(self, plugin_id):
+        """The PNG of a listed plugin's picture for the Plugins page, or None: from its folder, or fetched from GitHub at
+        the plugin's commit and kept under data/images (one per plugin), checked to be a PNG of a size the page takes."""
+        entry = self.listed().get(plugin_id)
+        if entry is None or not entry.image:
+            return None
+        if entry.folder is not None:
+            try:
+                body = (Path(entry.folder) / STORE_IMAGE).read_bytes()
+            except OSError:
+                return None
+            return body if store_image_ok(body) else None
+        found = GITHUB_LINK.match(entry.repo or '')
+        if not found or not re.fullmatch(r'[0-9a-f]{40}', entry.ref or ''):
+            return None
+        kept = self.data / 'images' / f'{entry.id}-{entry.ref}.png'
+        try:
+            return kept.read_bytes()
+        except OSError:
+            pass
+        base = '' if entry.path in ('', '.') else entry.path.strip('/') + '/'
+        url = GITHUB_RAW.format(owner=found.group(1), repo=found.group(2), ref=entry.ref, path=base + STORE_IMAGE)
+        import aiohttp
+        try:
+            if self.http is None or self.http.closed:
+                self.http = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15),
+                                                  headers={'User-Agent': self.fetcher.user_agent})
+            async with self.http.get(url) as response:
+                if response.status != 200:
+                    return None
+                body = bytes(await read_whole(response, STORE_IMAGE_MAX))
+        except (aiohttp.ClientError, asyncio.TimeoutError, ValueError) as error:
+            LOG.info('Plugin %s: picture not read (%s)', entry.id, error)
+            return None
+        if not store_image_ok(body):
+            LOG.info('Plugin %s: %s is not a PNG the Plugins page takes', entry.id, STORE_IMAGE)
+            return None
+        try:
+            kept.parent.mkdir(parents=True, exist_ok=True)
+            for old in kept.parent.glob(f'{entry.id}-*.png'):
+                old.unlink(missing_ok=True)
+            kept.write_bytes(body)
+        except OSError as error:
+            LOG.warning('Plugin %s: picture not kept (%s)', entry.id, error)
+        return body
 
     def settle(self):
         """What a plugin's record says squared with what its screen runs, for a screen without a build on its way: a

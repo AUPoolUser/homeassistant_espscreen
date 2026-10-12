@@ -192,3 +192,18 @@ describe("a plugin's details (the plugins store, model/plugins.ts)", () => {
       .toEqual([t("editor.plugins.apply.none"), t("editor.plugins.apply.add", { n: 2 }, 2), t("editor.plugins.apply.remove", { n: 1 }, 1), t("editor.plugins.apply.both", { n: 2 }, 2)]);
   });
 });
+
+describe("a plugin's picture", () => {
+  it("shows across the top of its card and above its details, and folds away when the add-on cannot serve it", async () => {
+    const { mount } = await import("@vue/test-utils");
+    const PluginCard = (await import("../src/components/PluginCard.vue")).default;
+    const props = (more: Partial<Plugin>) => ({ plugin: plugin(more), status: { kind: "" as const, label: "" }, chosen: false });
+    const card = mount(PluginCard, { props: props({ image: "api/plugins/bus/image?v=1" }) });
+    expect(card.find("img.plugin-picture").attributes("src")).toBe("api/plugins/bus/image?v=1");
+    expect(card.classes()).toContain("pictured");
+    await card.find("img.plugin-picture").trigger("error");
+    expect(card.find("img.plugin-picture").exists()).toBe(false);
+    expect(card.classes()).not.toContain("pictured");
+    expect(mount(PluginCard, { props: props({}) }).find("img").exists()).toBe(false);
+  });
+});

@@ -202,5 +202,100 @@ class Catalogue(unittest.TestCase):
         self.assertEqual(service.store.get('kitchen', 'bus')['repo'], 'https://github.com/someone/bus')
 
 
+
+def png(width=1280, height=720):
+    from io import BytesIO
+    from PIL import Image
+    out = BytesIO()
+    Image.new('RGB', (width, height), (20, 30, 40)).save(out, 'PNG')
+    return out.getvalue()
+
+
+class FakeResponse:
+    def __init__(self, status, body):
+        self.status, self.body = status, body
+        self.content = self
+
+    async def iter_chunked(self, size):
+        for start in range(0, len(self.body), size):
+            yield self.body[start:start + size]
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+
+class FakeHttp:
+    closed = False
+
+    def __init__(self, files):
+        self.files, self.asked = files, []
+
+    def get(self, url, **kw):
+        self.asked.append(url)
+        return FakeResponse(200, self.files[url]) if url in self.files else FakeResponse(404, b'')
+
+
+class StoreImage(unittest.IsolatedAsyncioTestCase):
+    """A plugin's picture for the Plugins page (store.png): named in the index, a link or a folder, fetched by the app at
+    the plugin's commit and served to the editor, which shows no picture of another address."""
+    service = Catalogue.service
+
+    def test_the_editor_gets_an_address_of_the_app_named_after_the_commit(self):
+        service = self.service()
+        service._take_index({'format': 1, 'plugins': [{**item('clock'), 'image': 'store.png'}, item('bins'),
+                                                      {**item('odd'), 'image': '../../secrets.png'}]})
+        shown = {p['id']: p['image'] for p in service.payload()['plugins']}
+        self.assertEqual(shown, {'clock': f'api/plugins/clock/image?v={"a" * 40}', 'bins': None, 'odd': None})
+        # An installed release keeps it.
+        service.keep_snapshot(service.index['clock'])
+        service.snapshots.clear()
+        self.assertEqual(service.snapshot_of('clock', 'a' * 40).image, 'store.png')
+
+    def test_only_a_png_of_a_size_the_page_takes(self):
+        import plugins as plugin_service
+        ok = plugin_service.store_image_ok
+        self.assertTrue(ok(png()))
+        self.assertFalse(ok(b''))
+        self.assertFalse(ok(b'GIF89a' + png()[6:]))
+        self.assertFalse(ok(png(4000, 2000)), 'larger than the page takes')
+        self.assertFalse(ok(png()[:8] + b'garbage'))
+        self.assertFalse(ok(png() + b'x' * plugin_service.STORE_IMAGE_MAX), 'more than a megabyte')
+
+    async def test_fetched_once_at_the_commit_and_kept(self):
+        service = self.service()
+        service._take_index({'format': 1, 'plugins': [{**item('clock'), 'image': 'store.png'}]})
+        url = f'https://raw.githubusercontent.com/MaxGramser/tessera-plugins/{"a" * 40}/plugins/clock/store.png'
+        service.http = FakeHttp({url: png()})
+        self.assertEqual(await service.store_image('clock'), png())
+        self.assertEqual(await service.store_image('clock'), png())
+        self.assertEqual(service.http.asked, [url], 'kept after the first time')
+        self.assertIsNone(await service.store_image('nothing'))
+        # Not a PNG: nothing is served or kept.
+        service._take_index({'format': 1, 'plugins': [{**item('clock'), 'image': 'store.png',
+                                                       'release': {'version': '1.0.1', 'sha': 'b' * 40, 'date': '2026-10-12'}}]})
+        service.http = FakeHttp({url.replace('a' * 40, 'b' * 40): b'<html>'})
+        self.assertIsNone(await service.store_image('clock'))
+        self.assertEqual([p.name for p in (service.data / 'images').iterdir()], [f'clock-{"a" * 40}.png'])
+
+    async def test_a_folder_shows_its_own_file(self):
+        import plugins as plugin_service
+        service = self.service()
+        folder = service.data.parent / 'clock'
+        (folder / 'translations').mkdir(parents=True)
+        import json
+        import yaml
+        (folder / 'tessera-plugin.yaml').write_text(yaml.safe_dump(manifest('clock')))
+        (folder / 'translations' / 'en.json').write_text(json.dumps({'app': {'name': 'Clock', 'summary': 'x'}, 'screen': {}}))
+        self.assertIsNone(plugin_service.read_folder(folder).image)
+        (folder / 'store.png').write_bytes(png())
+        entry = plugin_service.read_folder(folder)
+        service.folders = {'clock': entry}
+        self.assertTrue(service.image_url(entry).startswith('api/plugins/clock/image?v='))
+        self.assertEqual(await service.store_image('clock'), png())
+
+
 if __name__ == '__main__':
     unittest.main()

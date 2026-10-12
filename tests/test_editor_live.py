@@ -128,6 +128,29 @@ class Endpoints(unittest.IsolatedAsyncioTestCase):
         await self.client.close()
         self.tmp.cleanup()
 
+    async def test_a_plugins_picture_comes_from_the_app_and_is_kept_a_day(self):
+        # The editor's img-src is 'self': a plugin's store.png goes through the app (plugins.store_image).
+        import io
+        from PIL import Image
+        picture = io.BytesIO()
+        Image.new('RGB', (1280, 720), (10, 20, 30)).save(picture, 'PNG')
+        sha = 'c' * 40
+        manifest = {'id': 'clock', 'version': '1.0.0', 'api': '0.7', 'icon': 'clock-outline', 'maintainer': 'someone',
+                    'license': 'MIT', 'topics': ['time']}
+        self.manager.plugins._take_index({'format': 1, 'plugins': [{
+            'repo': 'https://github.com/someone/tessera-clock', 'path': '.', 'label': 'community', 'image': 'store.png',
+            'release': {'version': '1.0.0', 'sha': sha, 'date': '2026-10-12'}, 'manifest': manifest,
+            'translations': {'en': {'app': {'name': 'Clock', 'summary': 'x'}, 'screen': {}}}}]})
+        kept = self.manager.plugins.data / 'images' / f'clock-{sha}.png'
+        kept.parent.mkdir(parents=True, exist_ok=True)
+        kept.write_bytes(picture.getvalue())
+        response = await self.client.get('/api/plugins/clock/image?v=' + sha)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.headers['Content-Type'], 'image/png')
+        self.assertEqual(response.headers['Cache-Control'], 'private, max-age=86400')
+        self.assertEqual(await response.read(), picture.getvalue())
+        self.assertEqual((await self.client.get('/api/plugins/nothing/image')).status, 404)
+
     async def test_media_preview_hides_source_urls_and_preserves_image_proportions(self):
         import io
         from PIL import Image

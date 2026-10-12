@@ -74,6 +74,9 @@ async function toggleLike(consent = false) {
   try { await plugins.like(props.plugin, !props.plugin.liked, consent); } catch (error: any) { ui.toast(error.message); }
 }
 
+// Its picture for the Plugins page (store.png), large above its name; one the add-on cannot serve folds away.
+const failedPicture = ref<string | null>(null);
+
 // What an update brings: the plugin's changelog from the version the screen runs (on the Plugins page: the oldest of the
 // screens with the update) up to the one on offer, and GitHub's compare as the full story. Every release, folded, for a
 // plugin with a changelog and no update waiting.
@@ -101,6 +104,8 @@ const history = computed(() => (!newsFrom.value ? changesBetween(text(props.plug
       <button type="button" class="btn quiet" @click="askingLike = false">{{ t("editor.common.cancel") }}</button>
     </div>
   </div>
+  <img v-if="plugin.image && failedPicture !== plugin.image" class="pd-picture" id="plugin-picture" :src="plugin.image" alt=""
+    decoding="async" @error="failedPicture = plugin.image ?? null" />
   <div class="pd-title">
     <h2 id="plugin-name">{{ text(plugin.name) }}</h2>
     <p class="pd-by">

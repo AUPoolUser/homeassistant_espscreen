@@ -233,7 +233,14 @@ that runs on one of their screens (`plugin_likes.py`): it goes to the Tessera we
 installation, only on a tap and after one yes that it counts in a public number; the plugins repository copies the
 counts into `likes.json` every hour, which the app reads from GitHub.
 
+A plugin can have a picture, `store.png` beside its manifest (the plugins repository's docs/PUBLISHING.md, "The picture
+on the Plugins page", and its `tools/store_image.py`). The index names it (`image`), a link finds it in the plugin's
+folder, a folder plugin has the file. The editor shows it across the top of the plugin's card and above its details,
+through `GET api/plugins/<id>/image` (`plugins.store_image`): the editor's `img-src` is `'self'`, so the app fetches the
+file from GitHub at the plugin's commit, checks it is a PNG of at most 1 MB and 2560 x 1440, keeps one per plugin under
+`data/images`, and serves it under an address named after the commit, which a browser keeps for a day.
+
 ## What is not built yet
 
-A plugin's own messages beyond Home Assistant commands, pictures of a plugin's own, and Python modules of Tessera's own
-plugins in the add-on (the design's `module`).
+A plugin's own messages beyond Home Assistant commands, and Python modules of Tessera's own plugins in the add-on (the
+design's `module`).

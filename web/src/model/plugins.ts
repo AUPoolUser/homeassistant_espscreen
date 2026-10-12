@@ -77,6 +77,7 @@ export type Plugin = {
   flash_kb: number;
   permissions: { home_assistant: string[]; network: string[]; read_entities?: string[] };
   readme: Texts;                      // markdown; the app shows it in the editor's language, else in English
+  image?: string | null;              // its picture for the Plugins page (store.png), served by the add-on: api/plugins/<id>/image
   changelog?: Texts;                  // its CHANGELOG.md: a `## <version>` heading per release, newest first
   languages: string[];                // the languages its own texts are complete in
   inputs?: PluginInput[];             // what a person fills in when adding it: a key, a pin, a name
