@@ -329,7 +329,11 @@ interval:
             - pcf8563.write_time: board_rtc
 
 # ESPHome's gsl3670 preset for this panel brings the range it reports, its firmware table and its reset (the XL9535's
-# pin 14) and interrupt (GPIO16) lines.
+# pin 14) and interrupt (GPIO16) lines. The touch starts after the display (setup_priority below its 600, above LVGL's
+# 395): the panel's power on the XL9535 (pins 0 and 7) also feeds the touch chip, and the display switches it on. After
+# a cold start (a flat battery, the first power) the expander starts with every pin off, so a touch that started first
+# found no chip, loaded its firmware into nothing and never reported a touch. A restart hid it: the expander keeps its
+# pins.
 touchscreen:
   - platform: gsl3670
     model: SEEED-RETERMINAL-D1001
@@ -337,6 +341,7 @@ touchscreen:
     i2c_id: touch_bus
     display: my_display
     update_interval: 20ms
+    setup_priority: 500
 
 # ESPHome's mipi_dsi preset for this panel: the JD9365's init sequence, its timings, and its power, backlight supply
 # and reset on the XL9535.
