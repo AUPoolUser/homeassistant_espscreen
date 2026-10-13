@@ -33,6 +33,7 @@
 #include <functional>
 #include <string>
 #include <vector>
+#include "roomy.h"
 
 namespace picture_fetch {
 
@@ -257,6 +258,10 @@ inline void convert_row(const Bmp &b, const uint8_t *palette, const uint8_t *row
 // Takes the bytes of the BMP as they come and fills `pixels` (width * height RGB565) once the head is known: `ready`
 // is called with the picture's size and must give the buffer (or null to stop). `done` tells whether the whole
 // picture came.
+// The download task's own small buffers (the answer's head, the picture's head, one row) take PSRAM first (roomy.h):
+// the internal RAM a Wi-Fi transfer also needs can run out while a picture comes, and a container that cannot grow
+// there aborts the screen (seen on the Guition with a cover flow every few seconds, 2026-10-13).
+
 class Decoder {
  public:
   using Ready = std::function<uint16_t *(int width, int height)>;
@@ -313,8 +318,8 @@ class Decoder {
  private:
   bool fail() { failed_ = true; return false; }
   Ready ready_;
-  std::string head_;
-  std::vector<uint8_t> row_;
+  roomy::Text head_;
+  roomy::List<uint8_t> row_;
   size_t row_fill_ = 0;
   Bmp bmp_;
   bool headed_ = false, failed_ = false, masks_ = false;

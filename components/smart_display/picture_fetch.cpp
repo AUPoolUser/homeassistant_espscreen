@@ -153,7 +153,8 @@ static void download(Slot &slot) {
 
   auto *chunk = static_cast<uint8_t *>(allocate_chunk(CHUNK));
   if (!chunk) { ESP_LOGW(TAG, "%s: no memory for the download", slot.name); close(fd); return; }
-  std::string head;
+  roomy::Text head;
+  head.reserve(1024);
   Head answer;
   size_t body = 0;
   Decoder decoder([&](int width, int height) -> uint16_t * {

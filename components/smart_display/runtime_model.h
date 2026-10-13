@@ -13,6 +13,7 @@
 #include "optimistic.h"
 #include "energy_card.h"
 #include "calendar_card.h"
+#include "roomy.h"
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -369,7 +370,9 @@ struct Extra {
   bool assumed = false;
   // A plugin tile (docs/PLUGINS.md): its options as the editor set them, and what the add-on sent for it (its `x`), each
   // as the JSON it came in. The plugin reads them when its card is made and when they change (plugin_host::render).
-  std::string plugin_options, plugin_state;
+  // PSRAM first (roomy.h): every plugin tile of the layout keeps them, up to 2.6 KB of data each, and inside the chip
+  // they took the room Wi-Fi needs (2026-10-13).
+  roomy::Text plugin_options, plugin_state;
   // The Home Assistant entity a plugin tile belongs to (its manifest's `entity`), "" for none.
   std::string plugin_entity;
   Choice *choice(char kind) { for (auto &c : choices) if (c.kind == kind) return &c; return nullptr; }

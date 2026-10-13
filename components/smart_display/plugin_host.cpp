@@ -13,7 +13,19 @@
 #include <algorithm>
 #include <functional>
 #include <memory>
+#include <string_view>
 #include <vector>
+
+// The documents the host parses a plugin tile's options and data into, and builds a question in: PSRAM first, as the
+// texts they come from (roomy.h).
+namespace {
+struct RoomyJson : ArduinoJson::Allocator {
+  void *allocate(size_t size) override { return roomy::allocate(size); }
+  void deallocate(void *pointer) override { roomy::release(pointer); }
+  void *reallocate(void *pointer, size_t size) override { return roomy::reallocate(pointer, size); }
+};
+RoomyJson json_memory;
+}  // namespace
 
 namespace rt = runtime_tiles;
 namespace plugin_host { extern tessera::Point tapped; }
@@ -232,7 +244,7 @@ Point tap_point() { return plugin_host::tapped; }
 uint32_t send(const Plugin *plugin, JsonObjectConst request) {
   static uint32_t next = 0;
   if (!plugin || rt::inbox.empty() || !esphome::api::global_api_server) return 0;
-  JsonDocument doc;
+  JsonDocument doc(&json_memory);
   doc.set(request);
   const uint32_t number = ++next;
   doc["re"] = number;
@@ -378,7 +390,7 @@ struct Place {
   uint8_t turn = 0;      // tessera::Turn
   bool mirror = false;
 };
-struct Card {
+struct Card : tessera::InPsram {   // PSRAM first, as the plugin's own objects (roomy.h)
   std::unique_ptr<tessera::Tile> tile;
   std::string entity;          // what the card was made for: the tile type,
   size_t index = SIZE_MAX;     // the tile of the layout,
@@ -389,7 +401,8 @@ struct Card {
   std::vector<Place> places;   // its places for pictures, in the order the tile made them
 };
 
-static size_t hash(const std::string &text) { return std::hash<std::string>{}(text) | 1; }
+// A text's hash, never 0 (0 is "nothing yet"), for a string of any allocator (roomy.h).
+template <class S> static size_t hash(const S &text) { return std::hash<std::string_view>{}(std::string_view(text.data(), text.size())) | 1; }
 
 // The card whose tile is in a call of the host (create, on_state, on_tick, on_theme, on_tap): a place the tile makes
 // in that call is this card's. Nothing else of a tile's runs (a plugin's own moments are the plugin's, not a tile's).
@@ -413,7 +426,7 @@ void render(rt::Widgets &w, const rt::Tile &t, int width, int height) {
   if (!type || !type->make) return;
   rt::begin_extra(w, "plugin", width, height);
   const auto &extra = t.extra();
-  const size_t options = hash(extra.plugin_options + "|" + extra.plugin_entity);
+  const size_t options = (hash(extra.plugin_options) * 31u ^ hash(extra.plugin_entity)) | 1;
   Card *card = w.plugin;
   if (card && (card->entity != t.entity || card->index != w.index || card->width != width || card->height != height ||
                card->options != options)) {
@@ -433,8 +446,9 @@ void render(rt::Widgets &w, const rt::Tile &t, int width, int height) {
     card->height = height;
     card->options = options;
     card->dark = theme::dark;
-    JsonDocument doc;
-    if (extra.plugin_options.empty() || deserializeJson(doc, extra.plugin_options)) doc.to<JsonObject>();
+    JsonDocument doc(&json_memory);
+    if (extra.plugin_options.empty() || deserializeJson(doc, extra.plugin_options.data(), extra.plugin_options.size()))
+      doc.to<JsonObject>();
     tessera::TileContext context{w.extra, width, height, static_cast<uint8_t>(t.column_span()),
                                  static_cast<uint8_t>(t.row_span()), t.name.c_str(), extra.plugin_entity.c_str(),
                                  static_cast<int>(w.index), doc.as<JsonObjectConst>()};
@@ -445,8 +459,9 @@ void render(rt::Widgets &w, const rt::Tile &t, int width, int height) {
   const size_t state = hash(extra.plugin_state);
   if (card->state != state) {
     card->state = state;
-    JsonDocument doc;
-    if (extra.plugin_state.empty() || deserializeJson(doc, extra.plugin_state)) doc.to<JsonObject>();
+    JsonDocument doc(&json_memory);
+    if (extra.plugin_state.empty() || deserializeJson(doc, extra.plugin_state.data(), extra.plugin_state.size()))
+      doc.to<JsonObject>();
     card->tile->on_state(doc.as<JsonObjectConst>());
     card->tile->on_tick(rt::now_epoch());
   }
@@ -506,7 +521,8 @@ static int measure(const rt::Widgets &w, std::vector<tile_picture::Part> &parts,
     lv_area_t at;
     lv_obj_get_coords(p.place, &at);
     tile_picture::Part part;
-    part.x = at.x1 - card.x1;
+    // Where the tile laid the place out: a slide (ui::slide_pictures) moves it only until its next picture is here.
+    part.x = at.x1 - card.x1 - lv_obj_get_style_translate_x(p.place, LV_PART_MAIN);
     part.y = at.y1 - card.y1;
     part.w = lv_area_get_width(&at);
     part.h = lv_area_get_height(&at);
@@ -558,8 +574,19 @@ static void place_clear(Place &p) {
   if (p.place) rt::set_number(p.place, LV_STYLE_BG_OPA, LV_OPA_COVER);
 }
 
+// The places back where the tile laid them out, the moment another picture (or none) takes the place of what they
+// showed during a slide.
+static void slide_back(Card &card) {
+  for (auto &p : card.places) {
+    if (!p.place) continue;
+    lv_anim_delete(p.place, nullptr);
+    if (lv_obj_get_style_translate_x(p.place, LV_PART_MAIN)) lv_obj_set_style_translate_x(p.place, 0, 0);
+  }
+}
+
 void picture_place(rt::Widgets &w, void *picture) {
   if (!w.plugin) return;
+  if (picture != picture_drawn(w)) slide_back(*w.plugin);
 #if LV_USE_IMAGE
   auto *src = static_cast<lv_image_dsc_t *>(picture);
   std::vector<tile_picture::Part> parts;
@@ -683,25 +710,25 @@ template<typename Run> static bool call(OpenCard *open, Run &&run) {
 }
 
 // What the tile a card was opened from says now: a plugin tile's data, or an entity's state and name.
-static std::string card_data(int tile) {
-  if (tile < 0 || static_cast<size_t>(tile) >= rt::model.count) return "";
+static roomy::Text card_data(int tile) {
+  if (tile < 0 || static_cast<size_t>(tile) >= rt::model.count) return {};
   const auto &t = rt::model.tiles[tile];
   if (t.is_plugin()) return t.extra().plugin_state;
-  JsonDocument doc;
+  JsonDocument doc(&json_memory);
   doc["state"] = t.state;
   doc["name"] = t.name;
-  std::string out;
+  roomy::Text out;
   serializeJson(doc, out);
   return out;
 }
 
 static void card_state(OpenCard &open, bool force) {
-  const std::string data = card_data(open.tile);
+  const roomy::Text data = card_data(open.tile);
   const size_t state = hash(data);
   if (!force && state == open.state) return;
   open.state = state;
-  JsonDocument doc;
-  if (data.empty() || deserializeJson(doc, data)) doc.to<JsonObject>();
+  JsonDocument doc(&json_memory);
+  if (data.empty() || deserializeJson(doc, data.data(), data.size())) doc.to<JsonObject>();
   open.card->on_state(doc.as<JsonObjectConst>());
 }
 
@@ -1027,6 +1054,28 @@ lv_obj_t *picture(lv_obj_t *parent) {
 }
 
 void set_picture(lv_obj_t *place, const std::string &url, Fit fit) { set_picture(place, url, fit, Turn::NONE, false); }
+
+static void slide_exec(void *obj, int32_t x) { lv_obj_set_style_translate_x(static_cast<lv_obj_t *>(obj), x, 0); }
+
+void slide_pictures(int dx, uint32_t ms) {
+  plugin_host::Card *card = plugin_host::making;
+  if (!card) {
+    ESP_LOGW("plugins", "ui::slide_pictures outside a tile's call");
+    return;
+  }
+  for (auto &p : card->places) {
+    if (!p.place || lv_obj_has_flag(p.place, LV_OBJ_FLAG_HIDDEN)) continue;
+    lv_anim_delete(p.place, nullptr);
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, p.place);
+    lv_anim_set_values(&a, lv_obj_get_style_translate_x(p.place, LV_PART_MAIN), dx);
+    lv_anim_set_duration(&a, ms);
+    lv_anim_set_exec_cb(&a, slide_exec);
+    lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
+    lv_anim_start(&a);
+  }
+}
 
 void set_picture(lv_obj_t *place, const std::string &url, Fit fit, Turn turn, bool mirror) {
   plugin_host::Place *p = plugin_host::find_place(place);

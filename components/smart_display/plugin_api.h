@@ -18,6 +18,7 @@
 #include <vector>
 #include <ArduinoJson.h>
 #include "lvgl.h"
+#include "roomy.h"
 #include "theme.h"
 #include "ui_scale.h"
 
@@ -70,8 +71,28 @@ struct TileContext {
   JsonObjectConst options;   // the tile's options as the editor set them (the manifest's `options`); gone after create()
 };
 
+// Memory for what a plugin keeps (0.10). The memory inside the chip is small and Wi-Fi needs it; a board with PSRAM has
+// megabytes there, and a plain std::string, std::vector or `new` never lands in it (the boards build with
+// CONFIG_SPIRAM_USE_CAPS_ALLOC). Keep texts and lists a tile holds as Text and List: PSRAM first, the ordinary heap on a
+// board without it, and otherwise a std::string and a std::vector: data(), size(), c_str(), +=, == against another Text
+// or a quoted text; roomy::same() compares it with a std::string, roomy::plain() makes one of it, roomy::text() the
+// other way. ui::set_text takes a std::string: ui::set_text(label, roomy::plain(text)), or keep a short text you show in
+// a char array. A Tile and a Card are made in PSRAM by themselves (their operator new), so fixed
+// members (numbers, char arrays, pointers) are there already.
+using Text = roomy::Text;
+template <class T> using List = roomy::List<T>;
+// The operator new of a plugin's objects: PSRAM first; aborts only when no memory has room, as `new` does.
+struct InPsram {
+  static void *operator new(size_t size) {
+    void *p = roomy::allocate(size);
+    if (!p) std::abort();
+    return p;
+  }
+  static void operator delete(void *p) { roomy::release(p); }
+};
+
 // A tile type's card. One object per card on the glass; a page switch on a board without PSRAM makes a new one.
-class Tile {
+class Tile : public InPsram {
  public:
   virtual ~Tile() = default;
   // Make the parts, in context.parent. Called once per card, before anything else.
@@ -104,7 +125,7 @@ struct CardContext {
 // One is open at a time; it closes with Back, standby, Back to page 1 or another card, as every card does. A card may
 // close itself (tessera::close_card) or open another (tessera::open_card) from any of its own calls: it leaves the
 // glass at once, gets no call after that one, and is deleted only once that call has returned.
-class Card {
+class Card : public InPsram {
  public:
   virtual ~Card() = default;
   virtual void open(const CardContext &context) = 0;
@@ -384,6 +405,11 @@ void set_picture(lv_obj_t *place, const std::string &url, Fit fit = Fit::COVER);
 // MIRROR_PERCENT of the picture's height, holds it). Places may overlap: they are layers, a place made later lies over
 // one made earlier, and the app paints them so (a cover flow, a stack of photos). An older app draws them flat.
 void set_picture(lv_obj_t *place, const std::string &url, Fit fit, Turn turn, bool mirror = false);
+// Slide every place of the tile `dx` pixels sideways over `ms` (0.10), and keep them there until the tile's next
+// picture is here: then they are back where the tile laid them out, with it, in the same frame. Call it beside the
+// set_picture calls of a change (a cover flow that turns), so the change shows which way it goes while the next picture
+// comes. Call it in a call of the tile (on_tap, on_tick).
+void slide_pictures(int dx, uint32_t ms = 300);
 }  // namespace ui
 
 }  // namespace tessera

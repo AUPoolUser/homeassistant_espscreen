@@ -22,6 +22,7 @@ adds is not listed, so a 0.9 plugin builds on 0.10. A test keeps the number equa
 | Where | File | What |
 |---|---|---|
 | Firmware | `components/smart_display/plugin_api.h` | What a plugin uses: `tessera::Plugin`, `tessera::Tile`, `TileContext`, the drawing helpers, the clock. The API's version, `PLUGIN_API_MAJOR/MINOR`. |
+| Firmware | `components/smart_display/roomy.h` | Memory that takes PSRAM first: `roomy::Text`, `roomy::List`, the allocator behind `tessera::Text`, `tessera::List` and the plugin host's documents (below, "Rules a change keeps"). |
 | Firmware | `components/smart_display/plugin_host.h`, `plugin_host.cpp` | The core's side: the register, a plugin tile in a card, its places for pictures, the moments, the hello. |
 | Add-on | `screen_manager/app/plugin_pictures.py` | The pictures of a plugin tile (0.10): the question, where a picture may come from, the cache by address, the atlas. |
 | Firmware | `components/smart_display/__init__.py` | `register_plugin()`, which a plugin's `__init__.py` calls: id, version, tile memory and screen texts from its manifest. `PLUGIN_API`. |
@@ -135,6 +136,15 @@ repository's `docs/FETCH.md`.
   `core.plugin_tile()` in the add-on, `TileType::key` and its siblings in the API); the Home Assistant entity a plugin
   tile belongs to is `plugin_entity` (the option, `Extra::plugin_entity`, `TileContext::entity`). The domains a tile, a
   tap action or an input takes are `domains` in the manifest. Keep it so: a new part takes the existing word.
+- **Memory: PSRAM first for what a plugin tile keeps** (`roomy.h`). The boards build with
+  `CONFIG_SPIRAM_USE_CAPS_ALLOC`: a plain `std::string`, `std::vector` or `new` stays in the few tens of kilobytes inside
+  the chip that Wi-Fi and the network stack need, and on a Guition with a few plugin tiles on kept pages a busy moment
+  of Wi-Fi ran it out (2026-10-13: a picture's download aborted, or Wi-Fi stalled). So a plugin tile's options and data
+  (`Extra::plugin_options`, `plugin_state`) are `roomy::Text`, the host parses them with a PSRAM allocator
+  (`json_memory`), `tessera::Tile` and `tessera::Card` take PSRAM in their `operator new` (`tessera::InPsram`), and the
+  API offers `tessera::Text` and `tessera::List` for what a plugin keeps. Keep it so: a new field a plugin tile keeps is a
+  `roomy::Text` or `roomy::List`, a document the host builds or parses gets `json_memory`. Never what DMA or the network
+  reads (a panel's buffer, a socket's): those stay where their driver puts them.
 - **The manifest is the plugin's word, not a fence.** What the add-on enforces is `permissions.network` (every fetch)
   and `permissions.ha_commands` (every question through `tessera::send`). `home_assistant_actions` and
   `read_entities` are declarations the screen does not check: code built into the firmware can do what the firmware

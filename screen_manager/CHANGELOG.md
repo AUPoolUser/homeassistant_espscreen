@@ -1,5 +1,9 @@
 ## Unreleased
 
+- **Screens with plugin tiles stay up.** A plugin tile's options and data, and the buffers a picture is downloaded
+  with, now live in the screen's PSRAM instead of the small memory inside the chip that Wi-Fi needs. On a 4-inch
+  Guition with a few plugin tiles and pictures that memory could run out at a busy moment: the screen restarted, or lost
+  Wi-Fi until it was restarted.
 - **Editor: a map tile grown to two rows saves at once.** Dragging a new map tile (or an energy card) from one row to
   two gave it a setting the app does not keep for it, and the save asked to adjust the tile's settings first.
 - **Plugin API 0.10: pictures on a plugin's tile.** A plugin can lay out places for pictures on its tile and name an
