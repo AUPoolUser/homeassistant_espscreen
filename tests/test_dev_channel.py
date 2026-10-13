@@ -307,5 +307,49 @@ class Reinstall(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(m.updates.results['text.screen1']['state'], 'success')
 
 
+class NightOnDev(unittest.IsolatedAsyncioTestCase):
+    """Automatic updates at night on the dev channel (docs/RELEASING.md, "Testing dev"): the firmware number stays the
+    same from one dev to the next, so a screen on it is left alone every night instead of being built again and again;
+    a screen behind it (a release raised the number) gets its update, in the build line with whatever else waits."""
+
+    def tearDown(self):
+        set_channel(None)
+
+    async def test_the_nightly_round_on_dev(self):
+        from datetime import datetime, timezone
+        night = datetime(2026, 10, 14, 3, 30, tzinfo=timezone.utc)
+        with tempfile.TemporaryDirectory() as tmp:
+            set_channel('dev')
+            m = test_updates.UpdaterTests.setup_manager(self, tmp)
+            m.updates.hosts['text.screen2'] = '10.0.0.6'
+            m.updates.set_auto(True)
+            # Living room runs the dev's number; Kitchen is behind it (a release came to dev after it was built).
+            m.ha.states['text.fw1'] = {'state': core.FIRMWARE_VERSION}
+            self.assertIsNone(m.updates.look(night.replace(hour=14)), 'not in the day')
+            gate = asyncio.Event()
+            original = m.firmware.run
+
+            async def held(data):
+                await gate.wait()
+                await original(data)
+            m.firmware.run = held
+            round = m.updates.look(night)
+            self.assertEqual([b.screen for b in round.builds], ['text.screen2'])
+            # Reinstall from dev asked while the round builds waits its turn; asked again, it stays one build.
+            m.updates.start('text.screen1', reinstall=True)
+            m.updates.start('text.screen1', reinstall=True)
+            self.assertEqual(m.updates.queue, ['text.screen1'])
+            # The next minute of the same night starts nothing more, while it runs and after.
+            self.assertIsNone(m.updates.look(night.replace(minute=31)))
+            gate.set()
+            await m.build_queue.idle()
+            self.assertEqual([c['file'] for c in m.firmware.calls], ['kitchen.yaml', 'living-room.yaml'])
+            self.assertEqual({k: v['state'] for k, v in m.updates.results.items()}, {'text.screen1': 'success', 'text.screen2': 'success'})
+            # The next night every screen is on the dev's number: nothing is built again.
+            self.assertIsNone(m.updates.look(night.replace(day=15)))
+            self.assertEqual(len(m.firmware.calls), 2)
+            self.assertEqual(m.updates.last_round, '2026-10-15')
+
+
 if __name__ == '__main__':
     unittest.main()

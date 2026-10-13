@@ -525,23 +525,30 @@ class Updater:
         while True:
             await asyncio.sleep(60)
             try:
-                if self.busy() or not self.manager.ha.online:
-                    continue  # an update runs or waits: the next minute looks again
-                now = datetime.now(getattr(self.manager.ha, 'time_zone', None) or timezone.utc)
-                # A screen left on its bridge is finished first, whatever the hour and with or without the nightly round.
-                waiting = [inbox for inbox in self.bridging if self.screen(inbox)]
-                if waiting and time.monotonic() - self.bridge_tried >= self.bridge_retry:
-                    self.bridge_tried = time.monotonic()
-                    LOG.info('Finishing the update of %d screen(s) on their bridge', len(waiting))
-                    self.launch(waiting, automatic=True)
-                    continue
-                if not self.due(now):
-                    continue
-                self.last_round = now.date().isoformat()
-                self.save()
-                pending = self.pending()
-                if pending:
-                    LOG.info('Nightly firmware round: %d screen(s)', len(pending))
-                    self.launch(pending, automatic=True)
+                self.look()
             except Exception as error:
                 LOG.warning('Nightly update check skipped (%s)', type(error).__name__)
+
+    def look(self, now=None):
+        """The minute's look (run): a screen left on its bridge is finished first, and in the night the screens with an
+        update get it, as one round. Nothing while an update runs or waits. On the dev channel the firmware number stays
+        the same from one dev to the next, so the round leaves a screen on that number alone, every night: it updates
+        after a release raised the number, or for the language, and builds from dev. The round that started, or None."""
+        if self.busy() or not self.manager.ha.online:
+            return None  # an update runs or waits: the next minute looks again
+        now = now or datetime.now(getattr(self.manager.ha, 'time_zone', None) or timezone.utc)
+        # A screen left on its bridge is finished first, whatever the hour and with or without the nightly round.
+        waiting = [inbox for inbox in self.bridging if self.screen(inbox)]
+        if waiting and time.monotonic() - self.bridge_tried >= self.bridge_retry:
+            self.bridge_tried = time.monotonic()
+            LOG.info('Finishing the update of %d screen(s) on their bridge', len(waiting))
+            return self.launch(waiting, automatic=True)
+        if not self.due(now):
+            return None
+        self.last_round = now.date().isoformat()
+        self.save()
+        pending = self.pending()
+        if not pending:
+            return None
+        LOG.info('Nightly firmware round: %d screen(s)', len(pending))
+        return self.launch(pending, automatic=True)
