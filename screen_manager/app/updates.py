@@ -253,7 +253,8 @@ class Updater:
         """Every screen with an update that is not on its way yet, as one round after whatever builds or waits."""
         pending = self.pending()
         if not pending:
-            raise ValueError(t('addon.errors.updates.all_updated'))
+            # Nothing left to start: every screen with an update has it on its way already, or none has one.
+            raise ValueError(t('addon.errors.updates.all_on_the_way' if self.busy() else 'addon.errors.updates.all_updated'))
         for inbox in pending:
             self.manager.preflight_update(inbox)
         self.launch(pending)

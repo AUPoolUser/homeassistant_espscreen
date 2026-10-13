@@ -806,7 +806,8 @@
         "no_profile": "Geen ESPHome-profiel gevonden voor dit scherm. Controleer de naam in de ESPHome-map.",
         "ip_unknown": "IP-adres onbekend. Vul het eenmalig in; nieuwe firmware meldt het daarna zelf.",
         "all_updated": "Alle bereikbare schermen zijn al bijgewerkt.",
-        "reinstall_dev": "Dezelfde firmware opnieuw installeren kan alleen in het dev-kanaal."
+        "reinstall_dev": "Dezelfde firmware opnieuw installeren kan alleen in het dev-kanaal.",
+        "all_on_the_way": "Elk scherm met een update heeft die al onderweg."
       },
       "remove": {
         "not_allowed": "Deze app mag geen integratie uit Home Assistant verwijderen. Verwijder het scherm in Home Assistant zelf, onder Instellingen → Apparaten & diensten.",

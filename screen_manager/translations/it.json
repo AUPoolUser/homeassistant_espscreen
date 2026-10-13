@@ -806,7 +806,8 @@
         "no_profile": "Nessun profilo ESPHome trovato per questo schermo. Controlla il nome nella cartella di ESPHome.",
         "ip_unknown": "Indirizzo IP sconosciuto. Inseriscilo una sola volta; poi il nuovo firmware lo comunica da solo.",
         "all_updated": "Tutti gli schermi raggiungibili sono già aggiornati.",
-        "reinstall_dev": "Reinstallare lo stesso firmware è possibile solo sul canale dev."
+        "reinstall_dev": "Reinstallare lo stesso firmware è possibile solo sul canale dev.",
+        "all_on_the_way": "Ogni schermo con un aggiornamento lo ha già in arrivo."
       },
       "remove": {
         "not_allowed": "Questa app non può rimuovere un'integrazione da Home Assistant. Rimuovi lo schermo in Home Assistant, in Impostazioni → Dispositivi e servizi.",

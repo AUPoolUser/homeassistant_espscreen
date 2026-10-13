@@ -806,7 +806,8 @@
         "no_profile": "Nie znaleziono profilu ESPHome dla tego ekranu. Sprawdź nazwę w folderze ESPHome.",
         "ip_unknown": "Nieznany adres IP. Wpisz go raz; potem nowy firmware sam go zgłasza.",
         "all_updated": "Wszystkie osiągalne ekrany są już zaktualizowane.",
-        "reinstall_dev": "Ponowna instalacja tego samego firmware jest możliwa tylko w kanale dev."
+        "reinstall_dev": "Ponowna instalacja tego samego firmware jest możliwa tylko w kanale dev.",
+        "all_on_the_way": "Każdy ekran z aktualizacją ma ją już w drodze."
       },
       "remove": {
         "not_allowed": "Ta aplikacja nie może usunąć integracji z Home Assistant. Usuń ekran w samym Home Assistant, w sekcji Ustawienia → Urządzenia oraz usługi.",

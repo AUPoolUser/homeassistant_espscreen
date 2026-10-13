@@ -283,7 +283,7 @@ class TheApp(unittest.IsolatedAsyncioTestCase):
             m.firmware.run = held
             m.updates.start('text.screen1')
             self.assertEqual(m.updates.start_all(), ['text.screen2'])
-            with self.assertRaises(ValueError):
+            with self.assertRaisesRegex(ValueError, 'on its way already'):
                 m.updates.start_all()   # nothing left to add
 
             async def plugin_step(build):

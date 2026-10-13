@@ -806,7 +806,8 @@
         "no_profile": "Não foi encontrado nenhum perfil ESPHome para este ecrã. Verifique o nome na pasta do ESPHome.",
         "ip_unknown": "Endereço IP desconhecido. Introduza-o uma vez; depois disso, o firmware novo passa a comunicá-lo sozinho.",
         "all_updated": "Todos os ecrãs acessíveis já estão atualizados.",
-        "reinstall_dev": "Reinstalar o mesmo firmware só é possível no canal dev."
+        "reinstall_dev": "Reinstalar o mesmo firmware só é possível no canal dev.",
+        "all_on_the_way": "Todos os ecrãs com uma atualização já a têm a caminho."
       },
       "remove": {
         "not_allowed": "Esta aplicação não pode remover uma integração do Home Assistant. Remova o ecrã no próprio Home Assistant, em Configuração → Dispositivos & serviços.",

@@ -806,7 +806,8 @@
         "no_profile": "Nem található ESPHome-profil ehhez a kijelzőhöz. Ellenőrizd a nevet az ESPHome mappában.",
         "ip_unknown": "Az IP-cím ismeretlen. Add meg egyszer; utána az új firmware maga jelenti.",
         "all_updated": "Minden elérhető kijelző már frissítve van.",
-        "reinstall_dev": "Ugyanazt a firmware-t újratelepíteni csak a dev csatornán lehet."
+        "reinstall_dev": "Ugyanazt a firmware-t újratelepíteni csak a dev csatornán lehet.",
+        "all_on_the_way": "Minden kijelző, amelyhez frissítés van, már sorban áll vele."
       },
       "remove": {
         "not_allowed": "Ez az alkalmazás nem távolíthat el integrációt a Home Assistantból. Töröld a kijelzőt magában a Home Assistantban: Beállítások → Eszközök és szolgáltatások.",

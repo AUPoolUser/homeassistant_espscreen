@@ -806,7 +806,8 @@
         "no_profile": "Kein ESPHome-Profil für diesen Bildschirm gefunden. Prüfe den Namen im ESPHome-Ordner.",
         "ip_unknown": "IP-Adresse unbekannt. Gib sie einmal ein; neue Firmware meldet sie danach selbst.",
         "all_updated": "Alle erreichbaren Bildschirme sind schon aktuell.",
-        "reinstall_dev": "Dieselbe Firmware erneut installieren geht nur im Dev-Kanal."
+        "reinstall_dev": "Dieselbe Firmware erneut installieren geht nur im Dev-Kanal.",
+        "all_on_the_way": "Jeder Bildschirm mit einem Update hat es schon auf dem Weg."
       },
       "remove": {
         "not_allowed": "Diese App darf keine Integration aus Home Assistant entfernen. Entferne den Bildschirm in Home Assistant selbst, unter Einstellungen → Geräte & Dienste.",

@@ -806,7 +806,8 @@
         "no_profile": "No se ha encontrado ningún perfil de ESPHome para esta pantalla. Revisa el nombre en la carpeta de ESPHome.",
         "ip_unknown": "Dirección IP desconocida. Introdúcela una vez; después, el firmware nuevo la comunica por sí mismo.",
         "all_updated": "Todas las pantallas accesibles ya están actualizadas.",
-        "reinstall_dev": "Reinstalar el mismo firmware solo es posible en el canal dev."
+        "reinstall_dev": "Reinstalar el mismo firmware solo es posible en el canal dev.",
+        "all_on_the_way": "Todas las pantallas con una actualización ya la tienen en camino."
       },
       "remove": {
         "not_allowed": "Esta aplicación no puede eliminar una integración de Home Assistant. Elimina la pantalla en el propio Home Assistant, en Configuración → Dispositivos y servicios.",
