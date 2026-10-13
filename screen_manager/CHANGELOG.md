@@ -1,5 +1,11 @@
 ## Unreleased
 
+- **Plugin API 0.10: pictures on a plugin's tile.** A plugin can lay out places for pictures on its tile and name an
+  address for each (a film's poster beside its title), and the screen shows them the way it shows a camera tile or an
+  album cover: the app fetches each picture once, from a host the plugin's manifest names or from Home Assistant's own
+  pictures of the tile's entity, cuts or fits it to its place and sends all the places of a tile as one picture. The
+  manifest says how many places a tile has (`pictures`). A board without the memory for pictures shows the tile
+  without them. Also a label of several lines for a plugin's tile. The plugins repository's docs say how.
 - **Live camera on the P4 boards: the panel keeps up, and a live tile never stays where its card was.** The PPA, which
   scales and turns every live picture and, on a turned glass, every flush of LVGL, moves in bursts of 64 bytes instead
   of 128, so the panel's own DMA gets its turn on the memory bus; a frame of blue (the panel's colour for no data, seen

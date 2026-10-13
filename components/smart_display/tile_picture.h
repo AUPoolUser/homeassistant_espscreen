@@ -18,8 +18,14 @@
 // (camera_feed.live_request, tile_art.parse), with the question's number (`view`) in its answer, so the answer finds
 // its tile by that number (Questions). An app keeps the strip of an older screen as it was.
 //
+// A plugin's tile (plugin API 0.10, docs/PLUGINS.md "Pictures") shows pictures of its own: places it laid out on its
+// card, each with an address (a film's poster). The card asks for all of them as one picture, an atlas of their frames
+// from the card's top left (`parts`, as a page of a player's library asks for its covers), the app fetches each
+// address once and paints the frames, and the card draws each place its own frame of the atlas: one question, one
+// download and one entry in the store for a tile of eight posters, and the same cap as every tile's picture.
+//
 // Pure, free of LVGL and ESPHome: tests/test_tile_picture.cpp checks it on a PC; runtime_tiles.h measures the card,
-// hands the picture to the loader (picture_loader.h) and draws it.
+// hands the picture to the loader (picture_loader.h) and draws it; plugin_host.cpp measures a plugin tile's places.
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
@@ -55,6 +61,29 @@ inline Frame frame(int width, int height, int radius, int shade, uint32_t ground
   return f;
 }
 
+// A piece of a card's picture (plugin API 0.10): a place of the card's own with a picture of its own address, where it
+// lies on the card (the card's top left is 0,0) in the card's pixels. At most MAX_PARTS on one card, the manifest's
+// `pictures` (plugin_manifest.MAX_PICTURES, a test keeps them equal).
+constexpr size_t MAX_PARTS = 8;
+struct Part {
+  int x = 0, y = 0, w = 0, h = 0, radius = 0;
+  std::string url;
+  bool contain = false;       // the whole picture within the place; else the place filled and the rest cut away
+};
+// The frame a part takes in the atlas, at the atlas's scale (a card over the cap comes smaller, as a whole).
+struct Piece {
+  int x = 0, y = 0, w = 0, h = 0, radius = 0;
+};
+inline Piece piece(const Part &p, int scale) {
+  Piece f;
+  f.x = picture_store::scaled(p.x, scale);
+  f.y = picture_store::scaled(p.y, scale);
+  f.w = std::max(1, picture_store::scaled(p.x + p.w, scale) - f.x);
+  f.h = std::max(1, picture_store::scaled(p.y + p.h, scale) - f.y);
+  f.radius = std::max(0, std::min(picture_store::scaled(p.radius, scale), std::min(f.w, f.h) / 2));
+  return f;
+}
+
 // What a tile asks for.
 struct Ask {
   size_t index = 0;           // the tile's index in the layout: the app paints it the way that tile's settings say
@@ -65,7 +94,37 @@ struct Ask {
   bool dark = false;          // the screen's look: a map is drawn in it, and its ground differs
   uint32_t every = 0;         // a camera's pace in ms; 0: once
   bool drawn = false;         // the app draws it (a map), so an answer without one is asked again
+  std::vector<Part> parts;    // a plugin tile's places (plugin API 0.10); empty for a picture over the whole place
+  int scale = picture_store::SCALE_ONE;  // the atlas's scale, for its pieces
 };
+// A short hash of a text (FNV-1a), as sixteen hex digits: a mark for what would be too long for a key.
+inline std::string digest(const std::string &text) {
+  uint64_t h = 1469598103934665603ull;
+  for (unsigned char c : text) { h ^= c; h *= 1099511628211ull; }
+  char out[17];
+  snprintf(out, sizeof(out), "%08lx%08lx", (unsigned long) (h >> 32), (unsigned long) (h & 0xFFFFFFFFu));
+  return out;
+}
+// A plugin tile's ask: its parts, whose atlas spans from the card's top left to the farthest edge of them, within the
+// cap (then every piece comes smaller alike). The mark is a digest of the places and their addresses: another address,
+// a place that moved or grew, is another picture.
+inline void set_parts(Ask &a, std::vector<Part> parts, uint32_t ground, const picture_store::Cap &cap = {}) {
+  int right = 0, bottom = 0;
+  std::string what;
+  for (const auto &p : parts) {
+    right = std::max(right, p.x + p.w);
+    bottom = std::max(bottom, p.y + p.h);
+    what += std::to_string(p.x) + "," + std::to_string(p.y) + "," + std::to_string(p.w) + "," + std::to_string(p.h) + "," +
+            std::to_string(p.radius) + (p.contain ? "c" : "f") + p.url + ";";
+  }
+  a.frame = frame(right, bottom, 0, 0, ground, ground, cap);
+  a.scale = picture_store::fit_scale(right, bottom, cap);
+  a.parts = std::move(parts);
+  a.mark = digest(what);
+  a.circle = 0;
+  a.every = 0;
+  a.drawn = true;  // the app fetches them: an answer without a picture (a host that was slow) is asked again, later each time
+}
 
 // The picture's place: its tile, its entity and its frame. The next picture of the same place has another mark (the
 // next track); a camera's next picture keeps its key and is written over the last one.
@@ -95,17 +154,51 @@ inline bool belongs(const std::string &key, size_t index, const std::string &ent
 // The loader's tag for a tile's question: one per tile, so the tiles of a page are asked for together.
 inline std::string tag(size_t index) { return "tile|" + std::to_string(index); }
 
-// The question's fields beside the inbox, the session and its number.
+// A text as a JSON string, between quotes.
+inline std::string quoted(const std::string &text) {
+  std::string out = "\"";
+  for (char c : text) {
+    if (c == '"' || c == '\\') out += '\\';
+    if (static_cast<unsigned char>(c) < 0x20) continue;
+    out += c;
+  }
+  return out + "\"";
+}
+// The question's fields beside the inbox, the session and its number. A plugin tile's parts (0.10) go as the atlas of
+// their pieces with `src`, their addresses, and `fit`, how each fills its place, in the same order.
 inline std::vector<std::pair<std::string, std::string>> fields(const Ask &a) {
-  char ground[8], atlas[64];
+  char ground[8], one[64];
   snprintf(ground, sizeof(ground), "%06X", (unsigned) a.frame.ground);
-  snprintf(atlas, sizeof(atlas), "[[0,0,%d,%d,%d,%d]]", a.frame.w, a.frame.h, a.frame.radius, a.frame.shade);
-  return {{"tiles", a.entity},
-          {"idx", std::to_string(a.index)},
-          {"size", std::to_string(std::max(CIRCLE_MIN, std::min(CIRCLE_MAX, a.circle)))},
-          {"bg", ground},
-          {"dark", a.dark ? "1" : "0"},
-          {"atlas", atlas}};
+  std::string atlas;
+  if (a.parts.empty()) {
+    snprintf(one, sizeof(one), "[[0,0,%d,%d,%d,%d]]", a.frame.w, a.frame.h, a.frame.radius, a.frame.shade);
+    atlas = one;
+  } else {
+    atlas = "[";
+    for (const auto &p : a.parts) {
+      const Piece f = piece(p, a.scale);
+      snprintf(one, sizeof(one), "%s[%d,%d,%d,%d,%d,0]", atlas.size() > 1 ? "," : "", f.x, f.y, f.w, f.h, f.radius);
+      atlas += one;
+    }
+    atlas += "]";
+  }
+  std::vector<std::pair<std::string, std::string>> out{{"tiles", a.entity},
+                                                       {"idx", std::to_string(a.index)},
+                                                       {"size", std::to_string(std::max(CIRCLE_MIN, std::min(CIRCLE_MAX, a.circle)))},
+                                                       {"bg", ground},
+                                                       {"dark", a.dark ? "1" : "0"},
+                                                       {"atlas", atlas}};
+  if (!a.parts.empty()) {
+    std::string src = "[", fit = "[";
+    for (const auto &p : a.parts) {
+      if (src.size() > 1) { src += ","; fit += ","; }
+      src += quoted(p.url);
+      fit += p.contain ? "\"contain\"" : "\"cover\"";
+    }
+    out.push_back({"src", src + "]"});
+    out.push_back({"fit", fit + "]"});
+  }
+  return out;
 }
 
 // The questions out to the app, by number: every question has a number of its own, the app answers with it, and only

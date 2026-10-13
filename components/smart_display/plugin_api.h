@@ -44,7 +44,10 @@ namespace tessera {
 // I2C bus as the substitution CAMERA_I2C), and a top bar item's `tone`, the colour of its icon. 0.9: Font::DIGITS, the
 // large digits of a climate card's setpoint, and ui::covers(), whether a font has every character of a text;
 // Tone::GOOD, and the tones for a block too (ui::set_fill, ui::tone_color); ui::label is one line high as it says.
-constexpr uint8_t PLUGIN_API_MAJOR = 0, PLUGIN_API_MINOR = 9;
+// 0.10: pictures on a tile (ui::picture, ui::set_picture, ui::pictures; the manifest's `pictures` of a tile): places a
+// tile lays out, each with an address the app fetches and paints for exactly that place, through the route every
+// picture of the screen takes (tile_picture.h "parts"); and ui::text, a label of several lines.
+constexpr uint8_t PLUGIN_API_MAJOR = 0, PLUGIN_API_MINOR = 10;
 
 // The screen's fixed fonts, largest first. A tile takes the largest that fits; a plugin brings no font of its own.
 // VALUE is the big number of a watch card, HEADLINE a card's large words, TITLE a card's name, BODY its second line,
@@ -166,6 +169,9 @@ class SettingsPage {
 // ALERT its red (a camera that streams, something that went wrong). GOOD (0.9) its green (a level that is fine, a full
 // battery). The same tones colour a tile's labels (ui::set_tone) and its blocks (ui::set_fill), a bar or a dot.
 enum class Tone : uint8_t { NORMAL, ACCENT, BUSY, ALERT, GOOD };
+// How a picture fills its place (0.10): COVER fills the place and cuts away what is over (a poster in a poster's
+// frame), CONTAIN shows the whole picture within it, on the card's own colour (a logo, a map).
+enum class Fit : uint8_t { COVER, CONTAIN };
 struct BarItem {
   bool shown = false;
   uint32_t icon = 0;         // a codepoint of Tessera's icon set (0xF00E7), 0 for none
@@ -336,6 +342,29 @@ lv_color_t tone_color(Tone tone, theme::Role normal);
 lv_obj_t *block(lv_obj_t *parent, theme::Role fill);
 // The UTF-8 of an icon of Tessera's set by its codepoint (0xF0B5E), for a label in Font::ICON or ICON_SMALL.
 std::string icon(uint32_t codepoint);
+// A label of several lines (0.10): wraps at its width and is cut with dots at its height, both the plugin's to set
+// (lv_obj_set_size); for a description, a sentence, a title that may take two lines. ui::set_text and the rest apply.
+lv_obj_t *text(lv_obj_t *parent, Font font, theme::Role role = theme::INK);
+
+// ---- Pictures on a tile (0.10) ----
+// A tile lays out places for pictures and names an address for each; the core does the rest, the way every picture
+// of the screen comes: the card asks the app for all its places as one picture (an atlas of their frames, one
+// download, one entry in the picture store), the app fetches each address once, cuts or fits it to its place, and the
+// card draws each place its frame. Pictures come only while the tile is on the glass or on a kept page, and leave the
+// store when the tile does. An address is on a host the plugin's manifest names under permissions.network, or a
+// picture of Home Assistant's own for a tile of an entity (its entity_picture: /api/image/serve/..., /api/image_proxy/...,
+// /local/...); the app fetches nothing else. The manifest's `pictures` of the tile says how many places it has at most.
+// Whether this screen shows pictures at all: a board without the memory for them (the CYD, the Waveshare 3.5-inch,
+// the Hosyond 4-inch) shows none, and a tile lays itself out without the places, as it does without a picture.
+bool pictures();
+// A place for a picture in `parent`, sized and placed by the plugin as any object (lv_obj_set_size, lv_obj_set_pos):
+// a soft block (theme::TRACK) until its picture is there. Its corners are a key's; a radius of the plugin's own
+// (lv_obj_set_style_radius) is taken over by the picture. Call it in create(), as every object.
+lv_obj_t *picture(lv_obj_t *parent);
+// The picture a place shows, by its address, COVER or CONTAIN (Fit). The same address again does nothing (call it on
+// every on_state for free); another address asks the app again; "" takes the picture away and shows the block. A
+// place that lies outside the card, or has no size, gets no picture.
+void set_picture(lv_obj_t *place, const std::string &url, Fit fit = Fit::COVER);
 }  // namespace ui
 
 }  // namespace tessera

@@ -34,6 +34,7 @@ import media_library
 import speakers
 import map_card
 import energy_flow
+import plugin_pictures
 import map_tiles
 import tile_icons
 from updates import Updater
@@ -3254,6 +3255,10 @@ class Manager:
         if request.get('saver') in ('media', 'camera'):
             await self.answer_saver(inbox, screen, request)
             return
+        # The pictures of a plugin tile's places (plugin API 0.10): one atlas for all of them.
+        if isinstance(request.get('tiles'), str) and core.plugin_tile(request['tiles']):
+            await self.answer_plugin_pictures(inbox, screen, request)
+            return
         # The live pictures of a page's camera tiles (app 0.2.91, firmware 0.2.77+): one strip for all of them.
         if 'tiles' in request:
             await self.answer_live(inbox, screen, request)
@@ -3412,6 +3417,47 @@ class Manager:
             LOG.warning('Live pictures: no address for this app on the LAN; set SCREEN_CAMERA_URL')
         await self.send_auxiliary(inbox, {'v': 1, 'op': 'camera', 't': 'live', 'e': listing, 'u': url}, action, request)
         LOG.info('Live pictures of %s on %s%s', ', '.join(entities), screen['name'], '' if url else ': no image')
+
+    async def answer_plugin_pictures(self, inbox, screen, request):
+        """The pictures of a plugin tile's places (plugin API 0.10, plugin_pictures): the tile must be a plugin tile of
+        the screen's layout whose manifest gives it places, and every address one the manifest allows. The answer is a
+        link to one picture of all its frames, as a camera tile gets; an empty link says there is none now (the screen
+        asks again later, each time after a longer while)."""
+        if not screen or not screen.get('online') or not camera_feed.can_show_live(screen):
+            return
+        shape = camera_feed.shape_of(screen)
+        question = plugin_pictures.parse(request, (shape.get('width', 0), shape.get('height', 0)))
+        action = self.transport(inbox, screen) if question else None
+        if not action:
+            return
+        answer = {'v': 1, 'op': 'camera', 't': 'live', 'e': question.entity, 'u': ''}
+        placed = self.layouts.get(inbox, {}).get('tiles', [])
+        if not (question.index < len(placed) and placed[question.index]['entity'] == question.entity):
+            LOG.info('Pictures for %s: not tile %d of %s', question.entity, question.index, screen['name'])
+            return
+        entry = self.plugins.known(question.plugin, inbox)
+        kind = entry.tile(question.tile) if entry else None
+        problem = plugin_pictures.refused(question, entry.manifest if entry else None, kind)
+        if problem:
+            LOG.info('Pictures for %s on %s refused: %s', question.entity, screen['name'], problem)
+            await self.send_auxiliary(inbox, answer, action, request)
+            return
+        raws = await asyncio.gather(*(self.plugins.pictures.fetch(url, entry.manifest, kind) for url in question.sources))
+        base = await camera_feed.base_url(self.ha.request)
+        if not base:
+            LOG.warning('Plugin pictures: no address for this app on the LAN; set SCREEN_CAMERA_URL')
+        elif any(raw is not None for raw in raws):
+            try:
+                body = await self.plugins.pictures.atlas(question, raws, camera_feed.compact_pictures(screen))
+            except Exception as error:
+                LOG.info('Pictures for %s on %s cannot be painted (%s)', question.entity, screen['name'], type(error).__name__)
+                body = None
+            if body:
+                token = self.camera.link(question.entity, question.atlas[:2], still=body)
+                answer['u'] = f'{base}/camera/{token}.bmp'
+        await self.send_auxiliary(inbox, answer, action, request)
+        LOG.info('Pictures of %s on %s: %d of %d%s', question.entity, screen['name'], sum(raw is not None for raw in raws),
+                 len(raws), '' if answer['u'] else ', no picture')
 
     async def thumbnail(self, entity, url, title=''):
         """A picture of a player's library, fetched once and kept a while (the library's covers and the favourites'); None

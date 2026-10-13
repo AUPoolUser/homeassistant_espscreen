@@ -28,6 +28,7 @@ import entity_settings
 import plugin_fetch
 import plugin_likes
 import plugin_manifest as pm
+import plugin_pictures
 import tile_icons
 from i18n import t
 from plugin_store import PluginSecrets, PluginStore
@@ -256,6 +257,8 @@ class Plugins:
         self.secrets.adopt(installed)
         self.liker = plugin_likes.Likes(Path(data_dir) / 'plugin_likes.json')
         self.fetcher = plugin_fetch.Fetcher(f'Tessera/{core.FIRMWARE_VERSION} (+plugins)', session_factory)
+        # The pictures of plugin tiles (plugin API 0.10), through the fetcher's session, or Home Assistant's own.
+        self.pictures = plugin_pictures.Pictures(self.fetcher, lambda path: self.manager.ha.entity_picture(path))
         self.index = {}             # id -> Entry, from index.json
         self.index_state = {'at': None, 'error': None, 'etag': None, 'checked': 0.0, 'blocked': [], 'featured': []}
         # likes.json: how many like each plugin; `fresh`: the website's own answer to a like from this app, which counts
@@ -721,7 +724,9 @@ class Plugins:
                        **({'entities': self.entities_with(tile['domains'], tile['has_attributes'])}
                           if tile.get('has_attributes') else {}),
                        'options': [option(o) for o in tile['options']],
-                       'example': words(tile.get('example')), 'preview': bool(tile.get('preview'))}
+                       'example': words(tile.get('example')), 'preview': bool(tile.get('preview')),
+                       # Places for pictures on the tile (0.10), shown only where the screen has the memory for them.
+                       'pictures': tile['pictures']}
                       for tile in manifest['tiles']],
             'settings': [{'key': s['key'], 'label': words(s['label'])} for s in manifest['settings']],
             'cards': [{'id': c['id'], 'name': words(c['name'])} for c in manifest['cards']],

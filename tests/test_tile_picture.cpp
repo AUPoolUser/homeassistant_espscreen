@@ -79,6 +79,52 @@ int main() {
     assert(f["size"] == "24");
     assert(tag(7) == "tile|7" && tag(7) != tag(17));
   }
+  // A plugin tile's places (plugin API 0.10): the parts of one picture, an atlas from the card's top left to the
+  // farthest edge of them, each piece where its place lies; the addresses and fits go with the frames, in order.
+  {
+    Ask a;
+    std::vector<Part> parts;
+    parts.push_back({10, 8, 60, 90, 6, "https://image.tmdb.org/t/p/w342/a.jpg", false});
+    parts.push_back({80, 8, 60, 90, 6, "https://image.tmdb.org/t/p/w342/b.jpg", true});
+    set_parts(a, parts, 0x202020);
+    a.index = 4;
+    a.entity = "plugin:films.tonight";
+    assert(a.frame.w == 140 && a.frame.h == 98 && a.frame.ground == 0x202020 && a.scale == picture_store::SCALE_ONE);
+    assert(a.drawn && !a.every && a.parts.size() == 2 && a.mark.size() == 16);
+    std::map<std::string, std::string> f;
+    for (const auto &field : fields(a)) f[field.first] = field.second;
+    assert(f.size() == 8 && f["tiles"] == "plugin:films.tonight" && f["idx"] == "4" && f["bg"] == "202020");
+    assert(f["atlas"] == "[[10,8,60,90,6,0],[80,8,60,90,6,0]]");
+    assert(f["src"] == "[\"https://image.tmdb.org/t/p/w342/a.jpg\",\"https://image.tmdb.org/t/p/w342/b.jpg\"]");
+    assert(f["fit"] == "[\"cover\",\"contain\"]");
+    // Another address, a place that moved or grew, another fit: another picture of the same place.
+    Ask b = a;
+    parts[1].url = "https://image.tmdb.org/t/p/w342/c.jpg";
+    set_parts(b, parts, 0x202020);
+    assert(key(a) != key(b) && place_of(key(a)) == place_of(key(b)));
+    parts[1].url = a.parts[1].url;
+    parts[1].x = 81;
+    set_parts(b, parts, 0x202020);
+    assert(key(a) != key(b));
+    parts[1].x = 80;
+    parts[1].contain = false;
+    set_parts(b, parts, 0x202020);
+    assert(key(a) != key(b));
+    parts[1].contain = true;
+    set_parts(b, parts, 0x202020);
+    assert(key(a) == key(b) && belongs(key(a), 4, "plugin:films.tonight"));
+    // A card over the cap: every piece comes smaller alike, and the frames still do not overlap.
+    std::vector<Part> wide;
+    for (int i = 0; i < 4; ++i) wide.push_back({i * 400, 0, 400, 760, 24, "https://image.tmdb.org/x" + std::to_string(i) + ".jpg", false});
+    set_parts(b, wide, 0x202020, picture_store::cap_for(1196u << 10));
+    assert(b.scale < picture_store::SCALE_ONE && b.frame.w <= picture_store::MAX_SIDE);
+    int right = 0;
+    for (const auto &p : b.parts) { const Piece f = piece(p, b.scale); assert(f.x >= right); right = f.x + f.w; assert(f.radius < 24); }
+    assert(right <= b.frame.w);
+    // A quote or a backslash in an address stays a JSON string; a control character goes.
+    assert(quoted("a\"b\\c\n") == "\"a\\\"b\\\\c\"");
+    assert(digest("a") != digest("b") && digest("a") == digest("a"));
+  }
   // Answers find their tile by the question's number; only a tile's last question counts.
   {
     Questions q;

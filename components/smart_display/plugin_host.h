@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <ArduinoJson.h>
+#include "tile_picture.h"
 
 namespace runtime_tiles {
 struct Widgets;
@@ -36,6 +37,21 @@ bool tap_action(size_t index);
 void message(const std::string &plugin, JsonObjectConst body);
 // What one tile costs of the layout memory: the plugin's own number, or the placeholder's.
 uint16_t bytes(const std::string &entity);
+
+// A plugin tile's pictures (plugin API 0.10, tile_picture.h "parts"): the places on its card that have an address.
+// Whether the card has a place with an address: it asks for a picture, as a pictured tile does.
+bool pictured(const runtime_tiles::Widgets &w);
+// What the card asks for: every place with an address that lies within the card, as the parts of one picture; false
+// when there is none. Each place keeps the piece it takes in that picture, for picture_place.
+bool picture_ask(const runtime_tiles::Widgets &w, const runtime_tiles::Tile &t, tile_picture::Ask &a);
+// The card's picture (an lv_image_dsc_t of the store, or nullptr for none) onto its places, each its own piece; a
+// place whose piece is not in it shows its block again.
+void picture_place(runtime_tiles::Widgets &w, void *picture);
+// Whether a place of the card draws this picture (the store frees nothing a card draws).
+bool picture_draws(const runtime_tiles::Widgets &w, const void *picture);
+// The places let go of this picture (nullptr: of every picture): another layout, or the store takes it off a page out
+// of sight. True when one did.
+bool picture_let_go(runtime_tiles::Widgets &w, const void *picture);
 
 // The moments of every plugin.
 void ready();

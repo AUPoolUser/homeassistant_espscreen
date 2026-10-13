@@ -89,6 +89,9 @@ cut square with the tile's rounded corners, delivered as described below.
   (`components/smart_display/tile_picture.h`). The app answers with a link to a BMP of exactly that frame and the
   question's number, by which the screen finds the tile. Every app since 0.3.8 answers this question, so a new
   screen works with an older app too.
+- **A plugin tile's places** (plugin API 0.10, docs/PLUGINS.md, "Pictures on a plugin tile") ask the same question
+  with an atlas of several frames, one per place, and `src` and `fit` beside it: one picture for a tile of eight
+  posters, each place its piece of it.
 - **Each at its own pace.** A camera tile loads its next picture when its own pace has passed, 5 to 30 seconds. The
   app fetches the camera just before that load, at the pace of the quickest of its tiles (as for the full view below),
   so the picture on a tile is a fraction of a second old when it comes, not a whole pace. A new
@@ -418,7 +421,7 @@ through, how much it matters, and how the app is asked for it. One loader decide
   drives it through fast page turns, cards closed before their picture, priorities, pictures that left the store,
   refreshes, answers without a picture and failures).
 - `components/smart_display/tile_picture.h`: a tile's own picture, its frame, its key, the question and how an answer
-  finds its tile (`tests/test_tile_picture.cpp`).
+  finds its tile, and the parts of a plugin tile's picture (`tests/test_tile_picture.cpp`).
 - `components/smart_display/runtime_tiles.h`: what each picture wants (`pictures_round` and the `*_want` functions
   beside it), the full-screen view, the alert picture, the tiles' pictures (`card_picture_wants`, `tile_ask`,
   `tile_picture_place`), the store (`picture_of`, `pictures_collect`) and the `camera` message.

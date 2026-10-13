@@ -365,6 +365,13 @@ std::string icon(uint32_t codepoint) { return tile_icon::utf8(codepoint); }
 // ---- Plugin tiles in cards (plugin_host.h) ----
 namespace plugin_host {
 
+// A place for a picture on a plugin tile's card (plugin API 0.10, ui::picture): the block the plugin laid out, the
+// image object that draws its piece of the card's atlas once that is here, and what it shows.
+struct Place {
+  lv_obj_t *place = nullptr, *image = nullptr;
+  std::string url;
+  bool contain = false;
+};
 struct Card {
   std::unique_ptr<tessera::Tile> tile;
   std::string entity;          // what the card was made for: the tile type,
@@ -373,9 +380,19 @@ struct Card {
   size_t options = 0;          // and its options (a hash)
   size_t state = 0;            // the data it was last given (a hash), 0 for none yet
   bool dark = false;           // the look it last coloured itself for
+  std::vector<Place> places;   // its places for pictures, in the order the tile made them
 };
 
 static size_t hash(const std::string &text) { return std::hash<std::string>{}(text) | 1; }
+
+// The card whose tile is in a call of the host (create, on_state, on_tick, on_theme, on_tap): a place the tile makes
+// in that call is this card's. Nothing else of a tile's runs (a plugin's own moments are the plugin's, not a tile's).
+static Card *making = nullptr;
+struct Making {
+  Card *was;
+  explicit Making(Card *card) : was(making) { making = card; }
+  ~Making() { making = was; }
+};
 
 bool known(const rt::Tile &t) { return tessera::tile_type(t.entity) != nullptr; }
 
@@ -415,8 +432,10 @@ void render(rt::Widgets &w, const rt::Tile &t, int width, int height) {
     tessera::TileContext context{w.extra, width, height, static_cast<uint8_t>(t.column_span()),
                                  static_cast<uint8_t>(t.row_span()), t.name.c_str(), extra.plugin_entity.c_str(),
                                  static_cast<int>(w.index), doc.as<JsonObjectConst>()};
+    Making call(card);
     card->tile->create(context);
   }
+  Making call(card);
   const size_t state = hash(extra.plugin_state);
   if (card->state != state) {
     card->state = state;
@@ -428,11 +447,18 @@ void render(rt::Widgets &w, const rt::Tile &t, int width, int height) {
   if (card->dark != theme::dark) {
     card->dark = theme::dark;
     card->tile->on_theme();
+    // The blocks under the pictures follow the look as every block does; the pictures themselves are asked again in
+    // it (the look is in their key), with the card's ground of that look behind their corners.
+    for (auto &p : card->places) rt::set_color(p.place, LV_STYLE_BG_COLOR, theme::color(theme::TRACK));
   }
+  // Its pictures, from the store when it has them (a page that comes back, a card made anew for the same tile).
+  if (!card->places.empty()) rt::tile_picture_place(w, t, 0, 0, 0);
 }
 
 void tap(rt::Widgets &w) {
-  if (w.plugin && w.plugin->tile) w.plugin->tile->on_tap();
+  if (!w.plugin || !w.plugin->tile) return;
+  Making call(w.plugin);
+  w.plugin->tile->on_tap();
 }
 
 static void tick_card(uint32_t epoch);
@@ -442,8 +468,141 @@ void tick_cards(uint32_t epoch) {
   for (auto &w : rt::widgets) {
     if (!w.plugin || !w.tile || !w.extra || w.extra_mode != "plugin" || w.index >= rt::model.count) continue;
     if (lv_obj_has_flag(w.tile, LV_OBJ_FLAG_HIDDEN) || lv_obj_has_flag(w.extra, LV_OBJ_FLAG_HIDDEN)) continue;
+    Making call(w.plugin);
     w.plugin->tile->on_tick(epoch);
   }
+}
+
+// ---- A plugin tile's pictures (plugin API 0.10, tile_picture.h "parts") ----
+// The places with an address that lie within the card, as the parts of one picture, in the order the tile made them,
+// and the place each part is; the atlas's scale for them (a card over the cap comes smaller as a whole). The card's
+// layout is brought up to date first, so a place moved in on_tick is measured where it is now.
+static int measure(const rt::Widgets &w, std::vector<tile_picture::Part> &parts, std::vector<Place *> &owners) {
+  parts.clear();
+  owners.clear();
+  if (!w.plugin || !w.tile) return picture_store::SCALE_ONE;
+  lv_obj_update_layout(w.tile);
+  lv_area_t card;
+  lv_obj_get_coords(w.tile, &card);
+  const int cw = lv_area_get_width(&card), ch = lv_area_get_height(&card);
+  int right = 0, bottom = 0;
+  for (auto &p : w.plugin->places) {
+    if (p.url.empty() || !p.place || lv_obj_has_flag(p.place, LV_OBJ_FLAG_HIDDEN)) continue;
+    lv_area_t at;
+    lv_obj_get_coords(p.place, &at);
+    tile_picture::Part part;
+    part.x = at.x1 - card.x1;
+    part.y = at.y1 - card.y1;
+    part.w = lv_area_get_width(&at);
+    part.h = lv_area_get_height(&at);
+    // A place outside the card, or over its edge, is not asked for: the app refuses a frame beyond the glass, and
+    // the card would cut it anyway.
+    if (part.w <= 0 || part.h <= 0 || part.x < 0 || part.y < 0 || part.x + part.w > cw || part.y + part.h > ch) continue;
+    part.radius = lv_obj_get_style_radius(p.place, LV_PART_MAIN);
+    part.url = p.url;
+    part.contain = p.contain;
+    parts.push_back(std::move(part));
+    owners.push_back(&p);
+    right = std::max(right, part.x + part.w);
+    bottom = std::max(bottom, part.y + part.h);
+    if (parts.size() == tile_picture::MAX_PARTS) break;
+  }
+  return picture_store::fit_scale(right, bottom, rt::picture_cap());
+}
+
+bool pictured(const rt::Widgets &w) {
+  if (!w.plugin) return false;
+  for (const auto &p : w.plugin->places) if (!p.url.empty() && p.place) return true;
+  return false;
+}
+
+bool picture_ask(const rt::Widgets &w, const rt::Tile &t, tile_picture::Ask &a) {
+  std::vector<tile_picture::Part> parts;
+  std::vector<Place *> owners;
+  measure(w, parts, owners);
+  if (parts.empty()) return false;
+  // Behind the pictures' corners the card's own colour, as behind a tile's picture over its whole card.
+  const uint32_t ground = t.transparent ? theme::hex(theme::PAGE) : theme::surface(t.background);
+  tile_picture::set_parts(a, std::move(parts), ground, rt::picture_cap());
+  a.index = w.index;
+  a.entity = t.entity;
+  a.dark = theme::dark;
+  return true;
+}
+
+// A place without its picture: its block again, drawing nothing of the store.
+static void place_clear(Place &p) {
+#if LV_USE_IMAGE
+  if (p.image) {
+    lv_image_set_src(p.image, nullptr);
+    lv_obj_add_flag(p.image, LV_OBJ_FLAG_HIDDEN);
+  }
+#endif
+  if (p.place) rt::set_number(p.place, LV_STYLE_BG_OPA, LV_OPA_COVER);
+}
+
+void picture_place(rt::Widgets &w, void *picture) {
+  if (!w.plugin) return;
+#if LV_USE_IMAGE
+  auto *src = static_cast<lv_image_dsc_t *>(picture);
+  std::vector<tile_picture::Part> parts;
+  std::vector<Place *> owners;
+  const int scale = measure(w, parts, owners);
+  for (auto &p : w.plugin->places) {
+    const auto at = std::find(owners.begin(), owners.end(), &p);
+    if (!src || !src->data || at == owners.end()) { place_clear(p); continue; }
+    const tile_picture::Piece f = tile_picture::piece(parts[at - owners.begin()], scale);
+    if (f.x + f.w > static_cast<int>(src->header.w) || f.y + f.h > static_cast<int>(src->header.h)) { place_clear(p); continue; }
+    if (!p.image) {
+      p.image = lv_image_create(p.place);
+      lv_obj_remove_flag(p.image, LV_OBJ_FLAG_CLICKABLE);
+    }
+    // Its piece of the atlas, in the middle of its place: a piece over the cap is smaller than the place.
+    lv_image_set_src(p.image, src);
+    lv_image_set_offset_x(p.image, -f.x);
+    lv_image_set_offset_y(p.image, -f.y);
+    lv_obj_set_pos(p.image, (lv_obj_get_width(p.place) - f.w) / 2, (lv_obj_get_height(p.place) - f.h) / 2);
+    lv_obj_set_size(p.image, f.w, f.h);
+    lv_obj_remove_flag(p.image, LV_OBJ_FLAG_HIDDEN);
+    // The block goes under its picture: the piece carries the card's colour behind its corners already.
+    rt::set_number(p.place, LV_STYLE_BG_OPA, LV_OPA_TRANSP);
+    lv_obj_invalidate(p.image);
+  }
+#else
+  for (auto &p : w.plugin->places) place_clear(p);
+  (void) picture;
+#endif
+}
+
+bool picture_draws(const rt::Widgets &w, const void *picture) {
+  if (!w.plugin || !picture) return false;
+  for (const auto &p : w.plugin->places)
+    if (p.image && rt::draws(p.image, static_cast<const lv_image_dsc_t *>(picture))) return true;
+  return false;
+}
+
+bool picture_let_go(rt::Widgets &w, const void *picture) {
+  if (!w.plugin) return false;
+  bool took = false;
+  for (auto &p : w.plugin->places) {
+    if (!p.image || (picture && !rt::draws(p.image, static_cast<const lv_image_dsc_t *>(picture)))) continue;
+    place_clear(p);
+    took = true;
+  }
+  return took;
+}
+
+// The place `obj` is, on the card in a call of the host first, else on any card (a plugin that kept the place and
+// sets its picture from on_message); nullptr for an object that is no place.
+static Place *find_place(lv_obj_t *obj) {
+  if (!obj) return nullptr;
+  if (making) for (auto &p : making->places) if (p.place == obj) return &p;
+  Place *found = nullptr;
+  rt::each_card([&](rt::Widgets &w) {
+    if (found || !w.plugin) return;
+    for (auto &p : w.plugin->places) if (p.place == obj) { found = &p; return; }
+  });
+  return found;
 }
 
 uint16_t bytes(const std::string &entity) {
@@ -817,6 +976,38 @@ void hello(JsonObject root) {
 }
 
 }  // namespace plugin_host
+
+namespace tessera::ui {
+lv_obj_t *text(lv_obj_t *parent, Font f, theme::Role role) {
+  // A label's dots (LV_LABEL_LONG_DOT) wrap at the width and end the last line that fits the height with dots: two
+  // lines to start with, the plugin's height after that.
+  lv_obj_t *l = label(parent, f, role);
+  if (const lv_font_t *face = font(f)) lv_obj_set_height(l, 2 * lv_font_get_line_height(face));
+  return l;
+}
+
+bool pictures() { return rt::tile_pictures_supported(); }
+
+lv_obj_t *picture(lv_obj_t *parent) {
+  lv_obj_t *place = block(parent, theme::TRACK);
+  lv_obj_remove_flag(place, LV_OBJ_FLAG_SCROLLABLE);
+  if (plugin_host::making) plugin_host::making->places.push_back({place});
+  else ESP_LOGW("plugins", "ui::picture outside a tile's call: the place shows no picture");
+  return place;
+}
+
+void set_picture(lv_obj_t *place, const std::string &url, Fit fit) {
+  plugin_host::Place *p = plugin_host::find_place(place);
+  if (!p) return;
+  const bool contain = fit == Fit::CONTAIN;
+  if (p->url == url && p->contain == contain) return;
+  p->url = url;
+  p->contain = contain;
+  // Another picture: the block until it is here (the next round asks, the address is in the picture's key); "" the
+  // block for good.
+  plugin_host::place_clear(*p);
+}
+}  // namespace tessera::ui
 #else
 #include <cstdio>
 #include "plugin_host.h"
@@ -831,6 +1022,11 @@ void release(runtime_tiles::Widgets &) {}   // no plugin card is ever made in th
 void tap(runtime_tiles::Widgets &) {}
 void tick_cards(uint32_t) {}
 uint16_t bytes(const std::string &) { return PLACEHOLDER_BYTES; }
+bool pictured(const runtime_tiles::Widgets &) { return false; }
+bool picture_ask(const runtime_tiles::Widgets &, const runtime_tiles::Tile &, tile_picture::Ask &) { return false; }
+void picture_place(runtime_tiles::Widgets &, void *) {}
+bool picture_draws(const runtime_tiles::Widgets &, const void *) { return false; }
+bool picture_let_go(runtime_tiles::Widgets &, const void *) { return false; }
 bool open_card(const std::string &, const std::string &, int, const std::string &) { return false; }
 void close_card() {}
 bool card_open() { return false; }

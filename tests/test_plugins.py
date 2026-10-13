@@ -15,6 +15,7 @@ import core  # noqa: E402
 import page_layout  # noqa: E402
 import plugin_fetch  # noqa: E402
 import plugin_manifest as pm  # noqa: E402
+import plugin_pictures  # noqa: E402
 from firmware import Firmware  # noqa: E402
 from page_delivery import plugins_of  # noqa: E402
 
@@ -154,6 +155,20 @@ class Manifest(unittest.TestCase):
         probe = yaml.safe_load((ROOT / 'tests/fixtures/plugins/host_probe/tessera-plugin.yaml').read_text())
         self.assertEqual(probe['api'], f'{major}.{minor}')
 
+    def test_a_tile_may_have_places_for_pictures(self):
+        """`pictures` (0.10): how many places a tile has at most, 0 without; the screen asks for as many at most."""
+        self.assertEqual(pm.check(manifest(), ENGLISH)['tiles'][0]['pictures'], 0)
+        tiles = manifest()['tiles']
+        tiles[0]['pictures'] = 8
+        self.assertEqual(pm.check(manifest(tiles=tiles), ENGLISH)['tiles'][0]['pictures'], 8)
+        for bad in (9, -1, 'two', 2.5, True):
+            tiles[0]['pictures'] = bad
+            with self.assertRaises(pm.ManifestError) as caught:
+                pm.check(manifest(tiles=tiles), ENGLISH)
+            self.assertIn('tiles[0].pictures', str(caught.exception))
+        header = (ROOT / 'components/smart_display/tile_picture.h').read_text()
+        self.assertIn(f'constexpr size_t MAX_PARTS = {pm.MAX_PICTURES};', header)
+
     def test_the_two_ticks_have_two_names(self):
         """A plugin's 250 ms moment with millis() is on_interval; on_tick is a tile's or a card's second with the clock."""
         header = (ROOT / 'components/smart_display/plugin_api.h').read_text()
@@ -164,6 +179,116 @@ class Manifest(unittest.TestCase):
     def test_placeholder_price_is_the_screens(self):
         host = (ROOT / 'components/smart_display/plugin_host.h').read_text()
         self.assertIn(f'PLACEHOLDER_BYTES = {core.PLUGIN_PLACEHOLDER_BYTES};', host)
+
+
+class Pictures(unittest.IsolatedAsyncioTestCase):
+    """The pictures of a plugin tile (plugin API 0.10, plugin_pictures): the question as the screen asks it, where a
+    picture may come from, and a cache by address."""
+    ATLAS = '[[0,0,60,90,6,0],[70,0,60,90,6,0]]'
+    SRC = '["https://api.example.org/a.jpg","https://api.example.org/b.jpg"]'
+
+    def question(self, **changes):
+        request = {'tiles': 'plugin:bus.next', 'idx': '3', 'bg': '202020', 'dark': '1', 'atlas': self.ATLAS, 'src': self.SRC,
+                   'fit': '["cover","contain"]'}
+        request.update(changes)
+        return plugin_pictures.parse(request, (480, 480))
+
+    def test_the_question_names_the_tile_its_frames_and_their_addresses(self):
+        q = self.question()
+        self.assertEqual((q.entity, q.plugin, q.tile, q.index, q.ground, q.dark), ('plugin:bus.next', 'bus', 'next', 3, 0x202020, True))
+        self.assertEqual(q.atlas, (130, 90, ((0, 0, 60, 90, 6, 0), (70, 0, 60, 90, 6, 0))))
+        self.assertEqual(q.sources, ['https://api.example.org/a.jpg', 'https://api.example.org/b.jpg'])
+        self.assertEqual(q.fits, ['cover', 'contain'])
+        self.assertEqual(self.question(fit=None).fits, ['cover', 'cover'])   # cover without a word
+        for bad in (dict(tiles='camera.front'), dict(idx='x'), dict(bg='red'), dict(src='["one"]'), dict(src='[1,2]'),
+                    dict(fit='["cover"]'), dict(fit='["fill","cover"]'), dict(atlas='[[0,0,60,90,6,0]]'), dict(src='[]'),
+                    dict(src='[' + ','.join(['"https://api.example.org/x.jpg"'] * 9) + ']'), dict(atlas='[[0,0,600,90,6,0],[70,0,60,90,6,0]]')):
+            self.assertIsNone(self.question(**bad), bad)
+
+    def test_where_a_picture_may_come_from(self):
+        checked = pm.check(manifest(), ENGLISH)
+        tile = dict(checked['tiles'][0], pictures=2)
+        allowed = lambda url, t=tile: plugin_pictures.allowed(url, checked, t)
+        self.assertEqual(allowed('https://api.example.org/a.jpg'), 'network')
+        self.assertIsNone(allowed('https://image.tmdb.org/a.jpg'))         # a host the manifest does not name
+        self.assertIsNone(allowed('https://10.0.0.5/a.jpg'))
+        self.assertIsNone(allowed('ftp://api.example.org/a.jpg'))
+        # Home Assistant's own pictures: on a tile of an entity only, and only the paths a map marker takes.
+        self.assertIsNone(allowed('/api/image/serve/abc/512x512'))
+        entity_tile = dict(tile, domains=['person'])
+        self.assertEqual(allowed('/api/image/serve/abc/512x512', entity_tile), 'home_assistant')
+        self.assertEqual(allowed('/api/image_proxy/image.door?token=1', entity_tile), 'home_assistant')
+        self.assertEqual(allowed('/local/me.png', entity_tile), 'home_assistant')
+        for bad in ('/api/camera_proxy/camera.x', '/api/image/serve/../x', '/local//x', '/api/states'):
+            self.assertIsNone(allowed(bad, entity_tile), bad)
+        # A tile without places shows nothing, whatever the address.
+        self.assertIsNone(allowed('https://api.example.org/a.jpg', dict(tile, pictures=0)))
+        q = self.question()
+        self.assertIsNone(plugin_pictures.refused(q, checked, tile))
+        self.assertIn('allows 1', plugin_pictures.refused(q, checked, dict(tile, pictures=1)))
+        self.assertIn('no pictures', plugin_pictures.refused(q, checked, checked['tiles'][0]))
+        self.assertIn('not an address', plugin_pictures.refused(self.question(src='["https://x.org/a","https://api.example.org/b"]'), checked, tile))
+        self.assertIn('does not run', plugin_pictures.refused(q, None, None))
+
+    async def test_a_picture_is_fetched_once_and_a_failure_waits(self):
+        checked = pm.check(manifest(), ENGLISH)
+        tile = dict(checked['tiles'][0], pictures=2, domains=['person'])
+        asked, now = [], [1000.0]
+
+        class Fetcher:
+            check_host = staticmethod(plugin_fetch.Fetcher.check_host)
+
+            async def download_bytes(self, url, headers, network, limit):
+                asked.append(url)
+                if url.endswith('gone.jpg'):
+                    raise OSError('HTTP 404')
+                return b'JPEG' + url.encode()
+        ha = []
+
+        async def ha_picture(path):
+            ha.append(path)
+            return b'PNG'
+        pictures = plugin_pictures.Pictures(Fetcher(), ha_picture, clock=lambda: now[0])
+        self.assertEqual(await pictures.fetch('https://api.example.org/a.jpg', checked, tile), b'JPEGhttps://api.example.org/a.jpg')
+        self.assertEqual(await pictures.fetch('https://api.example.org/a.jpg', checked, tile), b'JPEGhttps://api.example.org/a.jpg')
+        self.assertEqual(asked, ['https://api.example.org/a.jpg'])   # the second time from the cache
+        self.assertEqual(await pictures.fetch('/local/me.png', checked, tile), b'PNG')
+        self.assertEqual(ha, ['/local/me.png'])
+        self.assertIsNone(await pictures.fetch('https://other.org/a.jpg', checked, tile))   # refused: never asked
+        self.assertEqual(len(asked), 1)
+        # A picture that does not come is not asked again within the minute, then it is.
+        self.assertIsNone(await pictures.fetch('https://api.example.org/gone.jpg', checked, tile))
+        self.assertIsNone(await pictures.fetch('https://api.example.org/gone.jpg', checked, tile))
+        self.assertEqual(asked.count('https://api.example.org/gone.jpg'), 1)
+        now[0] += plugin_pictures.FAIL_SECONDS + 1
+        self.assertIsNone(await pictures.fetch('https://api.example.org/gone.jpg', checked, tile))
+        self.assertEqual(asked.count('https://api.example.org/gone.jpg'), 2)
+        # A picture that came is fetched again after a long while.
+        now[0] += plugin_pictures.KEEP_SECONDS
+        await pictures.fetch('https://api.example.org/a.jpg', checked, tile)
+        self.assertEqual(asked.count('https://api.example.org/a.jpg'), 2)
+
+    @unittest.skipUnless(__import__('importlib').util.find_spec('PIL'), 'Pillow')
+    async def test_the_atlas_paints_each_frame_as_asked(self):
+        from PIL import Image
+        import io
+        q = self.question()
+        wide = io.BytesIO()
+        Image.new('RGB', (200, 100), (255, 0, 0)).save(wide, 'PNG')
+        pictures = plugin_pictures.Pictures(None)
+        body = await pictures.atlas(q, [wide.getvalue(), wide.getvalue()])
+        with Image.open(io.BytesIO(body)) as atlas:
+            self.assertEqual(atlas.size, (130, 90))
+            rgb = atlas.convert('RGB')
+            self.assertEqual(rgb.getpixel((30, 45)), (255, 0, 0))     # cover: the frame is filled
+            self.assertEqual(rgb.getpixel((30, 2)), (255, 0, 0))
+            self.assertEqual(rgb.getpixel((100, 45))[0], 255)        # contain: the picture whole, in the middle
+            self.assertEqual(rgb.getpixel((100, 4)), (0x20, 0x20, 0x20))   # on the card's own colour, not black
+            self.assertTrue(all(abs(c - 0x20) <= 2 for c in rgb.getpixel((0, 0))))  # a corner, rounded over the card's colour
+        # Without any picture the frames stay the card's colour.
+        body = await pictures.atlas(q, [None, None])
+        with Image.open(io.BytesIO(body)) as atlas:
+            self.assertEqual(atlas.convert('RGB').getpixel((30, 45)), (0x20, 0x20, 0x20))
 
 
 class Everywhere(unittest.TestCase):

@@ -15,7 +15,7 @@ from urllib.parse import urlsplit
 # The plugin API this core offers (components/smart_display/plugin_api.h, PLUGIN_API_MAJOR/MINOR; a test keeps them
 # equal). A plugin names the API it was written for; it builds on every core with the same major and at least its minor.
 # Something new raises the minor; a plugin builds on the same major from its own minor up. Only a break raises the major.
-PLUGIN_API = (0, 9)
+PLUGIN_API = (0, 10)
 # Major 0 is the time before that promise: a minor may still change a name or a signature. The minors that did are
 # listed here (and in __init__.py's PLUGIN_API_BREAKS; a test keeps them equal), so a plugin written before one is told
 # so in one sentence instead of failing in the compiler. 0.4: Plugin::on_tick became on_interval.
@@ -93,6 +93,9 @@ MAX_FIELDS = 8
 MIN_EVERY = 30              # seconds between two asks for the same thing
 MAX_TILE_BYTES = 16384      # what one plugin tile may say it costs of the screen's tile memory
 MAX_TEXT = 64               # a text option's value
+# Places for pictures on one tile (0.10, `pictures`): the screen asks for them as one picture (tile_picture.h's
+# MAX_PARTS, a test keeps them equal), and the app paints at most this many frames for a tile.
+MAX_PICTURES = 8
 
 
 class ManifestError(ValueError):
@@ -597,7 +600,7 @@ def check(manifest, english=None, strict=True):
     for i, item in enumerate(_list(manifest.get('tiles'), 'tiles', MAX_TILES)):
         where = f'tiles[{i}]'
         item = _object(item, where, {'id', 'name', 'icon', 'sizes', 'memory', 'domains', 'data', 'options',
-                                     'example', 'preview', 'attributes', 'has_attributes', 'fields'},
+                                     'example', 'preview', 'attributes', 'has_attributes', 'fields', 'pictures'},
                        ('id', 'name', 'sizes', 'memory'))
         tile = {'id': _id(item['id'], f'{where}.id'), 'name': _text_key(item['name'], f'{where}.name', keys)}
         icon = item.get('icon', out['icon'])
@@ -615,6 +618,10 @@ def check(manifest, english=None, strict=True):
         if isinstance(memory, dict):
             memory = _object(memory, f'{where}.memory', {'bytes'}, ('bytes',))['bytes']
         tile['memory'] = _number(memory, f'{where}.memory', 64, MAX_TILE_BYTES, whole=True)
+        # Places for pictures on the tile (0.10): how many at most. The app paints a picture only for a tile whose
+        # manifest says it has places, from a host of permissions.network or Home Assistant's own pictures of a tile of
+        # an entity (plugin_pictures.allowed).
+        tile['pictures'] = _number(item.get('pictures', 0), f'{where}.pictures', 0, MAX_PICTURES, whole=True)
         # A tile that belongs to an entity names the domains it takes, as a tap action and an input of kind entity do
         # (`domains: [calendar]`); the inspector then offers the entities of those domains.
         domains = _strings(item.get('domains'), f'{where}.domains', 8)

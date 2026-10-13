@@ -65,8 +65,9 @@ def encode(raws, grounds, atlas, modes=None, compact=False):
     """A native-sized BMP, cropped, dimmed and rounded before transmission.
 
     `modes` gives each frame (fit, fade) for a camera that fills its card (app 0.3.8): fit 'fill' cuts the picture
-    to the frame and 'contain' shows all of it on black; fade darkens the bottom of the frame, where the screen
-    writes the name. Without it every frame is filled, as the album covers of firmware 0.3.1 are."""
+    to the frame, 'contain' shows all of it on black and 'within' all of it on the frame's own ground (a plugin
+    tile's picture, plugin API 0.10); fade darkens the bottom of the frame, where the screen writes the name. Without
+    it every frame is filled, as the album covers of firmware 0.3.1 are."""
     from PIL import Image, ImageDraw, ImageOps
     width, height, frames = atlas
     image = Image.new('RGB', (width, height))
@@ -85,9 +86,9 @@ def encode(raws, grounds, atlas, modes=None, compact=False):
                 rgba = source.convert('RGBA')
                 opaque = Image.new('RGBA', rgba.size, colour + (255,))
                 opaque.alpha_composite(rgba)
-                if fit == 'contain':
+                if fit in ('contain', 'within'):
                     inner = ImageOps.contain(opaque.convert('RGB'), (w, h), method=Image.Resampling.LANCZOS)
-                    cover = Image.new('RGB', (w, h))
+                    cover = Image.new('RGB', (w, h), colour if fit == 'within' else (0, 0, 0))
                     cover.paste(inner, ((w - inner.width) // 2, (h - inner.height) // 2))
                 else:
                     cover = ImageOps.fit(opaque.convert('RGB'), (w, h), method=Image.Resampling.LANCZOS)

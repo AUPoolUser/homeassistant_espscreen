@@ -9902,6 +9902,7 @@ inline void forget_kept() {
     // another page (GitHub #183). The cards are drawn anew with their own.
     for (lv_obj_t *picture : {w.picture, w.extra_mode == "media" ? w.parts[MEDIA_PICTURE] : nullptr})
       if (picture) { lv_image_set_src(picture, nullptr); lv_obj_add_flag(picture, LV_OBJ_FLAG_HIDDEN); }
+    plugin_host::picture_let_go(w, nullptr);
     w.cover_shown.clear();
 #endif
   }
@@ -10488,7 +10489,7 @@ inline bool picture_shown(const lv_image_dsc_t *image) {
 #if LV_USE_IMAGE
   bool shown = false;
   auto on = [&](lv_obj_t *obj) { if (draws(obj, image)) shown = true; };
-  each_card([&](Widgets &w) { on(w.picture); if (w.extra_mode == "media") on(w.parts[MEDIA_PICTURE]); });
+  each_card([&](Widgets &w) { on(w.picture); if (w.extra_mode == "media") on(w.parts[MEDIA_PICTURE]); if (plugin_host::picture_draws(w, image)) shown = true; });
   on(media_detail_picture);
   on(camera_picture);
   on(alert_picture);
@@ -10503,7 +10504,7 @@ inline bool picture_shown(const lv_image_dsc_t *image) {
 // it may make way (picture_store::collect), and its page asks for it again when it comes back.
 inline bool picture_away(const lv_image_dsc_t *image) {
 #if LV_USE_IMAGE
-  const auto drawn = [&](Widgets &w) { return draws(w.picture, image) || (w.extra_mode == "media" && draws(w.parts[MEDIA_PICTURE], image)); };
+  const auto drawn = [&](Widgets &w) { return draws(w.picture, image) || (w.extra_mode == "media" && draws(w.parts[MEDIA_PICTURE], image)) || plugin_host::picture_draws(w, image); };
   for (auto &w : widgets) if (drawn(w)) return false;
   if (draws(media_detail_picture, image) || draws(camera_picture, image) || draws(alert_picture, image) || media_library::draws(image))
     return false;
@@ -10522,6 +10523,7 @@ inline void picture_let_go(const lv_image_dsc_t *image) {
     bool took = false;
     for (lv_obj_t *picture : {w.picture, w.extra_mode == "media" ? w.parts[MEDIA_PICTURE] : nullptr})
       if (draws(picture, image)) { lv_image_set_src(picture, nullptr); lv_obj_add_flag(picture, LV_OBJ_FLAG_HIDDEN); took = true; }
+    if (plugin_host::picture_let_go(w, image)) took = true;
     if (!took) continue;
     if (w.extra_mode == "media") w.cover_shown.clear();
     if (w.index < model.count) mark_tile(w.index);
@@ -10727,6 +10729,8 @@ inline bool card_open() { return detail_shown() || colour_shown() || effects_pag
 // What a card's picture is: its place measured on the card as LVGL laid it out, how the app paints it, and its pace.
 // False when the tile shows no picture, or the card has no size yet.
 inline bool tile_ask(const Widgets &w, const Tile &t, tile_picture::Ask &a) {
+  // A plugin tile's places (plugin API 0.10): its parts, measured by the host.
+  if (w.plugin) return plugin_host::picture_ask(w, t, a);
   if (!w.tile || !w.circle || !t.pictured()) return false;
   const bool art = card_art(t);
   lv_obj_t *place = art ? w.tile : w.circle;
@@ -10788,6 +10792,12 @@ inline bool tile_picture_waiting(const Widgets &w, const Tile &t) {
 // track's cover, a map before someone moved) until the next is here.
 inline void tile_picture_place(Widgets &w, const Tile &t, int size, int x, int y) {
   w.art_size = size; w.art_x = x; w.art_y = y;
+  // A plugin tile's picture is an atlas of its places' pieces (plugin API 0.10): the host lays each on its place.
+  if (w.plugin) {
+    const bool its = tile_picture::belongs(w.art_key, w.index, t.entity);
+    plugin_host::picture_place(w, its ? picture_of(w.art_key) : nullptr);
+    return;
+  }
 #if LV_USE_IMAGE
   const bool mine = t.pictured() && tile_picture::belongs(w.art_key, w.index, t.entity);
   lv_image_dsc_t *src = mine ? picture_of(w.art_key) : nullptr;
@@ -10887,10 +10897,13 @@ inline void tile_pictures_letgo() {
   auto *download = camera_live.source ? camera_live.source() : nullptr;
   if (!download) return;
   each_card([&](Widgets &w) {
-    if (!draws(w.picture, download)) return;
-    lv_image_set_src(w.picture, nullptr);
-    lv_obj_add_flag(w.picture, LV_OBJ_FLAG_HIDDEN);
-    if (w.index < model.count) refresh_tile(w.index);
+    bool took = plugin_host::picture_let_go(w, download);
+    if (draws(w.picture, download)) {
+      lv_image_set_src(w.picture, nullptr);
+      lv_obj_add_flag(w.picture, LV_OBJ_FLAG_HIDDEN);
+      took = true;
+    }
+    if (took && w.index < model.count) refresh_tile(w.index);
   });
 #endif
 }
@@ -11903,9 +11916,11 @@ inline void card_picture_wants() {
 #endif
     if (!w.tile || w.index >= model.count) return;
     const auto &t = model.tiles[w.index];
+    // A plugin tile with places that have an address shows pictures too (plugin API 0.10).
+    const bool pictured = t.pictured() || (w.plugin && plugin_host::pictured(w));
     // A tile that shows no picture any more (a track without one, a player turned off): its last one goes once nothing
     // draws it, not when the store happens to need the room.
-    if (tiles && !t.pictured() && !w.art_key.empty()) {
+    if (tiles && !pictured && !w.art_key.empty()) {
       ESP_LOGD("picture", "tile %u shows no picture now: %s goes", (unsigned) w.index, w.art_key.c_str());
       loader.release(owners::tile(w.index));
       picture_retire(w.art_key);
@@ -11921,7 +11936,7 @@ inline void card_picture_wants() {
       loader.want(owners::tile(index), cover_picture({w.cover_entity, w.cover_mark, w.cover_size, w.cover_ground},
                                                      glass ? picture_loader::Rank::PAGE : picture_loader::Rank::AHEAD,
                                                      [index](picture_loader::Outcome o) { if (shows(o)) tile_cover_arrived(index); }));
-    } else if (tiles && t.pictured()) {
+    } else if (tiles && pictured) {
       // A live tile's still waits while it asks for its stream or streams (live_tiles_round).
       if (live_tile_active(w.index)) return;
       tile_picture_want(w, glass);

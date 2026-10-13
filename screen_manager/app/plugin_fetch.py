@@ -291,8 +291,10 @@ class Fetcher:
         if self.session is not None and not self.session.closed:
             await self.session.close()
 
-    async def download(self, url, headers, network):
-        """The JSON at `url`, within the rules; raises on anything else."""
+    @staticmethod
+    def check_host(url, network):
+        """The host of `url`, when a plugin with `network` may reach it: https or http, a name (never an address) the
+        manifest names. FetchRefused otherwise."""
         parts = urlsplit(url)
         host = (parts.hostname or '').lower()
         if parts.scheme not in ('https', 'http') or host not in network:
@@ -300,9 +302,13 @@ class Fetcher:
         try:
             ipaddress.ip_address(host)
         except ValueError:
-            pass
-        else:
-            raise FetchRefused('a fetch names a host, not an address')
+            return host
+        raise FetchRefused('a fetch names a host, not an address')
+
+    async def download_bytes(self, url, headers, network, limit=MAX_BYTES):
+        """The bytes at `url`, within the rules (a host the plugin may reach, no redirects, at most `limit` bytes); raises
+        on anything else. A picture of a plugin tile (plugin_pictures) comes this way too, with its own limit."""
+        self.check_host(url, network)
         session = await self._session()
         async with session.get(url, headers=headers, allow_redirects=False) as response:
             if response.status in (301, 302, 303, 307, 308):
@@ -312,8 +318,13 @@ class Fetcher:
             raw = bytearray()
             async for chunk in response.content.iter_chunked(16384):
                 raw += chunk
-                if len(raw) > MAX_BYTES:
-                    raise OSError('the answer is larger than 64 KB')
+                if len(raw) > limit:
+                    raise OSError(f'the answer is larger than {limit // 1024} KB')
+        return bytes(raw)
+
+    async def download(self, url, headers, network):
+        """The JSON at `url`, within the rules; raises on anything else."""
+        raw = await self.download_bytes(url, headers, network)
         try:
             return json.loads(raw.decode('utf-8', errors='replace'))
         except ValueError:

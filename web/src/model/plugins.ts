@@ -24,6 +24,9 @@ export type PluginTile = {
   domains?: string[]; options?: PluginTileOption[]; example?: Texts;
   // The add-on draws a preview of it from its data (api/plugins/<id>/preview/<tile>): the manifest names one.
   preview?: boolean;
+  // Places for pictures on the tile (plugin API 0.10, the manifest's `pictures`), shown where the screen has the
+  // memory for them; the mockup draws none (it cannot run the plugin's C++).
+  pictures?: number;
   // The entities that have every attribute the tile needs (the manifest's `has_attributes`), from the add-on; absent
   // when the tile takes any entity of its domains.
   entities?: string[];

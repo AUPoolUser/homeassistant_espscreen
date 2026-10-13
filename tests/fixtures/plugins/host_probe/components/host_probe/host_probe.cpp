@@ -1,5 +1,6 @@
 #include "host_probe.h"
 #include "esphome/core/log.h"
+#include <algorithm>
 #include <string>
 
 namespace esphome::host_probe {
@@ -46,10 +47,32 @@ class ProbeTile : public tessera::Tile {
              ui::line_height(Font::DIGITS));
     lv_obj_set_width(number_, c.width);
     lv_obj_set_pos(number_, 0, lv_obj_get_height(badge_) + ui::px(4));
+    // Two places for pictures (0.10) at the card's foot, a poster's proportions, and a label of several lines beside
+    // them: the harness sends an address in the data and answers the card's question with an atlas of both.
+    const bool pictures = ui::pictures();
+    ESP_LOGI(TAG, "tile=%d pictures=%d", tile_, (int) pictures);
+    if (pictures) {
+      const int h = std::max(ui::px(24), c.height / 3), w = h * 2 / 3;
+      for (int i = 0; i < 2; ++i) {
+        places_[i] = ui::picture(c.parent);
+        lv_obj_set_size(places_[i], w, h);
+        lv_obj_set_pos(places_[i], i * (w + ui::px(4)), c.height - h);
+      }
+      words_ = ui::text(c.parent, Font::BODY, theme::MUTED);
+      lv_obj_set_pos(words_, 2 * (w + ui::px(4)), c.height - h);
+      lv_obj_set_width(words_, std::max(1, c.width - 2 * (w + ui::px(4))));
+      ui::set_text(words_, "A label of several lines that wraps and ends in dots");
+    }
     plugin_->ask_once();
   }
   void on_state(JsonObjectConst data) override {
     n_ = data["n"] | -1;
+    // The pictures (0.10): the first place takes the address as it is, the second the same picture whole (contain);
+    // without an address the places show their blocks.
+    const std::string picture = data["picture"] | "";
+    if (places_[0]) ui::set_picture(places_[0], picture);
+    if (places_[1]) ui::set_picture(places_[1], picture, tessera::Fit::CONTAIN);
+    if (!picture.empty()) ESP_LOGI(TAG, "tile=%d picture set %s", tile_, picture.c_str());
     // A tile of an entity gets its lists whole when they fit (0.5): how many prices of each day arrived.
     JsonObjectConst attributes = data["attributes"];
     ESP_LOGI(TAG, "tile=%d state n=%d wait=[%s] today=%u tomorrow=%u", tile_, n_, data["wait"] | "",
@@ -76,7 +99,8 @@ class ProbeTile : public tessera::Tile {
   HostProbe *plugin_;
   int tile_ = -1, n_ = -1;
   std::string word_;
-  lv_obj_t *badge_{}, *label_{}, *number_{};
+  lv_obj_t *badge_{}, *label_{}, *number_{}, *words_{};
+  lv_obj_t *places_[2]{};
 };
 
 class ProbeCard : public tessera::Card {
