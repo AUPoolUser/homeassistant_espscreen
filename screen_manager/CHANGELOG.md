@@ -1,4 +1,4 @@
-## Unreleased
+## 0.4.88 (firmware 0.56.0)
 
 - **A screen that runs well no longer shows an old failed update.** An update that failed (for instance because another
   build was running at that moment) no longer shows as an error with a red light once the screen runs the version it
@@ -122,7 +122,15 @@
   charging bolt while it charges, without a number, and the level comes back two minutes after unplugging, once the
   battery has settled. On the battery it only goes down. On any screen, charging without a known level now shows the
   charging bolt instead of an unknown battery. The screen needs this firmware.
-
+- **Going back.** A layout with a calendar card or a meter can't be read by an older app, so after this update go back
+  to 0.4.87 only with a backup taken before it.
+- Checked with every Python, C++, editor, translation and WASM preview check, the layout audit of every card on every
+  board shape, and firmware builds of every board on ESPHome 2026.9.0 and, where the board allows it, 2026.6.2. The
+  upgrade from 0.4.87 was tested on a CYD, a 4-inch Guition and a Waveshare 4.3-inch: main's app and firmware first, the
+  new app with the old firmware, then each screen's own Update built from GitHub, and on the CYD the other order (the
+  old app with the new firmware). Every layout came through byte for byte, and pages, taps, cards, settings, standby and
+  the wake were checked on the glass. After the upgrade the screens got calendar cards, meters and a plugin with
+  pictures, built through the one build line, and were checked on the glass again.
 ## 0.4.87 (firmware 0.55.0)
 
 - **Plugins for everyone.** The Plugins page is now in every Tessera app, not only the dev app: add a tile, a top bar
