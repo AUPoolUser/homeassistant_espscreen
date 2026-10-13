@@ -73,6 +73,13 @@ class ProbeTile : public tessera::Tile {
     if (places_[0]) ui::set_picture(places_[0], picture);
     if (places_[1]) ui::set_picture(places_[1], picture, tessera::Fit::CONTAIN);
     if (!picture.empty()) ESP_LOGI(TAG, "tile=%d picture set %s", tile_, picture.c_str());
+    // Where the first place lies on the glass, so the render can look at its pixels.
+    if (places_[0] && !picture.empty()) {
+      lv_obj_update_layout(places_[0]);
+      lv_area_t a;
+      lv_obj_get_coords(places_[0], &a);
+      ESP_LOGI(TAG, "tile=%d place0 %d,%d,%d,%d", tile_, (int) a.x1, (int) a.y1, (int) a.x2, (int) a.y2);
+    }
     // A tile of an entity gets its lists whole when they fit (0.5): how many prices of each day arrived.
     JsonObjectConst attributes = data["attributes"];
     ESP_LOGI(TAG, "tile=%d state n=%d wait=[%s] today=%u tomorrow=%u", tile_, n_, data["wait"] | "",

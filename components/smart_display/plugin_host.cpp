@@ -569,6 +569,9 @@ void picture_place(rt::Widgets &w, void *picture) {
     if (!p.image) {
       p.image = lv_image_create(p.place);
       lv_obj_remove_flag(p.image, LV_OBJ_FLAG_CLICKABLE);
+      // The offset counts from the atlas's top left, as the library's covers do: LVGL's default aligns a picture larger
+      // than its object in the middle, and the piece would lie outside the place.
+      lv_image_set_inner_align(p.image, LV_IMAGE_ALIGN_TOP_LEFT);
     }
     // Its piece of the atlas, in the middle of its place: a piece over the cap is smaller than the place.
     lv_image_set_src(p.image, src);

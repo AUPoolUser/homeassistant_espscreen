@@ -694,37 +694,49 @@ class Run:
         await self.sender.synchronize(self.inbox.object_id, record, region, values(3, {**x, 'picture': poster}), bars)
         await self.until(lambda l: probe(l, 'tile=0 picture set'), 10, 'the picture was set', start)
         shown = await self.until(lambda l: probe(l, 'tile=0 pictures='), 10, 'whether the host shows pictures', 0)
-        assert 'pictures=1' in shown, f'the host render shows pictures, the plugin says: {shown}'
-        served = {'posters': 0}
-        async def answer_posters():
+        # A board without pictures (the CYD) has the calls and lays the tile out without places: it asks for nothing.
+        if 'pictures=0' in shown:
+            await asyncio.sleep(2)
+            asked = [c for c in calls[since:] if c.service == 'esphome.screen_camera' and dict(c.data).get('tiles') == 'plugin:host_probe.probe']
+            assert not asked, f'a board without pictures asked for the plugin tile\'s pictures: {asked}'
+            self.warnings.append('pictures: none on this board (pictures=0), no question asked')
+        else:
+            served = {'posters': 0}
+            async def answer_posters():
+                answered = 0
+                for call in calls[since:]:
+                    data = dict(call.data)
+                    if call.service != 'esphome.screen_camera' or data.get('tiles') != 'plugin:host_probe.probe' or data.get('_answered'):
+                        continue
+                    question = plugin_pictures.parse(data, self.canvas)
+                    assert question, f'the plugin tile asked without frames and addresses the app takes: {data}'
+                    assert question.sources == [poster, poster] and question.fits == ['cover', 'contain'], \
+                        f'the places asked for {question.sources} as {question.fits}'
+                    raw = porch(300, 450)
+                    body = tile_art.encode([raw, raw], [question.ground] * 2, question.atlas, [('fill', False), ('within', False)], compact=True)
+                    url = self.pictures.url(f'{self.item.key}-posters-{served["posters"]}.bmp', body)
+                    served['posters'] += 1
+                    await self.send({'v': 1, 'op': 'camera', 't': 'live', 'e': data['tiles'], 'u': url, 'view': int(data['view'])})
+                    call.data['_answered'] = '1'
+                    answered += 1
+                return answered
             answered = 0
-            for call in calls[since:]:
-                data = dict(call.data)
-                if call.service != 'esphome.screen_camera' or data.get('tiles') != 'plugin:host_probe.probe' or data.get('_answered'):
-                    continue
-                question = plugin_pictures.parse(data, self.canvas)
-                assert question, f'the plugin tile asked without frames and addresses the app takes: {data}'
-                assert question.sources == [poster, poster] and question.fits == ['cover', 'contain'], \
-                    f'the places asked for {question.sources} as {question.fits}'
-                raw = porch(300, 450)
-                body = tile_art.encode([raw, raw], [question.ground] * 2, question.atlas, [('fill', False), ('within', False)], compact=True)
-                url = self.pictures.url(f'{self.item.key}-posters-{served["posters"]}.bmp', body)
-                served['posters'] += 1
-                await self.send({'v': 1, 'op': 'camera', 't': 'live', 'e': data['tiles'], 'u': url, 'view': int(data['view'])})
-                call.data['_answered'] = '1'
-                answered += 1
-            return answered
-        answered = 0
-        for _ in range(24):
-            await asyncio.sleep(0.5)
-            answered += await answer_posters()
-            if answered and any('tile 0: picture loaded' in l for l in self.lines[start:]):
-                break
-        assert answered, 'the plugin tile did not ask for its pictures'
-        await self.until(lambda l: 'tile 0: picture loaded' in l, 10, 'the pictures of tile 0 loaded', start)
-        await asyncio.sleep(0.8)
-        await self.render('plugin-pictures')
-        self.warnings.append(f'pictures: {answered} question(s) of the plugin tile answered with an atlas of two posters')
+            for _ in range(24):
+                await asyncio.sleep(0.5)
+                answered += await answer_posters()
+                if answered and any('tile 0: picture loaded' in l for l in self.lines[start:]):
+                    break
+            assert answered, 'the plugin tile did not ask for its pictures'
+            await self.until(lambda l: 'tile 0: picture loaded' in l, 10, 'the pictures of tile 0 loaded', start)
+            await asyncio.sleep(0.8)
+            shot = await self.render('plugin-pictures')
+            # The place must show the poster, not the card or its block: a loaded picture that draws nothing passed once.
+            at = await self.until(lambda l: probe(l, 'tile=0 place0 '), 10, 'where the first place lies', start)
+            x1, y1, x2, y2 = (int(n) for n in at.rsplit(' ', 1)[1].split(','))
+            inner = shot.convert('RGB').crop((x1 + 2, y1 + 2, x2 - 1, y2 - 1))
+            colours = inner.getcolors(1 << 16) or []
+            assert len(colours) > 12, f'the first place shows {len(colours)} colours at {x1},{y1}-{x2},{y2}, not the poster'
+            self.warnings.append(f'pictures: {answered} question(s) of the plugin tile answered with an atlas of two posters')
         # The question the first tile asked: the app's answer reaches on_message (the harness stands in for the app).
         sent = next((c for c in calls if c.service == 'esphome.screen_plugin'), None)
         assert sent and sent.data.get('plugin') == 'host_probe' and sent.data.get('inbox'), f'no question from the plugin: {calls}'
