@@ -1,6 +1,7 @@
 // New screen (app 0.4.32), as one flow its steps share (components/InstallerView.vue and components/install/): the form
-// and which step it is at, what the add-on says of its boards, ports, Wi-Fi and firmware job (useFirmwareJob), and the
-// installation once it runs, through this browser's own writing when that is the way. The steps only show and hide; the
+// and which step it is at, what the add-on says of its boards, ports and Wi-Fi (useFirmwareJob), and the installation
+// once it was asked: its build in the add-on's one build line, followed by its id (useLineBuild), which may first wait
+// for another screen's build, and this browser's own writing when that is the way. The steps only show and hide; the
 // form, what it sends and when, is the one it always was. What it works out is model/installer.ts and
 // model/install-progress.ts; whether the screen arrived on the network is useArrival.
 import { computed, onBeforeUnmount, onMounted, proxyRefs, reactive, ref, watch } from "vue";
@@ -15,16 +16,17 @@ import { elapsedText, followDetail, followTitle, installProgress, type Follow } 
 import { nodeName } from "../model/slug";
 import { flashSupport } from "../flasher/logic";
 import { useBrowserFlash } from "../flasher/session";
-import type { BoardChoice, Orientation } from "../types";
+import type { BoardChoice, LineBuild, Orientation } from "../types";
 import { useArrival } from "./useArrival";
 import { useBusy } from "./useBusy";
 import { useClock } from "./useClock";
-import { useFirmwareJob } from "./useFirmwareJob";
+import { useFirmwareJob, useLineBuild } from "./useFirmwareJob";
+import { useBuildsStore } from "../stores/builds";
 import { useSessionStore } from "../stores/session";
 import { useUiStore } from "../stores/ui";
 
 export function useInstaller() {
-  const ui = useUiStore(), session = useSessionStore();
+  const ui = useUiStore(), session = useSessionStore(), builds = useBuildsStore();
 
   // Download: ESP Screens builds, the owner flashes the file from their own computer with ESPHome Web (ESPHOME_WEB).
   const form = reactive<InstallForm>({ board: "", orientation: "landscape", grid: { columns: 2, rows: 3 }, choices: {}, friendly_name: "", name: "",
@@ -32,8 +34,11 @@ export function useInstaller() {
   const mode = ref<"physical" | "virtual">("physical");
   const installer = reactive({
     view: "setup" as "setup" | "progress" | "done", file: null as string | null, friendly: "", calibrate: false, target: "",
-    apiKey: null as string | null, nodeEdited: false, jobState: null as string | null, picked: false, action: null as string | null,
+    apiKey: null as string | null, nodeEdited: false, picked: false, action: null as string | null,
     browser: false, chip: null as string | null,
+    // The build of this installation in the add-on's line, by its id, and the add-on's answer when it was asked, until
+    // the line names it.
+    build: null as number | null, asked: null as LineBuild | null,
   });
   // This computer (browser): the add-on builds as for Download, and this page writes the image over Web Serial, in Chrome
   // or Edge on a page served over https. The fallback for a screen that can't reach the Home Assistant machine; Download
@@ -41,8 +46,6 @@ export function useInstaller() {
   const flash = useBrowserFlash();
   const support = flashSupport();
   const data = ref<any>(null);
-  const job = ref<any>(null);
-  const logs = ref<string[]>([]);
   const note = ref("");
   const status = ref("");
   const { busy: submitting, run: whileSubmitting } = useBusy();
@@ -95,10 +98,11 @@ export function useInstaller() {
   const askWifi = computed(() => wifi.value?.state === "new" || wifi.value?.state === "missing");
   const wifiMissing = computed<string[]>(() => wifi.value?.missing || []);
   const wifiNote = computed(() => wifi.value?.state === "ready" ? t("editor.installer.wifi.ready") : wifi.value?.state === "invalid" ? t("editor.installer.wifi.invalid") : "");
-  const busyElsewhere = computed(() => data.value?.job?.state === "running" && !(installer.file && data.value.job.file === installer.file));
+  // Another screen's build that runs or waits: this one is never refused for it, it waits its turn, and the way says so.
+  const lineBusy = computed(() => builds.line.some((build) => build.state === "queued" || build.state === "running"));
   const goDisabled = computed(() => submitting.value || wifi.value?.state === "invalid" || form.target === "usb" ||
     (form.target === "browser" && support !== "ok") ||
-    clash.value.node || clash.value.name || (!!form.target && (busyElsewhere.value || !data.value?.available)));
+    clash.value.node || clash.value.name || (!!form.target && !data.value?.available));
   const ways = computed(() => installWays(ports.value));
   // The drawing of the chosen screen, which way it hangs and with the name typed so far.
   const art = computed(() => {
@@ -113,36 +117,33 @@ export function useInstaller() {
   }
   function take(next: any) {
     data.value = next;
-    const current = next.job;
-    const ours = current && installer.file && current.file === installer.file;
-    if (ours) installer.jobState = current.state;
-    if (installer.view === "setup") {
-      if (ours && current.state === "running") { showProgress(current, next.logs || []); return; }
-      form.target = wayTarget(form.target, installer.picked, ports.value);
-      note.value = busyElsewhere.value
-        ? t("editor.installer.busy", { file: current.file })
-        : !next.available && form.target ? t("editor.installer.no_cli") : wifiNote.value;
-    } else if (installer.view === "progress" && ours) {
-      job.value = current;
-      logs.value = next.logs || [];
-      if (current.state !== "running" && current.state !== "success") logOpen.value = true;
-    }
+    if (installer.view !== "setup") return;
+    form.target = wayTarget(form.target, installer.picked, ports.value);
+    note.value = !next.available && form.target ? t("editor.installer.no_cli")
+      : form.target && lineBusy.value ? t("editor.installer.waits_turn") : wifiNote.value;
   }
-  function showProgress(current: any, lines: string[]) {
+  // This installation's build (useLineBuild): the line's while it knows it, the add-on's answer until then.
+  const line = useLineBuild(() => installer.build);
+  const job = computed<LineBuild | null>(() => line.build.value ?? (installer.asked && installer.asked.id === installer.build ? installer.asked : null));
+  const logs = computed(() => line.logs.value);
+  function showProgress(build: LineBuild) {
     installer.view = "progress";
-    installer.jobState = current.state;
-    installer.action = current.action;
-    job.value = current;
-    logs.value = lines;
+    installer.action = build.action;
+    installer.build = build.id;
+    installer.asked = build;
   }
+  // A build that failed opens its log.
+  watch(() => job.value?.state, (state) => { if (state && builds.lineEnded(job.value) && state !== "success") logOpen.value = true; });
   // From this browser the job only builds; the installation is done once the page has written the image.
   const flashing = computed(() => installer.browser && job.value?.state === "success" && flash.state.phase !== "done" && flash.state.phase !== "failed");
-  const running = computed(() => job.value?.state === "running" || flashing.value);
+  // Waiting its turn behind another screen's build: the steps wait, the page says what it waits for.
+  const waiting = computed(() => job.value?.state === "queued");
+  const running = computed(() => waiting.value || job.value?.state === "running" || flashing.value);
   const ok = computed(() => installer.view === "done" || (job.value?.state === "success" && (!installer.browser || flash.state.phase === "done")));
   const download = computed(() => installer.action === "download" && !installer.browser);
   // The build is done: write it, erased first as ESPHome does for a new device. A retry after a finished build connects
   // again, and that writes the image it already has.
-  watch(() => [job.value?.state, flash.state.phase], ([state, phase]) => {
+  watch(() => [job.value?.state, flash.state.phase] as const, ([state, phase]) => {
     if (installer.browser && installer.file && afterBrowserBuild(state, phase) === "write") flash.install(installer.file, true);
   });
   // A build that fails lets go of the port. Only when the build ends: a retry connects while the failed job is on screen.
@@ -151,7 +152,8 @@ export function useInstaller() {
   });
   // The memory the build has (build_memory.py, app 0.4.65): why it runs with fewer compilers, or why it stopped.
   const memory = computed(() => memoryText(job.value));
-  const follow = computed<Follow>(() => ({ saved: installer.view === "done", running: running.value, ok: ok.value, download: download.value,
+  const follow = computed<Follow>(() => ({ saved: installer.view === "done", running: running.value, waiting: waiting.value,
+    ahead: job.value?.place ?? 0, ok: ok.value, download: download.value,
     browser: installer.browser, writing: job.value?.stage === "upload" || flashing.value, calibrate: installer.calibrate,
     built: job.value?.state === "success", stopped: memory.value?.reason === "out" || memory.value?.reason === "limit",
     name: installer.friendly, file: installer.file || "" }));
@@ -195,7 +197,7 @@ export function useInstaller() {
       Object.assign(installer, { file: result.file, apiKey: result.api_key, friendly: form.friendly_name.trim(), calibrate: !!chosen.value?.calibrate,
         target: form.target, browser, chip: chosen.value?.chip || null });
       form.wifi_password = "";
-      if (result.job) showProgress(result.job, []);
+      if (result.build) showProgress(result.build);
       else installer.view = "done";
     } catch (err: any) {
       status.value = err.message;
@@ -208,7 +210,7 @@ export function useInstaller() {
         // Again from this click: pick the port, then write the image that is already built, or build it first.
         if (!(await flash.connect(installer.chip))) return;
         if (job.value?.state === "success") return;
-        showProgress(await send("firmware/jobs", "POST", { file: installer.file, action: "download" }), []);
+        showProgress(await builds.askBuild({ file: installer.file!, action: "download" }));
         return;
       }
       if (!download.value) {
@@ -216,10 +218,9 @@ export function useInstaller() {
         // The board may have been replugged; a single visible port is unambiguous.
         if (!fresh.includes(installer.target) && fresh.length === 1) installer.target = fresh[0];
       }
-      const next = await send("firmware/jobs", "POST", download.value
-        ? { file: installer.file, action: "download" }
-        : { file: installer.file, action: "install", target: installer.target });
-      showProgress(next, []);
+      showProgress(await builds.askBuild(download.value
+        ? { file: installer.file!, action: "download" }
+        : { file: installer.file!, action: "install", target: installer.target }));
     } catch (err: any) {
       ui.toast(err.message);
     }
@@ -227,15 +228,16 @@ export function useInstaller() {
   function reset() {
     mode.value = "physical";
     flash.cancel();
-    Object.assign(installer, { view: "setup", file: null, apiKey: null, nodeEdited: false, jobState: null, target: "", picked: false, action: null, browser: false, chip: null });
+    Object.assign(installer, { view: "setup", file: null, apiKey: null, nodeEdited: false, target: "", picked: false, action: null, browser: false, chip: null,
+      build: null, asked: null });
     Object.assign(form, { board: boardRows.value[0]?.key || "", orientation: "landscape" as Orientation, choices: {}, friendly_name: "", name: "", wifi_ssid: "", wifi_password: "", target: "" });
     bestGrid();
     step.value = 1; query.value = ""; size.value = ""; wifiOther.value = false; restart();
-    job.value = null; logs.value = []; status.value = ""; note.value = ""; logOpen.value = false;
+    status.value = ""; note.value = ""; logOpen.value = false;
     refresh();
   }
   function close() {
-    if (installer.view === "progress" && installer.jobState !== "running") installer.view = "done";
+    if (installer.view === "progress" && !line.onItsWay.value) installer.view = "done";
     ui.go("");
   }
   function back() { if (step.value > 1) step.value = (step.value - 1) as 1 | 2; }

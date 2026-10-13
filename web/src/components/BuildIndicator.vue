@@ -5,6 +5,7 @@
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from "reka-ui";
 import { computed, ref } from "vue";
 import { t } from "../i18n";
+import { waitingText } from "../model/screen-status";
 import BuildList from "./BuildList.vue";
 import ProgressRing from "./ui/ProgressRing.vue";
 import { useBuildsStore } from "../stores/builds";
@@ -16,7 +17,7 @@ const screens = computed(() => builds.buildingScreens);
 const together = computed(() => screens.value.length
   ? Math.round(screens.value.reduce((sum, screen) => sum + (builds.buildProgress(screen)?.percent ?? 0), 0) / screens.value.length) : 0);
 const label = computed(() => screens.value.length === 1
-  ? `${screens.value[0].name} · ${builds.buildProgress(screens.value[0])?.text ?? t("editor.build.waiting")}` : t("editor.build.count", screens.value.length));
+  ? `${screens.value[0].name} · ${builds.buildProgress(screens.value[0])?.text ?? waitingText(builds.buildOf(screens.value[0]))}` : t("editor.build.count", screens.value.length));
 </script>
 
 <template>

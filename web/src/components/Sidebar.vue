@@ -84,9 +84,9 @@ function update(screen: Screen) {
   else if (u.profile) { hostFor.value = screen.id; host.value = ""; }
 }
 // The dev channel's own button (docs/RELEASING.md, "Testing dev"): the newest dev keeps the firmware number, so it is
-// never an update by itself; this builds and installs it anyway, the way an update does.
+// never an update by itself; this builds and installs it anyway, the way an update does, after whatever builds before it.
 const reinstallable = (screen: Screen) => inv.inventory.updates?.channel === "dev" && screen.online
-  && Boolean(screen.update?.profile && screen.update?.host) && !inv.inventory.updates?.busy;
+  && Boolean(screen.update?.profile && screen.update?.host) && !builds.buildOf(screen) && !builds.updating.includes(screen.id);
 function startWithHost(screen: Screen) {
   const address = host.value.trim();
   if (!address) return;

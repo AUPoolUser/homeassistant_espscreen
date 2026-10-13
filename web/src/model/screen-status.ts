@@ -6,7 +6,7 @@
 import { t } from "../i18n";
 import { boardTitle } from "./boards";
 import { versionAtLeast } from "./layout";
-import type { Build, ChangelogSection, Screen } from "../types";
+import type { Build, ChangelogSection, LineBuild, Screen } from "../types";
 
 // The firmware version a screen's features go by, as the add-on works it out (firmware_known, app 0.2.78; null when it
 // can't tell). A screen entry without the field goes by the firmware text, as before.
@@ -26,6 +26,8 @@ export function buildText(screen: Screen, build: Build | null) {
   if (!build || build.by === "update") return phaseText(build?.phase ?? screen.update?.phase);
   return t(build.by === "plugins" ? "editor.build.plugins" : "editor.build.install");
 }
+/** A build that waits its turn in the add-on's line: how many builds are before it (the one that runs counts). */
+export const waitingText = (build: Pick<Build, "place"> | null | undefined) => t("editor.build.waiting_place", Math.max(1, build?.place || 1));
 // Progress of a running build, from an update's phase and the ESPHome stage of the build.
 export function buildProgress(screen: Screen, building: Building): { percent: number; text: string } | null {
   if (!isBuilding(building)) return null;
@@ -57,7 +59,7 @@ export type UpdateState = { kind: "running" | "queued" | "blocked" | "available"
 export function updateState(screen: Screen, facts: StatusFacts): UpdateState | null {
   const u = screen.update || {};
   if (isBuilding(facts)) return { kind: "running", text: buildText(screen, facts.build) };
-  if (facts.build?.state === "queued") return { kind: "queued", text: t("editor.sidebar.update.queued") };
+  if (facts.build?.state === "queued") return { kind: "queued", text: waitingText(facts.build) };
   // A screen ESP Screens did not install has no YAML here to build from, so there is nothing to press: say why
   // instead of offering a button that cannot work (the nightly round already passes such a screen by).
   if (needsUpdate(screen) && screen.online && !u.profile)
@@ -150,26 +152,24 @@ export const pendingText = (p: Pending) => p.pairing === "failed" ? t("editor.si
 // with the way to its log. It says so only for a build this page started or saw on its way, never for one that ended
 // before the page was opened. What the page knew when it began to watch is kept (Watched), so how it ended is read
 // from what changed since, not from the clocks of the browser and the add-on, which need not agree: an update's
-// result is a new one (its time differs), a plugin build's or an install's firmware job is another one than before.
-export type FirmwareJobFacts = { file?: string | null; state?: string | null; started?: number | null } | null | undefined;
-export type Watched = { by: Build["by"]; file: string | null; result: number | null; job: number | null };
+// result is a new one (its time differs), a plugin build's or an install's is the outcome the add-on's build line keeps
+// for that build by its id (LineBuild), also when the next build started at once.
+export type Watched = { by: Build["by"]; file: string | null; result: number | null; id: number | null };
 /** What is kept of a screen's build as the page begins to watch it. */
-export function watchOf(screen: Screen, build: Build | null, job: FirmwareJobFacts): Watched {
-  const file = build?.file ?? screen.update?.profile ?? null;
-  // A job of this screen that still runs is this build: its end is the outcome, so nothing of it counts as before.
-  const before = job && file && job.file === file && job.state !== "running" ? job.started ?? null : null;
-  return { by: build?.by ?? "update", file, result: screen.update?.result?.time ?? null, job: before };
+export function watchOf(screen: Screen, build: Build | null): Watched {
+  return { by: build?.by ?? "update", file: build?.file ?? screen.update?.profile ?? null, result: screen.update?.result?.time ?? null,
+    id: build?.id ?? null };
 }
 export type BuildOutcome = "ready" | "failed" | null;
-/** How a watched build ended: ready, failed, or nothing to say (an update a round passed by, a job not found). */
-export function buildOutcome(screen: Screen, watched: Watched, job: FirmwareJobFacts): BuildOutcome {
+/** How a watched build ended: ready, failed, or nothing to say (an update a round passed by, a build no longer known). */
+export function buildOutcome(screen: Screen, watched: Watched, line: readonly LineBuild[] | null | undefined): BuildOutcome {
   if (watched.by === "update") {
     const result = screen.update?.result;
     if (!result || result.time === watched.result) return null;
     return result.state === "success" ? "ready" : result.state === "failed" ? "failed" : null;
   }
-  if (!job || !watched.file || job.file !== watched.file || (job.started ?? null) === watched.job) return null;
-  return job.state === "success" ? "ready" : job.state === "failed" ? "failed" : null;
+  const ended = watched.id === null ? null : (line || []).find((build) => build.id === watched.id);
+  return ended?.state === "success" ? "ready" : ended?.state === "failed" ? "failed" : null;
 }
 export type BuildEnd = { screen: Screen; by: Build["by"]; outcome: Exclude<BuildOutcome, null> };
 /** The one word for the builds that ended together: the first that failed, else the screens that are ready. */

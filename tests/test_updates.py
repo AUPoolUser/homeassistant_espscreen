@@ -173,7 +173,7 @@ class UpdaterTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaisesRegex(ValueError, 'IP address'): m.updates.start('text.screen2')
             with self.assertRaises(ValueError): m.updates.start('text.screen2', host='bad host!')
             m.updates.start('text.screen2', host='10.0.0.6')
-            await m.updates.task
+            await m.build_queue.idle()
             self.assertEqual(m.firmware.calls, [{'file': 'kitchen.yaml', 'action': 'install', 'target': '10.0.0.6'}])
             self.assertEqual(m.updates.results['text.screen2']['state'], 'success')
             self.assertEqual(json.loads((Path(tmp) / 'updates.json').read_text())['hosts'], {'text.screen2': '10.0.0.6'})
@@ -209,7 +209,7 @@ class UpdaterTests(unittest.IsolatedAsyncioTestCase):
             m.firmware.names = {'living-room.yaml': {'node': 'living-room', 'friendly': 'Living room', 'package': 'packages/waveshare4b.yaml'}}
             # A build that only reaches the shared version is no success for this board.
             m.updates.start('text.screen1')
-            await m.updates.task
+            await m.build_queue.idle()
             self.assertEqual(m.updates.results['text.screen1']['state'], 'failed')
             self.assertIn(ahead, m.updates.results['text.screen1']['message'])
             async def to_board_version(data):
@@ -218,7 +218,7 @@ class UpdaterTests(unittest.IsolatedAsyncioTestCase):
                 m.firmware.job['state'] = 'success'
             m.firmware.run = to_board_version
             m.updates.start('text.screen1')
-            await m.updates.task
+            await m.build_queue.idle()
             self.assertEqual(m.updates.results['text.screen1'], {**m.updates.results['text.screen1'], 'state': 'success', 'version': ahead})
             self.assertEqual(m.updates.pending(), [])
 
@@ -260,7 +260,7 @@ class UpdaterTests(unittest.IsolatedAsyncioTestCase):
             m.updates.hosts['text.screen2'] = '10.0.0.6'
             self.assertEqual(m.updates.start_all(), ['text.screen1', 'text.screen2'])
             with self.assertRaises(ValueError): m.updates.start_all()
-            await m.updates.task
+            await m.build_queue.idle()
             self.assertEqual(len(m.firmware.calls), 1, 'a failed screen must end the round')
             self.assertEqual(m.updates.results['text.screen1']['state'], 'failed')
             self.assertNotIn('text.screen2', m.updates.results)
@@ -278,7 +278,7 @@ class UpdaterTests(unittest.IsolatedAsyncioTestCase):
                 await asyncio.sleep(0); m.firmware.job['state'] = 'success'
             m.firmware.run = silent
             m.updates.start('text.screen1')
-            await m.updates.task
+            await m.build_queue.idle()
             self.assertEqual(m.updates.results['text.screen1']['state'], 'failed')
             self.assertIn(FIRMWARE_VERSION, m.updates.results['text.screen1']['message'])
             m.firmware.run = original
@@ -304,7 +304,7 @@ class UpdaterTests(unittest.IsolatedAsyncioTestCase):
                 m.firmware.job['state'] = 'success'
             m.firmware.run = speaks_dutch
             m.updates.start('text.screen1')
-            await m.updates.task
+            await m.build_queue.idle()
             self.assertEqual(m.updates.results['text.screen1']['state'], 'success')
             self.assertEqual(m.screen('text.screen1')['language'], 'nl')
             self.assertEqual(m.updates.pending(), [])
@@ -368,7 +368,7 @@ class UpdaterTests(unittest.IsolatedAsyncioTestCase):
                 response = await client.post('/api/screens/text.screen1/update', headers=headers, json={})
                 self.assertEqual(response.status, 200)
                 self.assertEqual((await response.json())['state'], 'running')
-                await m.updates.task
+                await m.build_queue.idle()
                 self.assertEqual(m.updates.results['text.screen1']['state'], 'success')
 
 

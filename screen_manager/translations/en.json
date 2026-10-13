@@ -793,7 +793,8 @@
         "build_first": "Build the firmware first; the download appears when the build has finished.",
         "unknown_action": "Unknown firmware action.",
         "host": "Enter the IP address or hostname of the intended screen.",
-        "grid": "Choose a grid this screen takes."
+        "grid": "Choose a grid this screen takes.",
+        "build_gone": "This build is no longer known. The newest builds are under Firmware & USB."
       },
       "updates": {
         "automatic": "Choose on or off for automatic updates.",
@@ -1505,7 +1506,6 @@
       "refresh": "Refresh",
       "update": {
         "button": "Update",
-        "queued": "Queued for the update",
         "available": "Update {version}",
         "no_profile": "No ESPHome profile found with this device name.",
         "whats_new": "What's new",
@@ -2556,7 +2556,8 @@
       "download_target": "Download the file and flash it yourself",
       "host": "IP address or hostname",
       "download_file": "Download {name}",
-      "download_how": "Put it on the screen with {esphome_web} in Chrome or Edge: Connect, choose the screen's USB port, Install, and select this file. It holds your Wi-Fi password and the screen's keys: keep it to yourself."
+      "download_how": "Put it on the screen with {esphome_web} in Chrome or Edge: Connect, choose the screen's USB port, Install, and select this file. It holds your Wi-Fi password and the screen's keys: keep it to yourself.",
+      "waiting": "waiting its turn, 1 build first | waiting its turn, {n} builds first"
     },
     "installer": {
       "board": "Which screen do you have?",
@@ -2616,7 +2617,6 @@
       },
       "install": "Install",
       "save_profile": "Save profile",
-      "busy": "A build or installation is already running ({file}). Wait for it to finish.",
       "no_cli": "The ESPHome CLI is missing from this installation; only saving the profile is possible.",
       "progress": {
         "saved": "{file} is in the ESPHome folder",
@@ -2625,7 +2625,8 @@
         "ready": "Firmware for {name} is ready",
         "installed": "Firmware is on {name}",
         "build_failed": "Build failed",
-        "install_failed": "Install failed"
+        "install_failed": "Install failed",
+        "waiting": "Waiting its turn…"
       },
       "detail": {
         "saved": "Install it later from Firmware & USB: choose this profile, then the USB port of the Home Assistant machine, or Download to put the firmware on the screen from your own computer. Save the API key for pairing:",
@@ -2635,7 +2636,9 @@
         "downloaded": "Put it on the screen from your own computer. It shows up here once it is on your Wi-Fi.",
         "booted": "The screen boots up, connects to your Wi-Fi and joins Home Assistant by itself.",
         "booted_calibrate": "The screen boots up and connects to your Wi-Fi. It first asks for a touch calibration: tap the crosshairs. Then it joins Home Assistant by itself.",
-        "see_log": "See the log below."
+        "see_log": "See the log below.",
+        "waiting": "1 build goes first. This one starts by itself right after it, and you can leave this page. | {n} builds go first. This one starts by itself right after them, and you can leave this page.",
+        "waiting_browser": "1 build goes first. This one starts by itself right after it. Keep this page open: it writes the screen as soon as its firmware is built. | {n} builds go first. This one starts by itself right after them. Keep this page open: it writes the screen as soon as its firmware is built."
       },
       "download_steps": {
         "plug": "{bold} with a USB data cable.",
@@ -2734,7 +2737,8 @@
       "pair_yourself": "Add it in Home Assistant yourself",
       "grid": "Grid",
       "grid_hint": "The suggested grid is the best for this screen. You can change it, and which way it hangs, later beside the pages in the editor, without a new build.",
-      "grid_best": "Back to the best"
+      "grid_best": "Back to the best",
+      "waits_turn": "Another screen is being built now. This one waits its turn and starts by itself right after."
     },
     "alerts": {
       "eyebrow": "Alerts · cheatsheet",
@@ -2926,7 +2930,8 @@
       "confirm_example": "Replace the current text with the example?",
       "example_loaded": "Example loaded. Save it when you are ready.",
       "confirm_clear": "Clear the local override?",
-      "cleared": "The override will be empty after you save."
+      "cleared": "The override will be empty after you save.",
+      "checking_waits": "Waiting for the build that runs now, then checking…"
     },
     "mockup": {
       "home": "Home",
@@ -3641,12 +3646,12 @@
       "failed": "The last build of {screen} failed. The log says why.",
       "title": "Building now",
       "count": "1 build on its way | {n} builds on their way",
-      "waiting": "Waiting its turn",
       "ready": "{name} is ready",
       "ready_several": "{names} are ready",
       "update_failed": "Updating {name} failed",
       "build_failed": "Building {name} failed",
-      "show_log": "Show log"
+      "show_log": "Show log",
+      "waiting_place": "Waiting its turn, 1 build first | Waiting its turn, {n} builds first"
     },
     "grid": {
       "title": "Grid",

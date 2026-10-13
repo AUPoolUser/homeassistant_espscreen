@@ -107,7 +107,7 @@ const useProfile = () => whileSaving(() => region.saveLanguage(different.value))
         <p id="updates-hint">{{ updatesHint }}</p>
         <!-- Every build on the way, whoever asked: an update, a plugin build, an install (the builds store, stores/builds.ts). -->
         <BuildLog v-for="screen in builds.buildingScreens" :key="screen.id" :screen="screen" name />
-        <button v-if="u.pending && !u.busy && u.pending >= 2" id="update-all" type="button" class="btn primary" @click="builds.runUpdateAll">{{ t("editor.settings.updates.all", u.pending) }}</button>
+        <button v-if="u.pending && u.pending >= 2" id="update-all" type="button" class="btn primary" @click="builds.runUpdateAll">{{ t("editor.settings.updates.all", u.pending) }}</button>
         <details v-if="targetNotes.length && !builds.anyBuilding" class="whatsnew">
           <summary>{{ t("editor.settings.updates.whats_new", { version: u.target }) }}</summary>
           <ul><li v-for="line in targetNotes" :key="line">{{ line }}</li></ul>

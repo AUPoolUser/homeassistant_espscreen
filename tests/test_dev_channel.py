@@ -302,7 +302,7 @@ class Reinstall(unittest.IsolatedAsyncioTestCase):
             set_channel('dev')
             self.assertEqual(m.updates.summary()['channel'], 'dev')
             m.updates.start('text.screen1', reinstall=True)
-            await m.updates.task
+            await m.build_queue.idle()
             self.assertEqual(m.firmware.calls, [{'file': 'living-room.yaml', 'action': 'install', 'target': '10.0.0.5'}])
             self.assertEqual(m.updates.results['text.screen1']['state'], 'success')
 

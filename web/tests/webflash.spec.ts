@@ -5,6 +5,8 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import FirmwareView from "../src/components/FirmwareView.vue";
+import { t } from "../src/i18n";
+import { useBuildsStore } from "../src/stores/builds";
 import InstallerView from "../src/components/InstallerView.vue";
 import { chipMatches, connectProblem, flashSupport, imageChip, pickProblem, writtenPercent } from "../src/flasher/logic";
 import { setFlasherLoader, useBrowserFlash } from "../src/flasher/session";
@@ -210,14 +212,19 @@ describe("New screen from this browser", () => {
   const flush = async () => { await flushPromises(); await new Promise((done) => setTimeout(done, 0)); await flushPromises(); };
   function addonWithBuild(image: Uint8Array) {
     const posted: any[] = [];
+    // The build in the add-on's line: it waits its turn behind another screen's first (the add-on's answer), then the line
+    // says it is done.
+    const build = (state: string) => ({ id: 4, by: "install", file: "hall.yaml", action: "download", state, asked: 1, started: state === "queued" ? null : 2,
+      finished: state === "success" ? 3 : null, ...(state === "queued" ? { place: 1, after: "desk.yaml" } : {}) });
     const calls = addon(image, (url, options) => {
       if (url.endsWith("api/firmware")) {
-        return new Response(JSON.stringify({ available: true, ports: [], profiles: [], logs: [], wifi: { state: "ready" }, boards, taken: { nodes: [], prefixes: [] } }));
+        const builds = posted.length ? [build("success")] : [];
+        return new Response(JSON.stringify({ available: true, ports: [], profiles: [], logs: [], wifi: { state: "ready" }, boards, taken: { nodes: [], prefixes: [] }, builds }));
       }
+      if (/api\/firmware\/builds\/\d+\/log$/.test(url)) return new Response(JSON.stringify({ build: build("success"), logs: ["Succeeded: download"] }));
       if (url.endsWith("api/firmware/profiles") && options.method === "POST") {
         posted.push(JSON.parse(options.body));
-        // The build is quick here: the job comes back done, as the next poll would report it.
-        return new Response(JSON.stringify({ file: "hall.yaml", api_key: "k", job: { file: "hall.yaml", action: "download", state: "success" } }));
+        return new Response(JSON.stringify({ file: "hall.yaml", api_key: "k", build: build("queued") }));
       }
       return null;
     });
@@ -246,9 +253,17 @@ describe("New screen from this browser", () => {
     expect(view.find("#install-go").text()).toBe("Connect & install");
     await view.find("#friendly_name").setValue("Hall");
     await view.find("#install-form").trigger("submit");
-    await flush();
+    await flushPromises();
     expect(requestPort).toHaveBeenCalledOnce();
     expect(posted[0].target).toBe("download");
+    // Waiting its turn, the page keeps the port and writes nothing yet.
+    expect(view.find("#progress-title").text()).toBe(t("editor.installer.progress.waiting"));
+    expect(view.find("#progress-detail").text()).toBe(t("editor.installer.detail.waiting_browser", 1));
+    expect(flasher.writeImage).not.toHaveBeenCalled();
+    // The next look at the line (the poll's, every three seconds): built, and the page writes it.
+    await useBuildsStore().fetchFirmware();
+    await flush();
+    await vi.waitFor(() => expect(flasher.writeImage).toHaveBeenCalledOnce());
     expect(flasher.writeImage.mock.calls[0][2]).toBe(true);
     expect(calls.some((call) => call.url === "api/firmware/profiles/hall.yaml/flashed")).toBe(true);
     expect(view.find("#progress-title").text()).toContain("Firmware is on Hall");
@@ -278,11 +293,12 @@ describe("Firmware & USB from this browser", () => {
     addon(factoryImage(0, 0x1000), (url, options) => {
       if (url.endsWith("api/firmware")) {
         return new Response(JSON.stringify({ available: true, ports: [], logs: [], wifi: { state: "ready" }, boards: {},
-          profiles: [{ file: "hall.yaml", chip: "ESP32" }], job }));
+          profiles: [{ file: "hall.yaml", chip: "ESP32" }], job, builds: job ? [job] : [] }));
       }
+      if (/api\/firmware\/builds\/\d+\/log$/.test(url)) return new Response(JSON.stringify({ build: job, logs: [] }));
       if (url.endsWith("api/firmware/jobs") && options.method === "POST") {
-        job = { ...JSON.parse(options.body), state: "success", started: 7 };
-        return new Response(JSON.stringify({ ...job, state: "running" }));
+        job = { id: 9, by: "install", ...JSON.parse(options.body), state: "success", asked: 6, started: 7, finished: 8 };
+        return new Response(JSON.stringify({ ...job, state: "running", finished: null }));
       }
       return null;
     });

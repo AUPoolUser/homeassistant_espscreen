@@ -24,6 +24,7 @@ import screen_hang
 import screen_labels
 import screen_saver
 import feedback
+from build_queue import BuildQueue
 from firmware import Firmware
 import ha_pairing
 import catalogue
@@ -930,6 +931,8 @@ class Manager:
         self.forecasts = {}
         self.listeners = set()  # asyncio.Event per open /api/events stream
         self.firmware = Firmware(os.environ.get("ESPHOME_CONFIG", "/homeassistant/esphome"), self.path.parent)
+        # The app's one build line (docs/BUILDS.md): updates, plugin builds, New screen and Firmware & USB wait in it.
+        self.build_queue = self.firmware.builds = BuildQueue(self)
         # Plugins (docs/PLUGINS.md): which exist, which each screen runs, their files and their tiles' data.
         self.plugins = plugins.Plugins(self, self.path.parent, self.firmware.root)
         self.updates = Updater(self, self.path.parent / 'updates.json')
@@ -1492,14 +1495,19 @@ class Manager:
         screen = self.screen(inbox)
         if screen is None:
             raise ValueError(t('addon.errors.not_paired'))
-        if self.updates.busy():
+        profile, _ = self.updates.resolve(screen)
+        # A build of this screen that runs keeps it until it ends; what only waits goes with the screen.
+        if any(build.state == 'running' for build in self.build_queue.on_the_way(screen=inbox)
+               + (self.build_queue.on_the_way(file=profile) if profile else [])):
             raise ValueError(t('addon.errors.updates.busy'))
         entry = await self.entry_of(screen)
-        profile, _ = self.updates.resolve(screen)
         await self.ha.delete_config_entry(entry)
         LOG.info('Removed %s from Home Assistant', screen['name'])
         # From here Home Assistant no longer has the screen, so nothing below may stop the rest: what could not be
         # removed is named in the answer instead, and the page says so.
+        for build in self.build_queue.line[:]:
+            if build.screen == inbox or (profile and build.file == profile):
+                self.build_queue.drop(build)
         left = []
         if profile:
             try:
@@ -2549,36 +2557,34 @@ class Manager:
                 LOG.warning('Could not write the language into %s (%s)', profile, error)
 
     def builds(self, screens, profiles=None):
-        """What is being built for each screen right now, whoever asked for it: one record per screen, so the editor tracks
-        every build in one place (its store, `buildOf`) and shows it wherever it fits. `by` is who asked: `update` (the
-        firmware update, its phase in `phase`), `plugins` (the plugin build queue, `plugins` names what it adds) or
-        `install` (Firmware & USB, Install over Wi-Fi). `state` is `queued` or `running`; `stage` is ESPHome's step of the
-        build that runs now (firmware.job), the same the update's progress reads. A screen with nothing on the way has
-        no record."""
+        """What is being built for each screen right now, whoever asked for it (the build line, docs/BUILDS.md): one record
+        per screen, so the editor tracks every build in one place (its store, `buildOf`) and shows it wherever it fits.
+        `by` is what the build is: `update` (the firmware update, its phase in `phase`), `plugins` (a plugin build,
+        `plugins` names what it adds; an update brings them too when the two were asked together) or `install` (New screen,
+        Firmware & USB). `state` is `queued` (with its turn, `place`) or `running`; `stage` is ESPHome's step of the build
+        that runs now, the same the update's progress reads. `id` is the build's own, which the firmware answer
+        (api/firmware `builds`) names with its outcome once it ended. A YAML check builds nothing and has no record; a
+        screen with nothing on the way has none either."""
         if profiles is None:
             profiles = self.firmware.profile_names()
-        job = self.firmware.job if (self.firmware.job or {}).get('state') == 'running' else None
-        plugin_jobs = getattr(getattr(self, 'plugins', None), 'jobs', {}) or {}
+        line = self.build_queue
         out = {}
         for screen in screens:
             inbox = screen['id']
             profile, _ = self.updates.resolve(screen, profiles)
-            here = bool(job and profile and job.get('file') == profile)
-            plugin = plugin_jobs.get(inbox) or {}
-            record = None
-            if inbox == self.updates.current:
-                record = {'by': 'update', 'state': 'running', 'phase': self.updates.phase}
-            elif plugin.get('state') == 'building':
-                record = {'by': 'plugins', 'state': 'running', 'plugins': list(plugin.get('add') or [])}
-            elif here:
-                record = {'by': 'install', 'state': 'running'}
-            elif inbox in self.updates.queue:
-                record = {'by': 'update', 'state': 'queued'}
-            elif plugin.get('state') == 'queued':
-                record = {'by': 'plugins', 'state': 'queued', 'plugins': list(plugin.get('add') or [])}
-            if record:
-                record.update(file=profile, stage=job.get('stage') if here and record['state'] == 'running' else None)
-                out[inbox] = record
+            build = next((b for b in line.on_the_way() if b.by != 'check' and (b.screen == inbox or (profile and b.file == profile))), None)
+            if build is None:
+                continue
+            view = line.view(build)
+            record = {'id': build.id, 'by': build.by, 'state': view['state'], 'file': build.file or profile,
+                      'stage': view.get('stage') if view['state'] == 'running' else None}
+            if build.by == 'update':
+                record['phase'] = build.phase if view['state'] == 'running' else None
+            if build.plugins['add'] or build.by == 'plugins':
+                record['plugins'] = list(build.plugins['add'])
+            if view['state'] == 'queued':
+                record['place'] = view['place']
+            out[inbox] = record
         return out
 
     def pending_profiles(self, screens, profiles):
@@ -4583,12 +4589,23 @@ def create_app(manager, development=False):
         return web.Response(body=claude_skill.archive(), content_type='application/zip',
                             headers={'Content-Disposition': f'attachment; filename="{claude_skill.NAME}.zip"'})
     async def firmware_status(request):
-        # New screen asks what is taken while the name is typed, so a clash is said before anything is written.
-        return web.json_response({**manager.firmware.status(), 'taken': manager.taken_names()})
+        # New screen asks what is taken while the name is typed, so a clash is said before anything is written. `builds`:
+        # the build line, what runs and waits and what ended last (BuildQueue.payload).
+        return web.json_response({**manager.firmware.status(), 'taken': manager.taken_names(),
+                                  'builds': manager.build_queue.payload()})
     async def firmware_start(request):
+        """Firmware & USB and the YAML check: one ESPHome action, which waits its turn in the build line. The answer is
+        that build (BuildQueue.view), followed by its `id` in the firmware answer's `builds`."""
         data = await request.json()
         manager.preflight_profile(data)
-        return web.json_response(manager.firmware.start(data))
+        return web.json_response(manager.build_queue.view(manager.build_queue.attended(data)))
+    async def firmware_build_log(request):
+        """The log of one build of the line, also after the next one started (BuildQueue.log)."""
+        try:
+            number = int(request.match_info['build'])
+        except ValueError:
+            raise ValueError(t('addon.errors.firmware.build_gone')) from None
+        return web.json_response(manager.build_queue.log(number))
     async def firmware_override(request):
         return web.json_response(manager.firmware.override(request.match_info['file']))
     async def firmware_override_save(request):
@@ -4681,10 +4698,11 @@ def create_app(manager, development=False):
             raise ValueError(t(FEEDBACK_ERRORS.get(str(error), 'addon.errors.invalid_input'))) from None
         return web.json_response({'feedback': store.view(device)})
     async def shutdown(app):
-        for task in (manager.updates.task, manager.firmware.task):
-            if task and not task.done():
-                task.cancel()
-                with contextlib.suppress(asyncio.CancelledError): await task
+        await manager.build_queue.close()
+        task = manager.firmware.task
+        if task and not task.done():
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError): await task
         await manager.feedback.close()
     app.on_cleanup.append(shutdown)
     app.router.add_get('/api/screens/{inbox}/inspect', inspector)
@@ -4694,6 +4712,7 @@ def create_app(manager, development=False):
     app.router.add_put('/api/language', change_language)
     app.router.add_get('/api/firmware', firmware_status)
     app.router.add_post('/api/firmware/jobs', firmware_start)
+    app.router.add_get('/api/firmware/builds/{build}/log', firmware_build_log)
     app.router.add_get('/api/firmware/profiles/{file}/override', firmware_override)
     app.router.add_put('/api/firmware/profiles/{file}/override', firmware_override_save)
     app.router.add_get('/api/firmware/profiles/{file}/download', firmware_download)

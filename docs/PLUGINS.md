@@ -87,15 +87,16 @@ adds is not listed, so a 0.9 plugin builds on 0.10. A test keeps the number equa
 - Adding or removing (`Plugins.apply`) checks everything first, then writes the plugins file, and only then keeps the
   records and the secrets: a request that is refused, or a file that cannot be written, changes nothing. A screen with a
   profile whose address the app does not know is refused before anything changes (`offline`). Then the screen goes into
-  the queue for its own build and update (`firmware.start`, action install). A plugin update is a build of the whole screen, so it shows as every build
+  the app's one build line for its own build and update (docs/BUILDS.md). A plugin update is a build of the whole screen, so it shows as every build
   does: `Manager.builds` says per screen what is being built for it, whoever asked (`by`: update, plugins or install;
   `state`; ESPHome's `stage`), in the light inventory the editor gets live; the editor's store (`buildOf`,
   `buildProgress`) is the one place every part reads it from, and `BuildLog.vue` shows the progress and the log in the
-  screen's Plugins tab, on the Plugins page and in Settings, Updates. Never track a build in a part of its own. The queue builds one screen at a time, in the order asked, each when the
-  app's build slot is free, so ticking three screens on the Plugins page builds them one after the other. A change asked
-  while the screen's own build runs gets a build of its own after it (`next`): that build may have read the YAML before.
+  screen's Plugins tab, on the Plugins page and in Settings, Updates. Never track a build in a part of its own. The line
+  builds one screen at a time, in the order asked, so ticking three screens on the Plugins page builds them one after
+  the other. A plugin asked while the screen's update waits comes with that update: the two are one build. A change asked
+  while the screen's own build runs gets a build of its own after it: that build may have read the YAML before.
   A screen without a profile in the app gets the file and the line to paste.
-- A build that fails leaves the screen as it was (`_settle_build`): it still runs its last firmware, so its plugins file
+- A build that fails leaves the screen as it was (`_built`, `_settle_build`): it still runs its last firmware, so its plugins file
   goes back to that. A plugin added in it stays listed as failed (with the build's reason) and out of the file until the
   person tries again or takes it off; an update goes back to the version that built (`previous`) and keeps which one
   failed (`failed_update`), which the editor says, offering the update again. So a failed plugin never makes the

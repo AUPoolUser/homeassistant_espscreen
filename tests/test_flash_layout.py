@@ -489,7 +489,7 @@ class TheUpdater(unittest.IsolatedAsyncioTestCase):
 
     async def update(self, m):
         m.updates.start('text.screen1')
-        await m.updates.task
+        await m.build_queue.idle()
         return m.updates.results['text.screen1']['state'], m.firmware.calls
 
     async def test_a_screen_from_before_is_updated_and_then_widened(self):
@@ -592,8 +592,7 @@ class TheUpdater(unittest.IsolatedAsyncioTestCase):
                 again.verify_timeout = again.word_timeout = 0.05
                 self.assertEqual(set(again.bridging), {'text.screen1'})
                 m.firmware.fail.clear(); m.firmware.calls.clear(); m.firmware.screen.wide = wide
-                again.launch(['text.screen1'], automatic=True)
-                await again.task
+                await again.launch(['text.screen1'], automatic=True).wait()
                 self.assertEqual(again.results['text.screen1']['state'], 'success')
                 self.assertEqual(m.firmware.calls[:2], [('firmware', 'build'), ('bridge', 'build')])
                 self.assertEqual(('bridge', 'widen') in m.firmware.calls, not wide, 'a table that is wide is not sent again')
@@ -625,7 +624,7 @@ class TheUpdater(unittest.IsolatedAsyncioTestCase):
             screen.install = real
             m.firmware.calls.clear()
             m.updates.launch(['text.screen1'], automatic=True)
-            await m.updates.task
+            await m.build_queue.idle()
             self.assertEqual(m.updates.results['text.screen1']['state'], 'success')
             self.assertEqual(m.firmware.calls, [('firmware', 'build'), ('bridge', 'build'), ('firmware', 'install')])
             self.assertEqual((screen.runs, screen.wide), (Screen.NEW, True))

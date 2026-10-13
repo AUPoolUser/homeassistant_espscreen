@@ -1,7 +1,9 @@
 // How far a new screen's installation is (app 0.4.32): counted from ESPHome's own log and the browser flasher's phase,
 // never guessed.
 import { describe, expect, it } from "vitest";
-import { buildShare, installProgress, memoryNote, readyShare, writeShare } from "../src/model/install-progress";
+import { t } from "../src/i18n";
+import { afterBrowserBuild } from "../src/model/firmware-job";
+import { buildShare, followDetail, followTitle, installProgress, memoryNote, readyShare, writeShare } from "../src/model/install-progress";
 
 const states = (p: ReturnType<typeof installProgress>) => p.steps.map((step) => `${step.key}:${step.state}${step.percent !== null ? `:${step.percent}` : ""}`);
 
@@ -65,6 +67,20 @@ describe("the steps of an installation", () => {
     expect(memoryNote({ state: "running", memory: { cores: 4, free_mb: 1258, need_mb: 1500, jobs: 1, reason: "tight" } }))
       .toEqual({ reason: "tight", free: "1.2", need: "1.5", jobs: 1, cores: 4 });
     expect(memoryNote({ state: "failed", memory: { cores: 4, free_mb: null, need_mb: 1500, jobs: 1, reason: "out" } })?.free).toBe("?");
+  });
+
+  it("waits its turn behind another screen's build without failing, and says what it waits for", () => {
+    // The add-on builds one firmware at a time (its build line): a build that waits has not started, nothing failed.
+    const waiting = installProgress({ state: "queued", action: "install" }, []);
+    expect(waiting.failed).toBe(false);
+    expect(waiting.percent).toBe(0);
+    expect(states(waiting)).toEqual(["prepare:waiting", "build:waiting", "write:waiting", "restart:waiting", "done:waiting"]);
+    const follow = { saved: false, running: true, waiting: true, ahead: 2, ok: false, download: false, browser: false, writing: false,
+      calibrate: false, built: false, stopped: false, name: "Hall", file: "hall.yaml" };
+    expect(followTitle(follow)).toBe(t("editor.installer.progress.waiting"));
+    expect(followDetail(follow)).toBe(t("editor.installer.detail.waiting", 2));
+    expect(followDetail({ ...follow, browser: true, ahead: 1 })).toBe(t("editor.installer.detail.waiting_browser", 1));
+    expect(afterBrowserBuild("queued", "waiting")).toBeNull();
   });
 
   it("marks the step it stopped in when it fails, and keeps the rest waiting", () => {

@@ -219,7 +219,7 @@ class RenamedInboxTests(unittest.IsolatedAsyncioTestCase):
             [screen] = [s for s in m.screens() if s['id'] == OLD]
             self.assertTrue(m.updates.state_for(screen)['available'])
             m.updates.start(OLD)
-            await m.updates.task
+            await m.build_queue.idle()
             self.assertEqual(m.firmware.calls, [{'file': 'office-1.yaml', 'action': 'install', 'target': '10.0.0.5'}])
             self.assertEqual(list(m.updates.results), [NEW])
             self.assertEqual(m.updates.results[NEW]['state'], 'success', m.updates.results[NEW]['message'])

@@ -15,9 +15,15 @@ const screen = (id: string, more: Partial<Screen> = {}) =>
      update: { profile: `${id}.yaml`, host: "10.0.0.1", state: "idle" }, ...more }) as unknown as Screen;
 const hall = screen("hall"), desk = screen("desk");
 
+// The add-on's answers: api/firmware with the build line, and a build's own log (kept once it ended).
+let kept: Record<number, string[]> = {};
 beforeEach(() => {
-  vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ job: useBuildsStore().firmwareJob?.job, logs: useBuildsStore().firmwareJob?.logs || [] }),
-    { status: 200, headers: { "Content-Type": "application/json" } })));
+  kept = {};
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+    const log = /firmware\/builds\/(\d+)\/log$/.exec(String(url));
+    const body = log ? { build: useBuildsStore().lineBuild(Number(log[1])), logs: kept[Number(log[1])] || [] } : useBuildsStore().answer || {};
+    return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+  }));
   useInventoryStore().inventory.screens = [hall, desk];
   useInventoryStore().inventory.builds = {};
 });
@@ -47,22 +53,35 @@ describe("builds", () => {
   });
 
   it("a build log shows the progress, and the lines of this screen's build when opened", async () => {
-    useInventoryStore().inventory.builds = { [hall.id]: { by: "plugins", state: "running", plugins: ["bus"], file: "hall.yaml", stage: "upload" } };
-    useBuildsStore().firmwareJob = { job: { file: "hall.yaml", state: "running", stage: "upload" }, logs: ["Compiling", "Uploading"] };
+    useInventoryStore().inventory.builds = { [hall.id]: { id: 4, by: "plugins", state: "running", plugins: ["bus"], file: "hall.yaml", stage: "upload" } };
+    useBuildsStore().answer = { job: { file: "hall.yaml", state: "running", stage: "upload", started: 11 }, logs: ["Compiling", "Uploading"],
+      builds: [{ id: 4, by: "plugins", file: "hall.yaml", action: "install", state: "running", asked: 9, started: 10, finished: null, stage: "upload" }] };
     const view = mount(BuildLog, { props: { screen: hall, name: true } });
     await nextTick();
     expect(view.text()).toContain("hall · 66 %");
     expect(view.find("pre").text()).toContain("Uploading");
   });
 
-  it("keeps the log of a build that failed, and says so, until the next build", async () => {
-    useBuildsStore().firmwareJob = { job: { file: "hall.yaml", state: "failed" }, logs: ["error: plugin ov_departures"] };
+  it("keeps the log of a build that failed, and says so, until the next build: also when another screen builds now", async () => {
+    // The next build of the line (desk's) started at once, so ESPHome's log is desk's: hall's own is the add-on's to keep.
+    kept[4] = ["error: plugin ov_departures"];
+    useInventoryStore().inventory.builds = { [desk.id]: { id: 5, by: "update", state: "running", file: "desk.yaml" } };
+    useBuildsStore().answer = { job: { file: "desk.yaml", state: "running", started: 21 }, logs: ["Compiling desk"],
+      builds: [{ id: 5, by: "update", file: "desk.yaml", action: "install", state: "running", asked: 19, started: 20, finished: null },
+               { id: 4, by: "plugins", file: "hall.yaml", action: "install", state: "failed", asked: 9, started: 10, finished: 18 }] };
     const view = mount(BuildLog, { props: { screen: hall } });
-    await nextTick();
+    await vi.waitFor(() => expect(view.find("pre").exists()).toBe(true));
     expect(view.text()).toContain("The last build of hall failed");
     expect(view.find("pre").text()).toContain("error: plugin ov_departures");
+    expect(view.find("pre").text()).not.toContain("Compiling desk");
+    useInventoryStore().inventory.builds = {};
+    useBuildsStore().answer = { ...useBuildsStore().answer, builds: useBuildsStore().answer.builds.slice(1) };
     const other = mount(BuildLog, { props: { screen: desk } });
     await nextTick();
     expect(other.find(".build-log").exists()).toBe(false);
+    // The next build of hall: what failed before is no longer said.
+    useInventoryStore().inventory.builds = { [hall.id]: { id: 6, by: "update", state: "queued", place: 1, file: "hall.yaml" } };
+    await nextTick();
+    expect(view.text()).not.toContain("The last build of hall failed");
   });
 });

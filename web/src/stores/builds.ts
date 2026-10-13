@@ -1,15 +1,19 @@
 // ---- Builds: one source for "something is building" ----
-// The add-on says per screen what is being built for it now, whoever asked (inventory.builds, Manager.builds): an update,
-// a plugin build, an install from Firmware & USB. Every part of the page that shows a build reads it here: the screen
-// list, the Plugins entry and tab, the settings' Updates card and the build log. `updating` holds the screens the page
-// just asked to build, for the moment until the add-on's builds name them. Updates start here too (one screen, all of
-// them, automatic), and the add-on's firmware job is asked for here, once for whoever follows it.
+// The add-on builds one firmware at a time, and everything that builds waits its turn in its one build line
+// (build_queue.py, docs/BUILDS.md): updates, plugin builds, New screen, Firmware & USB and the YAML check. It says per
+// screen what is being built for it now, whoever asked (inventory.builds, Manager.builds), and the firmware answer
+// (api/firmware) holds the line itself: every build by its id, what runs, what waits and the last ones that ended with
+// their outcome. Every part of the page that shows a build reads it here: the screen list, the Plugins entry and tab,
+// the settings' Updates card, the build log, New screen, Firmware & USB and the YAML check (useLineBuild follows one).
+// `updating` holds the screens the page just asked to update, for the moment until the add-on's builds name them.
+// Updates start here too (one screen, all of them, automatic), and so does every other build the page asks for
+// (askBuild), and the add-on's firmware job is asked for here, once for whoever follows it.
 import { defineStore } from "pinia";
 import { computed, onScopeDispose, ref, shallowRef } from "vue";
 import { getJson, send } from "../api";
 import { t } from "../i18n";
 import * as status from "../model/screen-status";
-import type { Build, Screen } from "../types";
+import type { Build, LineBuild, Screen } from "../types";
 import { useInventoryStore } from "./inventory";
 import { lookups } from "./lookup";
 import { useUiStore } from "./ui";
@@ -56,7 +60,7 @@ export const useBuildsStore = defineStore("builds", () => {
   // page was opened is never said: the page did not watch it.
   const watched = ref<Record<string, status.Watched>>({});
   function begin(screen: Screen) {
-    watched.value[screen.id] = status.watchOf(screen, buildOf(screen), answer.value?.job);
+    watched.value[screen.id] = status.watchOf(screen, buildOf(screen));
   }
   function watchEnds() {
     const ended: { screen: Screen; watch: status.Watched }[] = [];
@@ -65,19 +69,21 @@ export const useBuildsStore = defineStore("builds", () => {
     for (const screen of inv.inventory.screens) {
       const build = buildOf(screen), seen = watched.value[screen.id];
       if ((build || asked(screen)) && !seen) begin(screen);
-      // An update the page asked for may come back as another kind of build (the add-on's own name for it).
-      else if (build && seen && (seen.by !== build.by || (build.file && seen.file !== build.file))) Object.assign(seen, { by: build.by, file: build.file ?? seen.file });
+      // An update the page asked for may come back as another kind of build (the add-on's own name for it), and a plugin
+      // build may become the update of its screen (the two are one build): the page follows what it is now.
+      else if (build && seen && (seen.by !== build.by || seen.id !== (build.id ?? seen.id) || (build.file && seen.file !== build.file)))
+        Object.assign(seen, { by: build.by, file: build.file ?? seen.file, id: build.id ?? seen.id });
       else if (!build && !asked(screen) && seen) { ended.push({ screen, watch: seen }); delete watched.value[screen.id]; }
     }
     if (ended.length) void told(ended);
   }
-  // A plugin build's or an install's outcome is its firmware job, asked for once more: the poll that followed it stopped
-  // with the build.
+  // A plugin build's or an install's outcome is the one the build line keeps for it by its id, asked for once more: the
+  // poll that followed it stopped with the build.
   async function told(ended: { screen: Screen; watch: status.Watched }[]) {
-    const job = ended.some(({ watch: seen }) => seen.by !== "update") ? (await fetchFirmware().catch(() => null))?.job : null;
+    const builds = ended.some(({ watch: seen }) => seen.by !== "update") ? (await fetchFirmware().catch(() => null))?.builds : null;
     const ends: status.BuildEnd[] = [];
     for (const { screen, watch: seen } of ended) {
-      const outcome = status.buildOutcome(screen, seen, job);
+      const outcome = status.buildOutcome(screen, seen, builds);
       if (outcome) ends.push({ screen, by: seen.by, outcome });
     }
     const said = status.buildEndText(ends);
@@ -117,6 +123,49 @@ export const useBuildsStore = defineStore("builds", () => {
     }
   }
 
+  // ---- The build line (api/firmware `builds`): every build by its id ----
+  const line = computed<LineBuild[]>(() => answer.value?.builds || []);
+  /** A build of the line by its id; null before the add-on named it, or once it is no longer kept. */
+  const lineBuild = (id: number | null | undefined): LineBuild | null =>
+    id === null || id === undefined ? null : line.value.find((build) => build.id === id) ?? null;
+  /** Whether the line knows this build no more: it ended longer ago than the add-on keeps (a newer one is known). */
+  const lineForgot = (id: number | null | undefined) =>
+    id !== null && id !== undefined && !lineBuild(id) && line.value.some((build) => build.id > id);
+  /** The newest build of a profile the line knows, on its way or ended: what a screen's build log shows. */
+  const lineOf = (file: string | null | undefined): LineBuild | null =>
+    (file && line.value.filter((build) => build.file === file && build.by !== "check").sort((a, b) => b.id - a.id)[0]) || null;
+  /** A build that ended: it no longer waits or runs. */
+  const lineEnded = (build: LineBuild | null | undefined) => Boolean(build && build.state !== "queued" && build.state !== "running");
+  /** One ESPHome action the page asks for (New screen's retry, Firmware & USB, the YAML check). It waits its turn in the
+   * line; the answer is the build, followed by its id. */
+  async function askBuild(request: { file: string; action: string; target?: string }): Promise<LineBuild> {
+    const build = await send<LineBuild>("firmware/jobs", "POST", request);
+    await fetchFirmware().catch(() => null);
+    return build;
+  }
+  // The log of a build that ended is the add-on's to keep (api/firmware/builds/{id}/log), asked once per build; the log of
+  // the one that runs is the firmware answer's own (`logs`), which every poll brings.
+  const endedLogs = ref<Record<number, string[]>>({});
+  const asking = new Map<number, Promise<string[]>>();
+  function loadBuildLog(id: number): Promise<string[]> {
+    if (endedLogs.value[id]) return Promise.resolve(endedLogs.value[id]);
+    if (!asking.has(id))
+      asking.set(id, getJson<{ build: LineBuild; logs: string[] }>(`firmware/builds/${id}/log`).then((data) => {
+        if (lineEnded(data.build)) endedLogs.value[id] = data.logs || [];
+        return data.logs || [];
+      }).catch(() => []).finally(() => asking.delete(id)));
+    return asking.get(id)!;
+  }
+  /** The lines of a build's log the page has: ESPHome's own while it runs and builds, its kept ones once it ended. */
+  function buildLogOf(build: LineBuild | null | undefined): string[] {
+    if (!build || build.state === "queued") return [];
+    if (build.state === "running") {
+      const job = answer.value?.job;
+      return job && job.started && build.started && job.started >= build.started ? answer.value?.logs || [] : [];
+    }
+    return endedLogs.value[build.id] || [];
+  }
+
   // ---- The add-on's firmware job (api/firmware), asked for once whoever follows it ----
   // New screen, Firmware & USB, a YAML check and the build log all read the same answer: whoever asks while a request is on
   // its way gets its answer, and one asking with `fresh` (how old an answer may be) takes the last one when it is that
@@ -144,7 +193,8 @@ export const useBuildsStore = defineStore("builds", () => {
   onScopeDispose(() => { flight = null; });
 
   return {
-    updating, ...lookups({ buildOf, building, isBuilding, buildText, buildProgress, whatsNew }), anyBuilding, buildingScreens, prune, forget, watched,
-    startUpdate, runUpdateAll, setAutoUpdate, answer, firmwareJob, fetchFirmware, loadFirmwareJob,
+    updating, ...lookups({ buildOf, building, isBuilding, buildText, buildProgress, whatsNew, lineBuild, lineForgot, lineOf, lineEnded, buildLogOf }),
+    anyBuilding, buildingScreens, prune, forget, watched, line,
+    startUpdate, runUpdateAll, setAutoUpdate, askBuild, loadBuildLog, answer, firmwareJob, fetchFirmware, loadFirmwareJob,
   };
 });

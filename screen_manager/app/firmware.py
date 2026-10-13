@@ -158,6 +158,8 @@ class Firmware:
         self.downloaded = set()
         self._names = {}  # file -> (stat signature, meta or None); parsed only when the file changes
         self.language = None  # the language builds speak: the manager's Settings -> Language & region (app 0.2.90)
+        # The app's build line (build_queue.BuildQueue), which alone starts a job here; None on its own (a test).
+        self.builds = None
 
     def profiles(self):
         if not self.root.exists(): return []
@@ -824,30 +826,38 @@ packages:
         """Profile plus, when a USB port is chosen, the build and flash in one go. With the target
         'download' it builds only, and the owner flashes the image from their own computer.
 
-        The target and the job slot are checked before anything is written, so a refused
-        install leaves no half-made profile behind."""
+        The target is checked before anything is written, so a refused install leaves no half-made profile behind. In
+        the app the job waits its turn in the build line (`builds`, build_queue.BuildQueue.attended) and `build` is
+        that build; on its own (a test) the job starts at once and `job` is ESPHome's."""
         target = data.get('target') or ''
         if target:
             if target != 'download' and (not isinstance(target, str) or target not in self.ports()):
                 raise ValueError(t('addon.errors.firmware.usb_port'))
-            if self.task and not self.task.done():
+            if self.builds is None and self.task and not self.task.done():
                 raise ValueError(t('addon.errors.firmware.busy_wait'))
             if not shutil.which('esphome'):
                 raise ValueError(t('addon.errors.firmware.no_esphome'))
         result = self.create(data)
-        if target == 'download':
-            result['job'] = self.start({'file': result['file'], 'action': 'download'})
-        elif target:
-            result['job'] = self.start({'file': result['file'], 'action': 'install', 'target': target})
+        if target:
+            request = {'file': result['file'], 'action': 'download'} if target == 'download' else \
+                {'file': result['file'], 'action': 'install', 'target': target}
+            if self.builds is None:
+                result['job'] = self.start(request)
+            else:
+                result['build'] = self.builds.view(self.builds.attended(request))
         return result
 
     async def delete_profile(self, name):
         """Everything New screen wrote for one screen: its YAML, its local override and its build folder.
 
         The mirror of `create` (app 0.2.112). `profile` refuses a name that is a symbolic link or points
-        outside the ESPHome folder, so only this app's own files go. A running job keeps its profile:
-        it would otherwise compile a file that is no longer there."""
-        if self.task and not self.task.done():
+        outside the ESPHome folder, so only this app's own files go. A profile with a build on its way keeps it: that
+        build would otherwise compile a file that is no longer there. Builds of other profiles go on (on its own, without
+        the build line, any job that runs keeps every profile)."""
+        if self.builds is None:
+            if self.task and not self.task.done():
+                raise ValueError(t('addon.errors.firmware.busy_wait'))
+        elif self.builds.on_the_way(file=name):
             raise ValueError(t('addon.errors.firmware.busy_wait'))
         profile = self.profile(name)
         override = self.root / (profile.stem + self.OVERRIDE_SUFFIX)
@@ -885,7 +895,8 @@ packages:
         Only an image built by this process counts, and a new job for the profile withdraws it first, so the
         owner never gets firmware from before a change or a failed build."""
         profile = self.profile(name)
-        if self.job and self.job.get('file') == profile.name and self.job.get('state') == 'running':
+        if (self.job and self.job.get('file') == profile.name and self.job.get('state') == 'running') or \
+                (self.builds is not None and any(b.action != 'validate' for b in self.builds.on_the_way(file=profile.name))):
             raise ValueError(t('addon.errors.firmware.still_building'))
         path = self.images.get(profile.name)
         if not path or not path.is_file():
@@ -911,12 +922,31 @@ packages:
             if len(value) >= 3: text=text.replace(value,'[redacted]')
         return re.sub(r'(?i)((?:password|encryption.key|token|ssid)\s*[:=]\s*).+',r'\1[redacted]',text)[:1500]
 
-    def start(self, data):
-        if self.task and not self.task.done(): raise ValueError(t('addon.errors.firmware.busy'))
+    def check(self, data):
+        """What a job asks, checked without writing or starting anything: its profile, its action, ESPHome and where it
+        goes. The build line (build_queue) asks before a job waits its turn, so a wrong address is said at once."""
+        if not isinstance(data, dict):
+            raise ValueError(t('addon.errors.firmware.choose_profile'))
         profile = self.profile(data.get('file'))
         action = data.get('action')
         # 'widen' sends the partition table of the profile's last build (app 0.4.56), nothing else.
         if action not in ('validate','build','install','download','widen'): raise ValueError(t('addon.errors.firmware.unknown_action'))
+        if not shutil.which('esphome'): raise ValueError(t('addon.errors.firmware.no_esphome'))
+        target = data.get('target') or ''
+        if not isinstance(target, str): raise ValueError(t('addon.errors.firmware.host'))
+        if action == 'widen' and target.startswith('/dev/'):
+            raise ValueError(t('addon.errors.firmware.host'))  # ESPHome sends a table over Wi-Fi only
+        if action in ('install', 'widen'):
+            if target.startswith('/dev/'):
+                if target not in self.ports(): raise ValueError(t('addon.errors.firmware.usb_port'))
+            elif not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9.-]{0,252}',target):
+                raise ValueError(t('addon.errors.firmware.host'))
+        return profile, action, target
+
+    def start(self, data):
+        """Run one job now. Only the build line (build_queue) calls this in the app: it waits for the slot to be free."""
+        if self.task and not self.task.done(): raise ValueError(t('addon.errors.firmware.busy'))
+        profile, action, target = self.check(data)
         # What a build writes into the screen's own YAML first. Not for a table, which goes with the build that was
         # made, and not for a bridge, which this app wrote whole.
         managed = action not in ('validate', 'widen') and not profile.name.endswith(self.BRIDGE_SUFFIX)
@@ -953,15 +983,6 @@ packages:
                 self.allow_table_update(profile.name)
             except (OSError, ValueError, yaml.YAMLError) as error:
                 LOG.warning('Could not let %s take a partition table over Wi-Fi (%s)', profile.name, error)
-        if not shutil.which('esphome'): raise ValueError(t('addon.errors.firmware.no_esphome'))
-        target = data.get('target','')
-        if action == 'widen' and target.startswith('/dev/'):
-            raise ValueError(t('addon.errors.firmware.host'))  # ESPHome sends a table over Wi-Fi only
-        if action in ('install', 'widen'):
-            if target.startswith('/dev/'):
-                if target not in self.ports(): raise ValueError(t('addon.errors.firmware.usb_port'))
-            elif not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9.-]{0,252}',target):
-                raise ValueError(t('addon.errors.firmware.host'))
         self._secret_values=set()
         # Collect scalar literals, including !secret values, without executing YAML tags.
         def collect(node):

@@ -16,7 +16,7 @@ export type Progress = { steps: Step[]; percent: number; failed: boolean; done: 
 // in MB, the compilers it runs at once, and why that is fewer than the cores, or why the build stopped.
 export type MemoryReason = "low" | "tight" | "retry" | "out" | "limit";
 export type BuildMemory = { cores: number; free_mb: number | null; need_mb: number; jobs: number; reason: MemoryReason | null };
-type Job = { state?: string; stage?: string; action?: string; memory?: BuildMemory | null } | null | undefined;
+type Job = { state?: string; stage?: string | null; action?: string; memory?: BuildMemory | null } | null | undefined;
 type Flash = { phase: string; percent: number } | null | undefined;
 
 /**
@@ -122,7 +122,8 @@ export function installProgress(job: Job, logs: readonly string[], opts: { brows
   const state = job?.state;
   const flash = opts.flash;
   const built = state === "success";
-  const buildFailed = !!state && state !== "running" && state !== "success";
+  // A build that waits its turn in the add-on's line (behind another screen's) has not started: every step waits.
+  const buildFailed = !!state && state !== "queued" && state !== "running" && state !== "success";
   const flashFailed = opts.browser && flash?.phase === "failed";
   const share = buildShare(logs);
   // Where the work stands, as the index of the step running now; the length of the list when all is done.
@@ -146,7 +147,7 @@ export function installProgress(job: Job, logs: readonly string[], opts: { brows
   const failedAt = buildFailed || flashFailed ? Math.min(at, keys.length - 1) : -1;
   const steps: Step[] = shares.map(([key], index) => ({
     key,
-    state: index === failedAt ? "failed" : index < at ? "done" : index === at ? (failedAt >= 0 ? "waiting" : "running") : "waiting",
+    state: index === failedAt ? "failed" : index < at ? "done" : index === at ? (failedAt >= 0 || state === "queued" ? "waiting" : "running") : "waiting",
     percent: index === at && within !== null ? Math.round(within * 100) : index < at ? 100 : null,
   }));
   let percent = 0;
@@ -160,13 +161,15 @@ export function installProgress(job: Job, logs: readonly string[], opts: { brows
 
 // ---- What the page says while it follows the installation ----
 /** Where the installation stands, as the page says it: `saved` a profile kept without a build, `running` the build or this
- * browser's writing on its way (`writing` once it writes), `ok` it is done, `download` a file to download is the end,
- * `browser` this browser writes it, `built` the build succeeded, `stopped` the build stopped for its memory. */
-export type Follow = { saved: boolean; running: boolean; ok: boolean; download: boolean; browser: boolean; writing: boolean;
-  calibrate: boolean; built: boolean; stopped: boolean; name: string; file: string };
+ * browser's writing on its way (`writing` once it writes), `waiting` the build waits its turn behind another screen's in
+ * the add-on's build line (`ahead`: its turn, 1 when it is the next), `ok` it is done, `download` a file to download is
+ * the end, `browser` this browser writes it, `built` the build succeeded, `stopped` the build stopped for its memory. */
+export type Follow = { saved: boolean; running: boolean; waiting?: boolean; ahead?: number; ok: boolean; download: boolean; browser: boolean;
+  writing: boolean; calibrate: boolean; built: boolean; stopped: boolean; name: string; file: string };
 /** The title over the installation. */
 export function followTitle(f: Follow) {
   if (f.saved) return t("editor.installer.progress.saved", { file: f.file });
+  if (f.waiting) return t("editor.installer.progress.waiting");
   if (f.running) return f.writing ? t("editor.installer.progress.writing", { name: f.name }) : t("editor.installer.progress.building");
   if (f.ok) return f.download ? t("editor.installer.progress.ready", { name: f.name }) : t("editor.installer.progress.installed", { name: f.name });
   return t(f.download ? "editor.installer.progress.build_failed" : "editor.installer.progress.install_failed");
@@ -175,6 +178,8 @@ export function followTitle(f: Follow) {
  * what happened (this browser's writing, the build's memory). */
 export function followDetail(f: Follow, error?: string) {
   if (f.saved) return t("editor.installer.detail.saved");
+  // Waiting: what it waits for, and that the page may stay as it is (the cable or this browser's port stays where it is).
+  if (f.waiting) return t(f.browser ? "editor.installer.detail.waiting_browser" : "editor.installer.detail.waiting", f.ahead || 1);
   if (f.running) return f.writing ? t("editor.installer.detail.uploading")
     : t(f.browser ? "editor.webflash.building" : f.download ? "editor.installer.detail.building_download" : "editor.installer.detail.building");
   if (f.ok) return f.download ? t("editor.installer.detail.downloaded") : t(f.calibrate ? "editor.installer.detail.booted_calibrate" : "editor.installer.detail.booted");

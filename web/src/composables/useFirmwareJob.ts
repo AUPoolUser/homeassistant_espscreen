@@ -55,3 +55,26 @@ export function followBuilds() {
   scope.run(() => useFirmwareJob({ active: () => builds.anyBuilding }));
   return () => scope.stop();
 }
+
+/** Follows one build of the add-on's build line by its id (stores/builds.ts) while the calling scope lives: the line is
+ * asked every few seconds while that build waits or runs (as often as `interval` wants), and once it ended its own log
+ * is asked once. `build` is the line's (null before the add-on named it), `logs` the lines the page has of it, `waiting`
+ * whether it still waits its turn. New screen, Firmware & USB and the YAML check follow their build this way. */
+export function useLineBuild(id: MaybeRefOrGetter<number | null | undefined>, follower: Omit<FirmwareFollower, "active"> = {}) {
+  const builds = useBuildsStore();
+  const build = computed(() => builds.lineBuild(toValue(id)));
+  const onItsWay = computed(() => {
+    const wanted = toValue(id);
+    if (wanted === null || wanted === undefined || builds.lineForgot(wanted)) return false;
+    return !build.value || !builds.lineEnded(build.value);
+  });
+  const firmware = useFirmwareJob({ ...follower, active: () => onItsWay.value });
+  watch(() => (build.value && builds.lineEnded(build.value) ? build.value.id : null), (ended) => {
+    if (ended !== null) void builds.loadBuildLog(ended);
+  }, { immediate: true });
+  return {
+    build, onItsWay, refresh: firmware.refresh,
+    logs: computed(() => builds.buildLogOf(build.value)),
+    waiting: computed(() => build.value?.state === "queued"),
+  };
+}

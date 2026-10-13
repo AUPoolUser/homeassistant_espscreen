@@ -156,20 +156,42 @@ class RemoveScreenTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(manager.layouts[INBOX]['tiles'], LAYOUT['tiles'])
             self.assertEqual(manager.layouts[INBOX]['title'], LAYOUT['title'])
 
-    async def test_it_waits_for_a_running_update(self):
+    async def test_it_waits_for_a_build_of_the_screen_that_runs(self):
         with tempfile.TemporaryDirectory() as tmp:
             manager = self.manager(tmp, {INBOX: LAYOUT})
-            running = asyncio.get_running_loop().create_future()
-            manager.updates.task = asyncio.ensure_future(running)
+            gate = asyncio.Event()
+
+            async def held(build):
+                await gate.wait()
+                return 'success'
+            manager.build_queue.add('update', None, held, screen=INBOX)
             try:
                 with self.assertRaises(ValueError):
                     await manager.remove_screen(INBOX)
             finally:
-                running.set_result(None)
-                await manager.updates.task
+                gate.set()
+                await manager.build_queue.idle()
             self.assertEqual(manager.ha.deleted, [])
             self.assertEqual(manager.layouts[INBOX]['tiles'], LAYOUT['tiles'])
             self.assertEqual(manager.layouts[INBOX]['title'], LAYOUT['title'])
+
+    async def test_another_screen_s_build_does_not_keep_it_and_its_own_waiting_build_goes_with_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            manager = self.manager(tmp, {INBOX: LAYOUT})
+            gate = asyncio.Event()
+
+            async def held(build):
+                await gate.wait()
+                return 'success'
+            manager.build_queue.add('update', 'other.yaml', held, screen='text.other')
+            waiting = manager.build_queue.add('update', None, held, screen=INBOX)
+            try:
+                await manager.remove_screen(INBOX)
+            finally:
+                gate.set()
+                await manager.build_queue.idle()
+            self.assertEqual(waiting.state, 'skipped')
+            self.assertNotIn(INBOX, manager.layouts)
 
     async def test_the_page_removes_a_screen_over_its_own_address(self):
         with tempfile.TemporaryDirectory() as tmp:

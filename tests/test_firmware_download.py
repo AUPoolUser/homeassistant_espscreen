@@ -228,12 +228,17 @@ class DownloadRoute(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(refused.status, 403, 'CSRF like every other change')
                 response = await client.post('/api/firmware/profiles', headers=headers, json={**PROFILE, 'target': 'download'})
                 self.assertEqual(response.status, 200)
-                self.assertEqual((await response.json())['job']['action'], 'download')
+                build = (await response.json())['build']
+                self.assertEqual((build['action'], build['by'], build['state']), ('download', 'install', 'running'))
                 url = '/api/firmware/profiles/kitchen.yaml/download'
                 early = await client.get(url)
                 self.assertEqual(early.status, 400)
                 self.assertIn('still being built', (await early.json())['error'])
-                await m.firmware.task
+                await m.build_queue.idle()
+                ended = (await (await client.get('/api/firmware')).json())['builds']
+                self.assertEqual([(b['id'], b['state']) for b in ended], [(build['id'], 'success')])
+                log = await (await client.get(f"/api/firmware/builds/{build['id']}/log")).json()
+                self.assertIn('Succeeded: download', log['logs'])
                 self.assertEqual((await (await client.get('/api/firmware')).json())['downloads'], ['kitchen.yaml'])
                 pending = (await (await client.get('/api/inventory?light=1')).json())['pending']
                 self.assertEqual([(p['file'], p['installed'], p['downloaded']) for p in pending], [('kitchen.yaml', False, False)])

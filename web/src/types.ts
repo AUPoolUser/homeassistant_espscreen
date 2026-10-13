@@ -266,11 +266,25 @@ export type ChangelogSection = { app: string; firmware: string; boards?: string[
 // `unavailable_since`: when an unavailable entity last changed in Home Assistant, in seconds; only on an unavailable one.
 export type Entity = { id: string; name: string; area?: string; device?: string; icon?: string; state?: string; tile?: boolean; screen_name?: string; unavailable_since?: number };
 export type IconInfo = { name: string; cp: string; label: string };
-// What is being built for one screen right now, whoever asked (Manager.builds in the add-on): the firmware update, the
-// plugin build queue, or Install over Wi-Fi from Firmware & USB. The editor's one source for "something is building".
+// What is being built for one screen right now, whoever asked (Manager.builds in the add-on): the firmware update, a
+// plugin build, or New screen and Firmware & USB. The editor's one source for "something is building". Every build waits
+// its turn in the add-on's one build line (docs/BUILDS.md): `place` is its turn while it waits (1 is next), `id` the
+// build's own, which the line (LineBuild) names with its outcome once it ended. An update that a plugin build joined
+// names the plugins it brings too.
 export type Build = {
-  by: "update" | "plugins" | "install"; state: "queued" | "running"; file?: string | null; stage?: string | null;
-  phase?: string | null; plugins?: string[];
+  id?: number; by: "update" | "plugins" | "install"; state: "queued" | "running"; place?: number; file?: string | null;
+  stage?: string | null; phase?: string | null; plugins?: string[];
+};
+// One build of the add-on's build line (api/firmware `builds`, build_queue.BuildQueue.view): what runs, what waits in
+// order and the last ones that ended, newest first. `check` is a YAML check. While it waits, `place` is its turn and
+// `after` the profile that builds now; while it runs, ESPHome's `stage` and the build's `memory`; once it ended, why
+// (`reason`) and the memory it had. Its log is asked by its id (stores/builds.ts loadBuildLog).
+export type LineState = "queued" | "running" | "success" | "failed" | "skipped" | "interrupted";
+export type LineBuild = {
+  id: number; by: Build["by"] | "check"; file: string | null; screen?: string | null; action: string; target?: string;
+  state: LineState; asked: number; started: number | null; finished: number | null; phase?: string | null; plugins?: string[];
+  place?: number; after?: string | null; stage?: string | null; memory?: import("./model/install-progress").BuildMemory | null;
+  reason?: string | null;
 };
 export type Inventory = {
   editor_features?: { tall_tiles?: boolean; plugins?: boolean };

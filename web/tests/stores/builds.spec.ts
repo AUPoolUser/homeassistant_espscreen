@@ -128,13 +128,26 @@ describe("a build that ends while the page is open", () => {
     expect(location.hash).toBe("#firmware");
   });
 
-  it("reads a plugin build's outcome from its firmware job, asked for once more as it ends", async () => {
-    const api = fakeApi({ "GET firmware": { job: { file: "living.yaml", state: "failed", started: 2 }, logs: [] } });
-    arrive(living(), { "text.living": { by: "plugins", state: "queued", file: "living.yaml" } });
-    arrive(living(), { "text.living": { by: "plugins", state: "running", file: "living.yaml" } });
+  it("reads a plugin build's outcome from the build line by its id, asked for once more as it ends", async () => {
+    // The next build of the line started at once (another screen's): the firmware job is that one, the outcome is this
+    // build's own.
+    const api = fakeApi({ "GET firmware": { job: { file: "desk.yaml", state: "running", started: 9 }, logs: [],
+      builds: [{ id: 8, by: "update", file: "desk.yaml", action: "install", state: "running", asked: 7, started: 8, finished: null },
+               { id: 7, by: "plugins", file: "living.yaml", action: "install", state: "failed", asked: 1, started: 2, finished: 6 }] } });
+    arrive(living(), { "text.living": { id: 7, by: "plugins", state: "queued", place: 1, file: "living.yaml" } });
+    arrive(living(), { "text.living": { id: 7, by: "plugins", state: "running", file: "living.yaml" } });
     arrive(living());
     await vi.waitFor(() => expect(useUiStore().notice?.message).toBe(t("editor.build.build_failed", { name: "Living room" })));
     expect(api.count("GET firmware")).toBe(1);
+  });
+
+  it("follows a plugin build that became the screen's update, and reads that update's result", async () => {
+    arrive(living({ state: "success", time: 10 }), { "text.living": { id: 3, by: "plugins", state: "queued", place: 1, file: "living.yaml", plugins: ["bus"] } });
+    arrive(living({ state: "success", time: 10 }), { "text.living": { id: 3, by: "update", state: "running", file: "living.yaml", plugins: ["bus"] } });
+    expect(useBuildsStore().watched["text.living"]).toMatchObject({ by: "update", id: 3 });
+    arrive(living({ state: "success", time: 50 }));
+    await Promise.resolve();
+    expect(useUiStore().notice?.message).toBe(t("editor.build.ready", { name: "Living room" }));
   });
 
   it("forgets a build whose screen went or whose request was refused", async () => {

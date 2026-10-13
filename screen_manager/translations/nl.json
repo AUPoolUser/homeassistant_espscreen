@@ -793,7 +793,8 @@
         "build_first": "Bouw eerst de firmware; de download verschijnt zodra de build klaar is.",
         "unknown_action": "Onbekende firmwareactie.",
         "host": "Vul het IP-adres of de hostnaam van het bedoelde scherm in.",
-        "grid": "Kies een raster dat dit scherm aanneemt."
+        "grid": "Kies een raster dat dit scherm aanneemt.",
+        "build_gone": "Deze build is niet meer bekend. De nieuwste builds staan onder Firmware & USB."
       },
       "updates": {
         "automatic": "Kies aan of uit voor automatisch bijwerken.",
@@ -1505,7 +1506,6 @@
       "refresh": "Vernieuwen",
       "update": {
         "button": "Bijwerken",
-        "queued": "In de wachtrij voor de update",
         "available": "Update {version}",
         "no_profile": "Geen ESPHome-profiel met deze apparaatnaam gevonden.",
         "whats_new": "Wat is er nieuw",
@@ -2556,7 +2556,8 @@
       "download_target": "Bestand downloaden en zelf flashen",
       "host": "IP-adres of hostnaam",
       "download_file": "{name} downloaden",
-      "download_how": "Zet het met {esphome_web} op het scherm, in Chrome of Edge: klik op Connect, kies de USB-poort van het scherm, klik op Install en selecteer dit bestand. Het bevat je Wi-Fi-wachtwoord en de sleutels van het scherm: houd het voor jezelf."
+      "download_how": "Zet het met {esphome_web} op het scherm, in Chrome of Edge: klik op Connect, kies de USB-poort van het scherm, klik op Install en selecteer dit bestand. Het bevat je Wi-Fi-wachtwoord en de sleutels van het scherm: houd het voor jezelf.",
+      "waiting": "wacht op zijn beurt, 1 build eerst | wacht op zijn beurt, {n} builds eerst"
     },
     "installer": {
       "board": "Welk scherm heb je?",
@@ -2616,7 +2617,6 @@
       },
       "install": "Installeren",
       "save_profile": "Profiel bewaren",
-      "busy": "Er loopt al een build of installatie ({file}). Wacht tot die klaar is.",
       "no_cli": "De ESPHome CLI ontbreekt in deze installatie; alleen het profiel bewaren kan.",
       "progress": {
         "saved": "{file} staat in de ESPHome-map",
@@ -2625,7 +2625,8 @@
         "ready": "Firmware voor {name} is klaar",
         "installed": "Firmware staat op {name}",
         "build_failed": "Bouwen mislukt",
-        "install_failed": "Installeren mislukt"
+        "install_failed": "Installeren mislukt",
+        "waiting": "Wacht op zijn beurt…"
       },
       "detail": {
         "saved": "Installeren kan later via Firmware & USB: kies dit profiel, dan de USB-poort van de Home Assistant-machine, of Downloaden om de firmware vanaf je eigen computer op het scherm te zetten. Bewaar de API-sleutel voor de koppeling:",
@@ -2635,7 +2636,9 @@
         "downloaded": "Zet hem vanaf je eigen computer op het scherm. Hij verschijnt hier zodra hij op je wifi is.",
         "booted": "Het scherm start op, maakt verbinding met je wifi en komt vanzelf in Home Assistant.",
         "booted_calibrate": "Het scherm start op en maakt verbinding met je wifi. Eerst vraagt het om een aanraakkalibratie: tik op de kruisjes. Daarna komt het vanzelf in Home Assistant.",
-        "see_log": "Bekijk het log hieronder."
+        "see_log": "Bekijk het log hieronder.",
+        "waiting": "Er gaat 1 build voor. Deze begint daarna vanzelf, en je kunt deze pagina verlaten. | Er gaan {n} builds voor. Deze begint daarna vanzelf, en je kunt deze pagina verlaten.",
+        "waiting_browser": "Er gaat 1 build voor. Deze begint daarna vanzelf. Houd deze pagina open: hij schrijft het scherm zodra de firmware gebouwd is. | Er gaan {n} builds voor. Deze begint daarna vanzelf. Houd deze pagina open: hij schrijft het scherm zodra de firmware gebouwd is."
       },
       "download_steps": {
         "plug": "{bold} met een USB-datakabel.",
@@ -2734,7 +2737,8 @@
       "pair_yourself": "Zelf toevoegen in Home Assistant",
       "grid": "Raster",
       "grid_hint": "Het voorgestelde raster is het beste voor dit scherm. Je kunt het, en hoe het hangt, later naast de pagina’s in de editor aanpassen, zonder opnieuw te bouwen.",
-      "grid_best": "Terug naar het beste"
+      "grid_best": "Terug naar het beste",
+      "waits_turn": "Er wordt nu een ander scherm gebouwd. Dit scherm wacht op zijn beurt en begint daarna vanzelf."
     },
     "alerts": {
       "eyebrow": "Alerts · cheatsheet",
@@ -2926,7 +2930,8 @@
       "confirm_example": "De huidige tekst vervangen door het voorbeeld?",
       "example_loaded": "Voorbeeld geladen. Sla het op zodra je klaar bent.",
       "confirm_clear": "De lokale override wissen?",
-      "cleared": "Na opslaan is de override leeg."
+      "cleared": "Na opslaan is de override leeg.",
+      "checking_waits": "Wacht op de build die nu loopt, daarna controleren…"
     },
     "mockup": {
       "home": "Thuis",
@@ -3641,12 +3646,12 @@
       "failed": "De laatste build van {screen} is mislukt. De log zegt waarom.",
       "title": "Nu aan het bouwen",
       "count": "1 build onderweg | {n} builds onderweg",
-      "waiting": "Wacht op zijn beurt",
       "ready": "{name} is klaar",
       "ready_several": "{names} zijn klaar",
       "update_failed": "Bijwerken van {name} is mislukt",
       "build_failed": "Bouwen van {name} is mislukt",
-      "show_log": "Log tonen"
+      "show_log": "Log tonen",
+      "waiting_place": "Wacht op zijn beurt, 1 build eerst | Wacht op zijn beurt, {n} builds eerst"
     },
     "grid": {
       "title": "Raster",

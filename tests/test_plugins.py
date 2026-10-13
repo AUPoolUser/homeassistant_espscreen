@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'screen_manager' / 'app'))
 
 import core  # noqa: E402
+from build_queue import BuildQueue  # noqa: E402
 import page_layout  # noqa: E402
 import plugin_fetch  # noqa: E402
 import plugin_manifest as pm  # noqa: E402
@@ -858,6 +859,9 @@ class Queue(unittest.IsolatedAsyncioTestCase):
 
         class FakeManager:
             firmware = FakeFirmware()
+
+            def __init__(self):
+                self.build_queue = BuildQueue(self)
             ha = type('HA', (), {'changed': asyncio.Event(), 'dirty': set()})()
             page_senders = {}
 
@@ -871,7 +875,7 @@ class Queue(unittest.IsolatedAsyncioTestCase):
         for inbox in ('one', 'two', 'three'):
             result = await service.apply(inbox, {'add': [{'id': 'clock_words', 'source': 'folder'}]})
             self.assertTrue(result['built'])
-        await service.worker
+        await service.manager.build_queue.idle()
         self.assertEqual(started, ['one.yaml', 'two.yaml', 'three.yaml'])
         self.assertEqual({i: service.store.get(i, 'clock_words')['state'] for i in ('one', 'two', 'three')},
                          {'one': 'active', 'two': 'active', 'three': 'active'})
@@ -912,6 +916,9 @@ class Queue(unittest.IsolatedAsyncioTestCase):
 
         class FakeManager:
             firmware = FakeFirmware()
+
+            def __init__(self):
+                self.build_queue = BuildQueue(self)
             ha = type('HA', (), {'changed': asyncio.Event(), 'dirty': set()})()
             page_senders = {}
 
@@ -924,10 +931,10 @@ class Queue(unittest.IsolatedAsyncioTestCase):
         service = plugin_service.Plugins(FakeManager(), Path(tmp.name) / 'data', config)
         await service.apply('hall', {'add': [{'id': 'city_words', 'source': 'folder', 'values': {'city': 'Utrecht'},
                                               'parts': ['extra']}]})
-        await service.worker
+        await service.manager.build_queue.idle()
         started.clear()
         await service.apply('hall', {'add': [{'id': 'clock_words', 'source': 'folder'}, {'id': 'city_words', 'source': 'folder'}]})
-        await service.worker
+        await service.manager.build_queue.idle()
         self.assertEqual(started, ['hall.yaml'])
         record = service.store.get('hall', 'city_words')
         self.assertEqual((record['values'], record['parts']), ({'city': 'Utrecht'}, ['extra']))
@@ -979,6 +986,9 @@ class BuildOutcome(unittest.IsolatedAsyncioTestCase):
 
         class FakeManager:
             firmware = FakeFirmware()
+
+            def __init__(self):
+                self.build_queue = BuildQueue(self)
             ha = type('HA', (), {'changed': asyncio.Event(), 'dirty': set()})()
             page_senders = {}
 
@@ -995,27 +1005,50 @@ class BuildOutcome(unittest.IsolatedAsyncioTestCase):
         service, config, started = self.make()
         service.manager.firmware.gate = asyncio.Event()
         await service.apply('hall', {'add': [{'id': 'clock_words', 'source': 'folder'}]})
-        while service.jobs.get('hall', {}).get('state') != 'building':
+        while not service.manager.build_queue.running:
             await asyncio.sleep(0)
         await service.apply('hall', {'add': [{'id': 'calendar_peek', 'source': 'folder'}]})
         service.manager.firmware.gate.set()
-        await service.worker
+        await service.manager.build_queue.idle()
         self.assertEqual(len(started), 2)
         self.assertIn('calendar_peek', started[1])
         self.assertEqual({p: service.store.get('hall', p)['state'] for p in ('clock_words', 'calendar_peek')},
                          {'clock_words': 'active', 'calendar_peek': 'active'})
-        self.assertNotIn('hall', service.jobs)
+        self.assertFalse(service.manager.build_queue.busy())
+
+    async def test_a_plugin_asked_while_the_screen_s_update_waits_comes_with_that_update(self):
+        """A plugin build and an update of one screen are one build (build_queue): the update builds the plugins file
+        too, and its install settles the plugin."""
+        service, config, started = self.make()
+        line = service.manager.build_queue
+        service.manager.firmware.gate = asyncio.Event()
+
+        async def other(build):
+            return 'success' if await line.step({'file': 'desk.yaml', 'action': 'install', 'target': '10.0.0.2'}) else 'failed'
+
+        async def update(build):
+            return 'success' if await line.step({'file': 'hall.yaml', 'action': 'install', 'target': '10.0.0.1'}) else 'failed'
+        line.add('update', 'desk.yaml', other, screen='desk')
+        waiting = line.add('update', 'hall.yaml', update, screen='hall')
+        result = await service.apply('hall', {'add': [{'id': 'clock_words', 'source': 'folder'}]})
+        self.assertEqual(result['queued'], 1)
+        self.assertEqual((waiting.by, waiting.plugins['add']), ('update', ['clock_words']))
+        self.assertEqual(service.store.get('hall', 'clock_words')['state'], 'building')
+        service.manager.firmware.gate.set()
+        await line.idle()
+        self.assertEqual(len(started), 2, 'desk, then hall once')
+        self.assertEqual(service.store.get('hall', 'clock_words')['state'], 'active')
 
     async def test_a_new_plugin_that_fails_leaves_the_file(self):
         service, config, _ = self.make(['failed'])
         await service.apply('hall', {'add': [{'id': 'clock_words', 'source': 'folder'}]})
-        await service.worker
+        await service.manager.build_queue.idle()
         record = service.store.get('hall', 'clock_words')
         self.assertEqual((record['state'], record['reason']), ('failed', 'compile failed'))
         self.assertNotIn('clock_words', (config / 'hall.plugins.yaml').read_text())
         # Trying again puts it back in the file and builds.
         await service.apply('hall', {'add': [{'id': 'clock_words', 'source': 'folder'}]})
-        await service.worker
+        await service.manager.build_queue.idle()
         self.assertEqual(service.store.get('hall', 'clock_words')['state'], 'active')
         self.assertNotIn('reason', service.store.get('hall', 'clock_words'))
         self.assertIn('clock_words', (config / 'hall.plugins.yaml').read_text())
@@ -1023,11 +1056,11 @@ class BuildOutcome(unittest.IsolatedAsyncioTestCase):
     async def test_an_update_that_fails_goes_back_to_what_worked(self):
         service, config, _ = self.make(['success', 'failed'])
         await service.apply('hall', {'add': [{'id': 'clock_words', 'source': 'folder', 'parts': []}]})
-        await service.worker
+        await service.manager.build_queue.idle()
         before = service.store.get('hall', 'clock_words')
         await service.apply('hall', {'add': [{'id': 'clock_words', 'source': 'folder', 'parts': ['missing']}]})
         self.assertEqual(service.store.get('hall', 'clock_words')['previous']['version'], before['version'])
-        await service.worker
+        await service.manager.build_queue.idle()
         record = service.store.get('hall', 'clock_words')
         self.assertEqual(record['state'], 'active')
         self.assertEqual(record['failed_update']['reason'], 'compile failed')
@@ -1087,39 +1120,65 @@ class BuildOutcome(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(kept['origins'], {'bus/key/all': origin, 'bus/token/hall': origin})
 
 
-class Builds(unittest.TestCase):
-    """Manager.builds: one record per screen for whatever is being built for it, whoever asked, so the editor tracks
-    every build in one place."""
+class Builds(unittest.IsolatedAsyncioTestCase):
+    """Manager.builds: one record per screen for whatever is being built for it, whoever asked (the build line,
+    build_queue), so the editor tracks every build in one place."""
 
-    def builds(self, current=None, queue=(), plugin_jobs=None, job=None):
-        import server
+    def manager(self):
         manager = type('M', (), {})()
-        manager.updates = type('U', (), {'current': current, 'queue': list(queue), 'phase': 'install',
-                                         'resolve': lambda self, screen, profiles=None: (screen['id'] + '.yaml', '10.0.0.1')})()
-        manager.firmware = type('F', (), {'job': job, 'profile_names': lambda self: []})()
-        manager.plugins = type('P', (), {'jobs': plugin_jobs or {}})()
+        manager.updates = type('U', (), {'resolve': lambda self, screen, profiles=None: (screen['id'] + '.yaml', '10.0.0.1')})()
+        manager.firmware = type('F', (), {'job': None, 'logs': [], 'profile_names': lambda self: [],
+                                          'check': lambda self, data: None})()
+        manager.build_queue = BuildQueue(manager)
+        self.gate = asyncio.Event()
+        self.addAsyncCleanup(self.finish, manager)
+        return manager
+
+    async def finish(self, manager):
+        for build in list(manager.build_queue.line):
+            manager.build_queue.drop(build)
+        self.gate.set()
+        await manager.build_queue.idle()
+
+    async def held(self, build):
+        await self.gate.wait()
+        return 'success'
+
+    def builds(self, manager):
+        import server
         screens = [{'id': name} for name in ('hall', 'kitchen', 'desk')]
         return server.Manager.builds(manager, screens, [])
 
-    def test_nothing_on_the_way_is_no_record(self):
-        self.assertEqual(self.builds(), {})
+    async def test_nothing_on_the_way_is_no_record(self):
+        self.assertEqual(self.builds(self.manager()), {})
 
-    def test_every_kind_of_build_once_per_screen(self):
-        running = {'file': 'kitchen.yaml', 'state': 'running', 'stage': 'compile'}
-        out = self.builds(current='hall', queue=['desk'],
-                          plugin_jobs={'kitchen': {'state': 'building', 'add': ['bus']}, 'desk': {'state': 'queued', 'add': ['waste']}},
-                          job=running)
-        self.assertEqual(out['hall'], {'by': 'update', 'state': 'running', 'phase': 'install', 'file': 'hall.yaml', 'stage': None})
-        self.assertEqual(out['kitchen'], {'by': 'plugins', 'state': 'running', 'plugins': ['bus'], 'file': 'kitchen.yaml',
-                                          'stage': 'compile'})
-        # A screen queued for an update and for plugins says the update: it is the one that comes first.
-        self.assertEqual(out['desk']['by'], 'update')
-        self.assertEqual(out['desk']['state'], 'queued')
+    async def test_every_kind_of_build_once_per_screen(self):
+        m = self.manager()
+        line = m.build_queue
+        hall = line.add('update', 'hall.yaml', self.held, screen='hall')
+        hall.phase = 'install'
+        kitchen = line.add('plugins', 'kitchen.yaml', self.held, screen='kitchen', plugins={'add': ['bus']})
+        desk = line.add('update', 'desk.yaml', self.held, screen='desk')
+        # A plugin asked for a screen whose update waits joins that update: one build, which brings the plugin too.
+        self.assertIs(line.add('plugins', 'desk.yaml', self.held, screen='desk', plugins={'add': ['waste']}), desk)
+        out = self.builds(m)
+        self.assertEqual(out['hall'], {'id': hall.id, 'by': 'update', 'state': 'running', 'phase': 'install',
+                                       'file': 'hall.yaml', 'stage': None})
+        self.assertEqual(out['kitchen'], {'id': kitchen.id, 'by': 'plugins', 'state': 'queued', 'plugins': ['bus'],
+                                          'file': 'kitchen.yaml', 'stage': None, 'place': 1})
+        self.assertEqual(out['desk'], {'id': desk.id, 'by': 'update', 'state': 'queued', 'phase': None, 'plugins': ['waste'],
+                                       'file': 'desk.yaml', 'stage': None, 'place': 2})
 
-    def test_an_install_from_firmware_and_usb_counts_too(self):
-        out = self.builds(job={'file': 'desk.yaml', 'state': 'running', 'stage': 'upload'})
-        self.assertEqual(out, {'desk': {'by': 'install', 'state': 'running', 'file': 'desk.yaml', 'stage': 'upload'}})
-        self.assertEqual(self.builds(job={'file': 'desk.yaml', 'state': 'success'}), {})
+    async def test_an_install_from_firmware_and_usb_counts_and_a_check_does_not(self):
+        m = self.manager()
+        m.build_queue.add('update', 'hall.yaml', self.held, screen='hall')
+        check = m.build_queue.attended({'file': 'kitchen.yaml', 'action': 'validate'})
+        install = m.build_queue.attended({'file': 'desk.yaml', 'action': 'install', 'target': '10.0.0.9'})
+        out = self.builds(m)
+        self.assertNotIn('kitchen', out)
+        self.assertEqual((check.by, install.by), ('check', 'install'))
+        self.assertEqual(out['desk'], {'id': install.id, 'by': 'install', 'state': 'queued', 'file': 'desk.yaml',
+                                       'stage': None, 'place': 2})
 
 
 if __name__ == '__main__':

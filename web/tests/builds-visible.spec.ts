@@ -17,7 +17,7 @@ const screen = (id: string, name: string) => screenFixture({ id, name, online: t
 beforeEach(() => {
   vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("offline"))));
   useInventoryStore().inventory = { connected: true, screens: [screen("living", "Living room"), screen("hall", "Hall"), screen("desk", "Desk")], entities: [],
-    builds: { living: { by: "update", state: "running", phase: "install", stage: "compile", file: "living.yaml" }, hall: { by: "plugins", state: "queued", file: "hall.yaml" } } } as any;
+    builds: { living: { by: "update", state: "running", phase: "install", stage: "compile", file: "living.yaml" }, hall: { by: "plugins", state: "queued", place: 2, file: "hall.yaml" } } } as any;
   useScreenStore().selected = null;
 });
 
@@ -53,7 +53,7 @@ describe("the builds in the head", () => {
     expect(rows.map((row) => row.find("strong").text())).toEqual(["Living room", "Hall"]);
     expect(rows[0].find(".builds-name small").text()).toBe(t("editor.update.building"));
     expect(rows[0].find(".builds-percent").text()).toBe("40 %");
-    expect(rows[1].find(".builds-name small").text()).toBe(t("editor.build.waiting"));
+    expect(rows[1].find(".builds-name small").text()).toBe(t("editor.build.waiting_place", 2));
     expect(rows[1].find(".builds-percent").text()).toBe("");
     await rows[0].trigger("click");
     await flushPromises();
@@ -85,7 +85,7 @@ describe("a ring per screen", () => {
     expect(cards[0].find(".led").exists()).toBe(false);
     expect(cards[0].find(".home-name small").text()).toBe(`40 % · ${t("editor.update.building")}`);
     expect(cards[1].find(".home-ring").attributes("aria-valuenow")).toBe("0");
-    expect(cards[1].find(".home-name small").text()).toBe(t("editor.build.waiting"));
+    expect(cards[1].find(".home-name small").text()).toBe(t("editor.build.waiting_place", 2));
     expect(cards[2].find(".home-ring").exists()).toBe(false);
     expect(cards[2].find(".led").exists()).toBe(true);
   });

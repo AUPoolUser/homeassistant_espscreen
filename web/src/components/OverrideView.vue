@@ -1,16 +1,18 @@
 <script setup lang="ts">
 // Per-screen local YAML override: a small file of the owner's, loaded after the shared screen package.
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useBusy } from "../composables/useBusy";
 import { useConfirm } from "../composables/useConfirm";
 import { getJson, send } from "../api";
-import { useFirmwareJob } from "../composables/useFirmwareJob";
+import { useLineBuild } from "../composables/useFirmwareJob";
 import { t } from "../i18n";
 import { errorLine } from "../model/firmware-job";
 import { glyph } from "../model/topbar";
+import { useBuildsStore } from "../stores/builds";
 import { useUiStore } from "../stores/ui";
 
 const ui = useUiStore();
+const builds = useBuildsStore();
 
 const OVERRIDE_EXAMPLE = `# Hardware-specific changes for this screen.
 # This file is kept when the shared firmware package updates.
@@ -62,40 +64,44 @@ const saveOverride = (runCheck = false) => runOnce(async () => {
       return;
     }
     setStatus(t("editor.override.checking"));
-    await send("firmware/jobs", "POST", { file: profile.value, action: "validate" });
-    pollCheck();
+    const build = await builds.askBuild({ file: profile.value, action: "validate" });
+    checking.value = { profile: profile.value, id: build.id, started: Date.now() };
+    followCheck();
   } catch (error: any) {
     setStatus(error.message, "error");
   }
 });
-// The check of a profile, followed while it runs (composables/useFirmwareJob.ts): every 1.2 seconds while the page is in
-// sight, until it ends, the page shows another screen or two hours have gone by. A hidden tab asks nothing until it is
-// shown again, and an answer another view has had is this one's too.
-const checking = ref<{ profile: string; started: number } | null>(null);
+// The check of a profile, followed by its id in the add-on's build line (useLineBuild): every 1.2 seconds while the page
+// is in sight, until it ends, the page shows another screen or two hours have gone by. It may first wait its turn behind
+// a screen's build. A hidden tab asks nothing until it is shown again, and an answer another view has had is this one's
+// too.
+const checking = ref<{ profile: string; id: number; started: number } | null>(null);
 const CHECK_MS = 7200000;
-const firmware = useFirmwareJob({ interval: 1200, active: () => checking.value !== null, onAnswer: followCheck, onError: (error) => {
+const check = useLineBuild(() => checking.value?.id, { interval: 1200, onError: (error) => {
   if (!checking.value) return;
   checking.value = null;
   setStatus(error.message, "error");
 } });
-function pollCheck() {
-  checking.value = { profile: profile.value!, started: Date.now() };
-  firmware.refresh().catch((error: Error) => { if (checking.value) { checking.value = null; setStatus(error.message, "error"); } });
-}
-function followCheck(data: any) {
-  const check = checking.value;
-  if (!check) return;
-  if (profile.value !== check.profile || Date.now() - check.started >= CHECK_MS) { checking.value = null; return; }
-  const current = data.job;
-  if (!current || current.file !== check.profile) return;
-  if (current.state === "running") {
+watch(() => [check.build.value?.state, check.build.value?.stage, check.build.value?.place, check.logs.value.length], followCheck);
+function followCheck() {
+  const asked = checking.value;
+  if (!asked) return;
+  if (profile.value !== asked.profile || Date.now() - asked.started >= CHECK_MS || builds.lineForgot(asked.id)) { checking.value = null; return; }
+  // What the check is now and its log, read before `checking` lets go of it (which also lets go of the build).
+  const current = check.build.value, lines = check.logs.value;
+  if (!current) return;
+  if (current.state === "queued") {
+    setStatus(t("editor.override.checking_waits"));
+  } else if (current.state === "running") {
     setStatus(current.stage ? t("editor.override.checking_stage", { stage: current.stage }) : t("editor.override.checking_profile"));
   } else if (current.state === "success") {
     checking.value = null;
     setStatus(t("editor.override.valid"), "ok");
-  } else if (current.state === "failed") {
+  } else if (lines.length || current.reason || current.state !== "failed") {
+    // A check that failed says why once its own log is here (asked once it ended), or the add-on's reason when it was
+    // refused at its turn (its profile went).
     checking.value = null;
-    setStatus(errorLine(data.logs || []) || t("editor.override.rejected"), "error");
+    setStatus(errorLine(lines) || current.reason || t("editor.override.rejected"), "error");
   }
 }
 const { confirm } = useConfirm();

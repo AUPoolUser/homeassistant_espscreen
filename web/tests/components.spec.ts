@@ -839,10 +839,16 @@ describe("Sidebar", () => {
     useInventoryStore().inventory.updates = { target: "0.51.0", auto: false, channel: "dev" };
     await nextTick();
     expect(item.find(".reinstall-dev").text()).toContain("Reinstall from dev");
-    // Not while another update runs.
+    // Another screen's update that runs is no reason: this one waits its turn after it.
     useInventoryStore().inventory.updates = { target: "0.51.0", auto: false, channel: "dev", busy: "other" };
     await nextTick();
+    expect(item.find(".reinstall-dev").exists()).toBe(true);
+    // Not while a build of this screen is on its way already.
+    const id = useInventoryStore().inventory.screens[0].id;
+    useInventoryStore().inventory.builds = { [id]: { id: 2, by: "update", state: "queued", place: 1, file: "living.yaml" } };
+    await nextTick();
     expect(item.find(".reinstall-dev").exists()).toBe(false);
+    useInventoryStore().inventory.builds = {};
     useInventoryStore().inventory.updates = { target: "0.51.0", auto: false, channel: "dev" };
     await nextTick();
     await item.find(".reinstall-dev").trigger("click");
@@ -1115,9 +1121,11 @@ describe("New screen and the Wi-Fi", () => {
     vi.stubGlobal("fetch", vi.fn((url: string, options: any = {}) => {
       const method = options.method || "GET";
       calls.push({ url: String(url), method, body: options.body ? JSON.parse(options.body) : undefined });
-      if (String(url).endsWith("api/firmware")) return Promise.resolve({ ok: true, json: () => Promise.resolve({ available: true, ports: ["/dev/ttyUSB0"], profiles: [], logs: [], wifi: { state: "ready", missing: [] }, boards: BOARD_CHOICES, taken: { nodes: [], prefixes: [] }, job: calls.some((c) => c.url.endsWith("firmware/profiles")) ? job : null }) });
+      const asked = calls.some((c) => c.url.endsWith("firmware/profiles"));
+      if (String(url).endsWith("api/firmware")) return Promise.resolve({ ok: true, json: () => Promise.resolve({ available: true, ports: ["/dev/ttyUSB0"], profiles: [], logs: [], wifi: { state: "ready", missing: [] }, boards: BOARD_CHOICES, taken: { nodes: [], prefixes: [] }, job: asked ? job : null, builds: asked ? [job] : [] }) });
+      if (/firmware\/builds\/\d+\/log$/.test(String(url))) return Promise.resolve({ ok: true, json: () => Promise.resolve({ build: job, logs: [] }) });
       if (String(url).includes("inventory")) return Promise.resolve({ ok: true, json: () => Promise.resolve({ ...useInventoryStore().inventory, ...inventory }) });
-      const answer = String(url).endsWith("firmware/profiles") ? { file: "hall.yaml", api_key: "k", job } : String(url).endsWith("firmware/jobs") ? job : { state: "ready" };
+      const answer = String(url).endsWith("firmware/profiles") ? { file: "hall.yaml", api_key: "k", build: job } : String(url).endsWith("firmware/jobs") ? job : { state: "ready" };
       return Promise.resolve({ ok: true, text: () => Promise.resolve(JSON.stringify(answer)), json: () => Promise.resolve(answer) });
     }));
     return { calls, inventory };
@@ -1128,7 +1136,7 @@ describe("New screen and the Wi-Fi", () => {
     await view.find("#friendly_name").setValue("Hall");
   }
   it("writes another network before it makes the profile", async () => {
-    const { calls } = addon({ file: "hall.yaml", action: "install", state: "success", stage: "upload" });
+    const { calls } = addon({ id: 2, by: "install", file: "hall.yaml", action: "install", state: "success", asked: 1, started: 2, finished: 3 });
     const view = mount(InstallerView);
     await flush();
     await toDone(view);
@@ -1145,7 +1153,7 @@ describe("New screen and the Wi-Fi", () => {
   it("follows the screen onto the network, and after three minutes without it offers the fix", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
-      const { calls, inventory } = addon({ file: "hall.yaml", action: "install", state: "success", stage: "upload" });
+      const { calls, inventory } = addon({ id: 2, by: "install", file: "hall.yaml", action: "install", state: "success", asked: 1, started: 2, finished: 3 });
       const view = mount(InstallerView);
       await flush();
       await toDone(view);

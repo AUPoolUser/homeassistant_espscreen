@@ -2,6 +2,7 @@
 // The builds on their way, each screen's ring, name and step, and the way to the log: what the head's ring opens
 // (BuildIndicator). A row opens its screen.
 import { t } from "../i18n";
+import { waitingText } from "../model/screen-status";
 import type { Screen } from "../types";
 import Icon from "./ui/Icon.vue";
 import ProgressRing from "./ui/ProgressRing.vue";
@@ -16,7 +17,7 @@ const emit = defineEmits<{ done: [] }>();
 
 // A screen waiting its turn is an empty ring; the one that runs says its step.
 const percent = (screen: Screen) => builds.buildProgress(screen)?.percent ?? 0;
-const step = (screen: Screen) => builds.buildProgress(screen)?.text ?? t("editor.build.waiting");
+const step = (screen: Screen) => builds.buildProgress(screen)?.text ?? waitingText(builds.buildOf(screen));
 function choose(screen: Screen) {
   emit("done");
   session.select(screen.id);

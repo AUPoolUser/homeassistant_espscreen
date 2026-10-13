@@ -1,16 +1,17 @@
 <script setup lang="ts">
 // Shared firmware workspace; always a concrete profile and upload target.
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { send } from "../api";
-import { useFirmwareJob } from "../composables/useFirmwareJob";
+import { useFirmwareJob, useLineBuild } from "../composables/useFirmwareJob";
 import { t } from "../i18n";
 import { afterBrowserBuild, ESPHOME_WEB, firmwareImage, memoryText as memoryOf, usbTarget } from "../model/firmware-job";
 import BrowserFlash from "./BrowserFlash.vue";
 import { flashSupport } from "../flasher/logic";
 import { useBrowserFlash } from "../flasher/session";
+import { useBuildsStore } from "../stores/builds";
 import { useUiStore } from "../stores/ui";
 
 const ui = useUiStore();
+const builds = useBuildsStore();
 
 const data = ref<any>(null);
 const file = ref("");
@@ -21,8 +22,10 @@ const host = ref("");
 // without erasing first, so the screen keeps its touch calibration and settings (as ESPHome's reinstall does).
 const flash = useBrowserFlash();
 const support = flashSupport();
-// The build this page waits for: its profile and when it started, so an earlier job of the same profile never counts.
-const awaited = ref<{ file: string; started: number } | null>(null);
+// The build this page asked for last, by its id in the add-on's build line (useLineBuild): it may wait its turn behind
+// another screen's build. `browser`: this page writes its image once it is built.
+const asked = ref<{ id: number; file: string; browser: boolean } | null>(null);
+const followed = useLineBuild(() => asked.value?.id);
 // The job, followed every few seconds while the page is in sight (composables/useFirmwareJob.ts): every answer, this
 // page's own or another's, lands here. The first one picks the first profile.
 let first = true;
@@ -37,38 +40,46 @@ const firmware = useFirmwareJob({ onAnswer: take, onError: (e) => ui.toast(e.mes
 async function refreshFirmware() {
   try { await firmware.refresh(); } catch (e: any) { ui.toast(e.message); }
 }
-const running = computed(() => data.value?.job?.state === "running");
-const disabled = computed(() => !data.value || running.value || !data.value.available || !data.value.profiles?.length);
+// Something builds or waits in the add-on's line. A new job is never refused for it: it waits its turn.
+const running = computed(() => data.value?.job?.state === "running" || followed.onItsWay.value);
+const disabled = computed(() => !data.value || !data.value.available || !data.value.profiles?.length);
 const installDisabled = computed(() => disabled.value || target.value === "usb" ||
   (target.value === "browser" && (support !== "ok" || flash.busy() || flash.state.phase === "waiting")));
 const chipOf = (name: string): string | null => data.value?.profiles?.find((p: { file: string; chip?: string }) => p.file === name)?.chip || null;
 const browserHint = computed(() => t(support === "ok" ? "editor.webflash.firmware_hint" : `editor.webflash.unavailable.${support}`));
-watch(() => [data.value?.job, flash.state.phase] as const, ([job, phase]) => {
-  const wanted = awaited.value;
-  if (!wanted || !job || job.file !== wanted.file || job.started !== wanted.started || job.state === "running") return;
-  awaited.value = null;
-  if (afterBrowserBuild(job.state, phase) === "write") flash.install(wanted.file, false);
+// The build this page writes from the browser: once it ended, write its image, or let go of the port.
+watch(() => [followed.build.value?.state, flash.state.phase] as const, ([state, phase]) => {
+  const wanted = asked.value;
+  if (!wanted?.browser || !builds.lineEnded(followed.build.value)) return;
+  asked.value = { ...wanted, browser: false };
+  if (afterBrowserBuild(state, phase) === "write") flash.install(wanted.file, false);
   else flash.cancel();
 });
 const ports = computed<string[]>(() => data.value?.ports || []);
-const statusText = computed(() => !data.value ? t("editor.common.loading") : !data.value.available
-  ? t("editor.firmware.no_cli")
-  : data.value.job
-    ? `${data.value.job.file} · ${data.value.job.action} · ${data.value.job.state}`
-    : t("editor.firmware.choose"));
+// The build this page asked for while it is known, else the add-on's last job: its profile, action and where it stands,
+// and while it waits, its turn.
+const statusText = computed(() => {
+  if (!data.value) return t("editor.common.loading");
+  if (!data.value.available) return t("editor.firmware.no_cli");
+  const own = followed.build.value;
+  if (own) return `${own.file} · ${own.action} · ${own.state === "queued" ? t("editor.firmware.waiting", own.place || 1) : own.state}`;
+  return data.value.job ? `${data.value.job.file} · ${data.value.job.action} · ${data.value.job.state}` : t("editor.firmware.choose");
+});
 // What the add-on says about the memory the build has (build_memory.py, app 0.4.65), under the status line.
-const memoryText = computed(() => memoryOf(data.value?.job)?.text || "");
+const memoryText = computed(() => memoryOf(followed.build.value ?? data.value?.job)?.text || "");
+// The log of the build this page asked for once it is known, else whatever builds now.
+const logLines = computed(() => (followed.build.value && followed.build.value.state !== "queued" ? followed.logs.value : data.value?.logs || []));
 const downloadReady = computed(() => target.value === "download" && !!file.value && !!data.value?.downloads?.includes(file.value));
 const image = computed(() => firmwareImage(file.value));
 async function run(action: "validate" | "build" | "install") {
   if (action === "install" && target.value === "browser") return runBrowser();
   try {
-    await send("firmware/jobs", "POST", {
+    const build = await builds.askBuild({
       file: file.value,
       action: action === "validate" ? "validate" : action === "build" ? "build" : target.value === "download" ? "download" : "install",
-      target: target.value === "ota" ? host.value.trim() : target.value === "download" ? "" : target.value,
+      target: action !== "install" ? "" : target.value === "ota" ? host.value.trim() : target.value === "download" ? "" : target.value,
     });
-    await refreshFirmware();
+    asked.value = { id: build.id, file: file.value, browser: false };
   } catch (e: any) {
     ui.toast(e.message);
   }
@@ -78,9 +89,8 @@ async function runBrowser() {
   const name = file.value;
   if (!(await flash.connect(chipOf(name)))) return;
   try {
-    const job = await send("firmware/jobs", "POST", { file: name, action: "download", target: "" });
-    awaited.value = { file: name, started: job.started };
-    await refreshFirmware();
+    const build = await builds.askBuild({ file: name, action: "download", target: "" });
+    asked.value = { id: build.id, file: name, browser: true };
   } catch (e: any) {
     flash.cancel();
     ui.toast(e.message);
@@ -154,6 +164,6 @@ onBeforeUnmount(() => flash.cancel());
         </i18n-t>
       </div>
     </div>
-    <pre id="firmware-log" class="log">{{ (data?.logs || []).join("\n") }}</pre>
+    <pre id="firmware-log" class="log">{{ logLines.join("\n") }}</pre>
   </div>
 </template>

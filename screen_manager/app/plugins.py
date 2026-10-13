@@ -269,9 +269,6 @@ class Plugins:
         self.snapshots = {}         # (id, ref) -> Entry of an installed release
         self.links = {}             # id -> Entry added with a link (a release of any repository, or a branch to test)
         self.links_checked = 0.0    # when refresh_links last asked for the linked repositories' newest releases
-        self.jobs = {}              # inbox -> what its waiting or running build adds and removes, and its state
-        self.queue = []             # the screens that wait for a build, in the order they were asked
-        self.worker = None
         self.http = None            # the session that reads the index: never the one that holds Home Assistant's token
         self.ready = False
         self._load_cached_index()
@@ -820,9 +817,9 @@ class Plugins:
         still building without a build is failed (the app restarted during it), so the editor offers to build again
         instead of waiting for ever."""
         running = self.running()
+        line = getattr(self.manager, 'build_queue', None)
         for inbox, records in self.store.everywhere().items():
-            job = (self.jobs.get(inbox) or {}).get('state')
-            if job in ('queued', 'building'):
+            if line and line.on_the_way(screen=inbox):
                 continue
             reported = {item['id']: item.get('version') for item in running.get(inbox) or []}
             for record in records:
@@ -1232,64 +1229,33 @@ class Plugins:
             # A screen built from its own YAML: the app cannot build it, so the page shows the file and the line.
             return {'own_yaml': True, 'file': f'{screen.get("node") or "screen"}.plugins.yaml', 'content': text,
                     'line': self.attach_line(f'{screen.get("node") or "screen"}.yaml')}
-        # One build at a time, in the order asked: ticking three screens on the Plugins page builds them one after the
-        # other. A screen asked again while it waits builds once, with everything asked for it; one asked while its build
-        # runs builds once more after it (`next`), since that build may have read its YAML before this change.
-        added = [c['record']['id'] for c in changes]
-        job = self.jobs.get(inbox)
-        if job and job['state'] == 'building':
-            later = job.setdefault('next', {'add': [], 'remove': []})
-            later['add'] = sorted(set(later['add']) | set(added))
-            later['remove'] = sorted(set(later['remove']) | set(removes))
-            if inbox not in self.queue:
-                self.queue.append(inbox)
-        elif job:
-            job['add'] = sorted(set(job['add']) | set(added))
-            job['remove'] = sorted(set(job['remove']) | set(removes))
-        else:
-            self.jobs[inbox] = {'add': added, 'remove': list(removes), 'state': 'queued',
-                                'profile': profile, 'host': host, 'asked': int(time.time())}
-            self.queue.append(inbox)
-        if self.worker is None or self.worker.done():
-            self.worker = asyncio.get_running_loop().create_task(self._build_queue())
+        # The screen's build waits its turn in the app's one build line (build_queue, docs/BUILDS.md): ticking three
+        # screens on the Plugins page builds them one after the other. A screen asked again while its build waits builds
+        # once, with everything asked for it, and so does one whose update waits; one asked while its build runs builds
+        # once more after it, since that build may have read its YAML before this change.
+        line = self.manager.build_queue
+        build = line.add('plugins', profile, self._build, screen=inbox, target=host,
+                         plugins={'add': [c['record']['id'] for c in changes], 'remove': list(removes)})
+        if self._built not in build.ends:
+            build.ends.append(self._built)
         self.manager.notify()
-        return {'written': True, 'built': True, 'queued': self.queue.index(inbox) if inbox in self.queue else 0}
+        return {'written': True, 'built': True, 'queued': line.place(build)}
 
-    async def _build_queue(self):
-        """Build the screens that wait, one at a time, each when the app's one build slot is free."""
-        firmware = self.manager.firmware
-        while self.queue:
-            while firmware.task and not firmware.task.done():
-                await asyncio.sleep(2)
-            inbox = self.queue.pop(0)
-            job = self.jobs.get(inbox)
-            if not job:
-                continue
-            if job['state'] == 'building':   # asked again while it built: its next build waits behind the others
-                self.queue.append(inbox)
-                await asyncio.sleep(0)
-                continue
-            job.update(state='building', started=int(time.time()))
-            self.manager.notify()
-            try:
-                firmware.start({'file': job['profile'], 'action': 'install', 'target': job['host']})
-                await firmware.task
-                ok = (firmware.job or {}).get('state') == 'success'
-                reason = None if ok else build_reason(getattr(firmware, 'logs', None))
-            except Exception as error:   # refused before it started (a file that went, an address that is wrong)
-                ok, reason = False, str(error)[:200]
-            later = job.get('next')
-            # A plugin asked for again while this build ran is settled by the build after it, not by this one.
-            self._settle_build(inbox, [p for p in job['add'] if not later or p not in later['add']], ok, reason)
-            if later:
-                self.jobs[inbox] = {'add': later['add'], 'remove': later['remove'], 'state': 'queued', 'profile': job['profile'],
-                                    'host': job['host'], 'asked': int(time.time())}
-                if inbox not in self.queue:
-                    self.queue.append(inbox)
-            else:
-                self.jobs.pop(inbox, None)
-            self.manager.notify()
-            self.manager.ha.changed.set()
+    async def _build(self, build):
+        """A plugin build's turn: the screen's firmware with its plugins file, installed over Wi-Fi."""
+        ok = await self.manager.build_queue.step({'file': build.file, 'action': 'install', 'target': build.target})
+        return 'success' if ok else 'failed'
+
+    def _built(self, build):
+        """What the end of a build of this screen (a plugin build, or the update it became one with) means for the
+        plugins it brought: whether the screen's firmware with them went on. A plugin asked for again while it built is
+        settled by the build that waits for it."""
+        later = self.manager.build_queue.waiting(build.file)
+        again = set(later.plugins['add']) if later else set()
+        ok = build.installed
+        reason = None if ok else ('interrupted' if build.state == 'interrupted'
+                                  else build_reason(build.logs) if build.logs else str(build.reason or build.state))
+        self._settle_build(build.screen, [p for p in build.plugins['add'] if p not in again], ok, reason)
 
     def _settle_build(self, inbox, added, ok, reason):
         """What a build's end means for the plugins it added. Built: they are active and what came before is forgotten.

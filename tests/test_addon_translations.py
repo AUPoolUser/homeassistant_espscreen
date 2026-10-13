@@ -29,6 +29,7 @@ import i18n  # noqa: E402
 from i18n import REQUEST_LANGUAGE, TRANSLATIONS, english, shown, t  # noqa: E402
 import tile_icons  # noqa: E402
 import updates  # noqa: E402
+from build_queue import BuildQueue  # noqa: E402
 
 HAS_AIOHTTP = importlib.util.find_spec('aiohttp') is not None
 if HAS_AIOHTTP:
@@ -211,6 +212,7 @@ class Updates(unittest.IsolatedAsyncioTestCase):
             def __init__(self):
                 self.ha, self.firmware = HA(), Firmware()
                 self.firmware.start = start
+                self.build_queue = BuildQueue(self)
             def screen(self, inbox):
                 return {'id': inbox, 'name': 'Hall', 'node': 'hall', 'online': True, 'ip': '10.0.0.5', 'firmware': '0.2.1'}
             def screens(self):

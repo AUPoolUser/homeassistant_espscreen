@@ -143,9 +143,9 @@ class Catalogue(unittest.TestCase):
         self.assertEqual(service.store.get('kitchen', 'voice')['state'], 'active')
         self.assertEqual((service.store.get('kitchen', 'audio')['state'], service.store.get('kitchen', 'audio')['reason']),
                          ('failed', 'interrupted'))
-        # A build on its way is left alone.
+        # A build on its way in the app's build line is left alone.
         service.store.set_state('kitchen', 'audio', 'building')
-        service.jobs['kitchen'] = {'state': 'building', 'add': ['audio'], 'remove': []}
+        service.manager.build_queue = type('Line', (), {'on_the_way': lambda self, screen=None, **_: [screen] if screen == 'kitchen' else []})()
         service.settle()
         self.assertEqual(service.store.get('kitchen', 'audio')['state'], 'building')
 

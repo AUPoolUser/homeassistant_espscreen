@@ -1,4 +1,5 @@
-// What New screen and Firmware & USB both say of the add-on's firmware job (api/firmware), said once: the build's
+// What New screen and Firmware & USB both say of the add-on's firmware job and of a build in its line (api/firmware), said
+// once: the build's
 // memory in the editor's words, the image a build leaves to download, the browser flasher's turn once the build it waits
 // for has ended, the USB port to install over, and the line of the log that says what went wrong.
 import { editorNumber, t } from "../i18n";
@@ -24,9 +25,9 @@ export const firmwareImage = (file: string) => ({
 });
 
 /** The browser flasher's turn once the build it waits for has ended: write the image when the build succeeded and the
- * port waits, let go of the port when the build failed. Nothing while the build runs. */
+ * port waits, let go of the port when the build failed. Nothing while the build waits its turn or runs. */
 export function afterBrowserBuild(state: string | null | undefined, phase: string): "write" | "release" | null {
-  if (!state || state === "running" || phase !== "waiting") return null;
+  if (!state || state === "queued" || state === "running" || phase !== "waiting") return null;
   return state === "success" ? "write" : "release";
 }
 

@@ -1,4 +1,5 @@
-"""Firmware updates for paired screens: on demand, all at once, or nightly. One screen at a time."""
+"""Firmware updates for paired screens: on demand, all at once, or nightly. Each is a build in the app's one build line
+(build_queue, docs/BUILDS.md), so one screen at a time and never refused because something else builds."""
 import asyncio
 from datetime import datetime, timezone
 import json
@@ -8,6 +9,7 @@ from pathlib import Path
 import re
 import time
 import changelog
+from build_queue import Round
 from core import FIRMWARE_VERSION, SHAPES, board_of, channel, firmware_target, parse_firmware
 from i18n import Text, english, screen_t, shown, t
 
@@ -54,7 +56,6 @@ class Updater:
     def __init__(self, manager, path):
         self.manager, self.path = manager, Path(path)
         self.auto, self.hosts, self.results, self.last_round = False, {}, {}, None
-        self.task, self.current, self.queue, self.phase = None, None, [], None
         # Screens this app left on their bridge (app 0.4.56): {inbox: {'profile', 'host', 'since'}}, finished by the
         # next round however it ended, also after a restart of the app.
         self.bridging, self.bridge_tried = {}, 0.0
@@ -84,8 +85,29 @@ class Updater:
             os.fsync(handle.fileno())
         temp.replace(self.path)
 
+    @property
+    def line(self):
+        return self.manager.build_queue
+
+    def build_of(self, inbox):
+        """The update of this screen that runs or waits in the build line, or None."""
+        inbox = self.current_id(inbox)
+        return next(iter(self.line.on_the_way(screen=inbox, by='update')), None)
+
+    @property
+    def current(self):
+        """The screen whose update runs now, or None."""
+        running = self.line.running
+        return running.screen if running and running.by == 'update' else None
+
+    @property
+    def queue(self):
+        """The screens whose update waits its turn, in order."""
+        return [build.screen for build in self.line.line if build.by == 'update']
+
     def busy(self):
-        return bool(self.task and not self.task.done())
+        """Whether an update runs or waits: the nightly round waits for it."""
+        return bool(self.line.on_the_way(by='update'))
 
     def screen(self, inbox):
         return self.manager.screen(inbox)
@@ -105,9 +127,7 @@ class Updater:
                 changed = True
         if changed:
             self.save()
-        if self.current == old:
-            self.current = new
-        self.queue = [new if inbox == old else inbox for inbox in self.queue]
+        self.line.renamed(old, new)
         return changed
 
     def forget(self, inbox):
@@ -118,7 +138,7 @@ class Updater:
                 changed = True
         if changed:
             self.save()
-        self.queue = [item for item in self.queue if item != inbox]
+        self.line.drop_screen(inbox)
         return changed
 
     def resolve(self, screen, profiles=None):
@@ -166,15 +186,11 @@ class Updater:
         language = self.language_due(screen)
         profile, host = self.resolve(screen, profiles)
         target = self.target_for(screen, profiles)
-        if screen['id'] == self.current:
-            state = 'running'
-        elif screen['id'] in self.queue:
-            state = 'queued'
-        else:
-            state = 'idle'
+        build = self.build_of(screen['id'])
+        state = build.state if build else 'idle'
         return {'available': bool(version and version < parse_version(target)) or (bool(version) and language),
                 'language': bool(version) and language, 'target': target,
-                'profile': profile, 'host': host, 'state': state, 'phase': self.phase if state == 'running' else None,
+                'profile': profile, 'host': host, 'state': state, 'phase': build.phase if state == 'running' else None,
                 'result': shown_result(self.results.get(screen['id']))}
 
     def summary(self, screens=None, profiles=None):
@@ -191,8 +207,10 @@ class Updater:
             screens = self.manager.screens()
         if profiles is None:
             profiles = self.manager.firmware.profile_names()
+        # A screen whose update is on its way already is no longer one to start.
         return [s['id'] for s in screens
-                if s['online'] and self.state_for(s, profiles)['available'] and all(self.resolve(s, profiles))]
+                if s['online'] and self.state_for(s, profiles)['available'] and all(self.resolve(s, profiles))
+                and not self.build_of(s['id'])]
 
     def set_auto(self, enabled):
         if not isinstance(enabled, bool):
@@ -206,12 +224,13 @@ class Updater:
         "Testing dev"), so the newest dev is never an update by its number."""
         if reinstall and channel() != 'dev':
             raise ValueError(t('addon.errors.updates.reinstall_dev'))
-        if self.busy():
-            raise ValueError(t('addon.errors.updates.busy'))
         screen = self.screen(inbox)
         inbox = self.current_id(inbox)
         if not screen:
             raise ValueError(t('addon.errors.updates.unknown_screen'))
+        # Asked again while it runs or waits (a second click, another tab): it stays the one update it is.
+        if self.build_of(inbox):
+            return self.state_for(screen)
         if not screen['online']:
             raise ValueError(t('addon.errors.updates.offline'))
         if not reinstall and not self.state_for(screen)['available']:
@@ -231,8 +250,7 @@ class Updater:
         return self.state_for(screen)
 
     def start_all(self):
-        if self.busy():
-            raise ValueError(t('addon.errors.updates.busy'))
+        """Every screen with an update that is not on its way yet, as one round after whatever builds or waits."""
         pending = self.pending()
         if not pending:
             raise ValueError(t('addon.errors.updates.all_updated'))
@@ -242,9 +260,15 @@ class Updater:
         return pending
 
     def launch(self, inboxes, automatic=False):
-        # Mark the first screen busy right away so the page shows progress before the task runs.
-        self.current, self.queue, self.phase = inboxes[0], inboxes[1:], 'install'
-        self.task = asyncio.create_task(self.run_round(inboxes, automatic))
+        """The updates of these screens as one round in the build line: one that fails ends the rest of the round."""
+        round = Round(automatic)
+        for inbox in inboxes:
+            inbox = self.current_id(inbox)
+            note = self.bridging.get(inbox)
+            screen = self.screen(inbox)
+            file = note['profile'] if note else (self.resolve(screen)[0] if screen else None)
+            self.line.add('update', file, self.run_build, screen=inbox, round=round)
+        return round
 
     def record(self, inbox, state, message, version=None):
         """A screen's last result. `message` keeps its key and params (a Text) next to the English, so the editor shows it
@@ -260,29 +284,31 @@ class Updater:
         self.save()
 
     async def run_round(self, inboxes, automatic=False):
-        """Update screens one by one; a failure ends the round so a bad build never reaches the next screen."""
-        try:
-            for index, inbox in enumerate(inboxes):
-                inbox = self.current_id(inbox)
-                self.current, self.queue = inbox, [self.current_id(i) for i in inboxes[index+1:]]
-                outcome = await self.update_one(inbox)
-                if outcome == 'failed':
-                    if automatic:
-                        # For whoever reads Home Assistant: in the screens' language, Home Assistant's own unless another was
-                        # chosen (app 0.2.90).
-                        await self.notify(screen_t('addon.notify.update_stopped', name=self.name(inbox),
-                                                   reason=result_text(self.results[self.current_id(inbox)])))
-                    break
-                if self.queue and outcome == 'success':
-                    await asyncio.sleep(self.pause_seconds)
-        finally:
-            self.current, self.queue, self.phase = None, [], None
+        """The updates of these screens as one round, waited for until each has ended or was left out."""
+        await self.launch(inboxes, automatic).wait()
+
+    async def run_build(self, build):
+        """An update's turn in the build line: the screen's update, then what it means for its round. A failure ends the
+        round (the build line leaves its waiting updates out) so a bad build never reaches the next screen."""
+        inbox = build.screen = self.current_id(build.screen)
+        outcome = await self.update_one(inbox, build)
+        if outcome == 'failed' and build.round and build.round.automatic:
+            # For whoever reads Home Assistant: in the screens' language, Home Assistant's own unless another was chosen
+            # (app 0.2.90).
+            await self.notify(screen_t('addon.notify.update_stopped', name=self.name(inbox),
+                                       reason=result_text(self.results[self.current_id(inbox)])))
+        # A pause between two updates of one round; not before anything else that is next (New screen, another's build).
+        if outcome == 'success' and build.round and self.line.line and self.line.line[0].round is build.round:
+            await asyncio.sleep(self.pause_seconds)
+        return outcome
 
     def name(self, inbox):
         screen = self.screen(inbox)
         return screen['name'] if screen else inbox
 
-    async def update_one(self, inbox):
+    async def update_one(self, inbox, build=None):
+        """Update one screen in the build that runs (`build`, whose phase the page shows)."""
+        build = build or type('Build', (), {'phase': None})()
         screen = self.screen(inbox)
         # A screen this app left on its bridge is away for Home Assistant, and still this app's to finish.
         note = self.bridging.get(self.current_id(inbox))
@@ -301,7 +327,7 @@ class Updater:
         target = self.target_for(screen) if screen else FIRMWARE_VERSION
         firmware = self.manager.firmware
         wide = self.takes_wide_table(profile)
-        self.phase = 'install'
+        build.phase = 'install'
         try:
             # Recheck when a queued/nightly screen reaches the front of the
             # queue; its saved configuration can change while another builds.
@@ -326,7 +352,7 @@ class Updater:
             else:
                 self.record(inbox, 'failed', english('addon.updates.build_failed'))
             return 'failed'
-        self.phase = 'verify'
+        build.phase = 'verify'
         if not await self.wait_for_target(inbox, target):
             self.record(inbox, 'failed', english('addon.updates.no_report', version=target), target)
             return 'failed'
@@ -339,7 +365,7 @@ class Updater:
             if not back:
                 self.record(inbox, 'failed', english('addon.updates.dropped_off'), target)
                 return 'failed'
-        self.phase = 'settle'
+        build.phase = 'settle'
         await asyncio.sleep(self.settle_seconds)
         current = self.screen(inbox)
         if not current or not current['online']:
@@ -352,11 +378,9 @@ class Updater:
 
     # ---- the partition table of a board with 4 MB of flash (app 0.4.56, docs/FLASH_LAYOUT.md)
     async def job(self, profile, action, host=''):
-        """One ESPHome job for a profile, waited for. True when it succeeded; a refusal (ValueError) is the caller's."""
-        firmware = self.manager.firmware
-        firmware.start({'file': profile, 'action': action, **({'target': host} if host else {})})
-        await firmware.task
-        return firmware.job.get('state') == 'success'
+        """One ESPHome job for a profile in the update's own turn of the build line, waited for. True when it succeeded;
+        a refusal (ValueError) is the caller's."""
+        return await self.line.step({'file': profile, 'action': action, **({'target': host} if host else {})})
 
     def takes_wide_table(self, profile):
         """Whether this profile's board builds for the wide partition table (boards.json `wide_slots`)."""
@@ -501,7 +525,7 @@ class Updater:
             await asyncio.sleep(60)
             try:
                 if self.busy() or not self.manager.ha.online:
-                    continue
+                    continue  # an update runs or waits: the next minute looks again
                 now = datetime.now(getattr(self.manager.ha, 'time_zone', None) or timezone.utc)
                 # A screen left on its bridge is finished first, whatever the hour and with or without the nightly round.
                 waiting = [inbox for inbox in self.bridging if self.screen(inbox)]

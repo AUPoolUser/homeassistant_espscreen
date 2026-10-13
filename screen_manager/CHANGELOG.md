@@ -4,6 +4,14 @@
   with, now live in the screen's PSRAM instead of the small memory inside the chip that Wi-Fi needs. On a 4-inch
   Guition with a few plugin tiles and pictures that memory could run out at a busy moment: the screen restarted, or lost
   Wi-Fi until it was restarted.
+- **One line for every build: nothing is refused because something else builds.** The app builds one firmware at a
+  time, and an update, a plugin build, New screen and Firmware & USB now all wait their turn in the same line. Update on
+  a second screen while the first one updates waits its turn (before, it showed a 2 and fell back). Update all adds
+  the screens that are not on their way yet. New screen, Firmware & USB and the YAML check go before the updates and
+  plugin builds that wait, and say what they wait for. A plugin added while the screen's update waits comes with that
+  update in one build. An update on a board with 4 MB keeps the line until all of its steps are done, so no other build
+  starts while its screen restarts. Each build keeps how it ended and its log, so the editor says the right outcome
+  also when the next build started at once.
 - **Editor: a map tile grown to two rows saves at once.** Dragging a new map tile (or an energy card) from one row to
   two gave it a setting the app does not keep for it, and the save asked to adjust the tile's settings first.
 - **Plugin API 0.10: pictures on a plugin's tile.** A plugin can lay out places for pictures on its tile and name an

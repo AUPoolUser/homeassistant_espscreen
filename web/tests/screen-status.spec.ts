@@ -5,7 +5,7 @@ import { t } from "../src/i18n";
 import { homeView, SMALLEST } from "../src/model/overview";
 import { buildProgress, explainsItself, firmwareVersion, languageOnly, needsAttention, pendingText, rowStatus, screenBoardName, screenIcon, screenLight,
   screenSubline, updateNotes, updateState, whatsNew, type StatusFacts } from "../src/model/screen-status";
-import type { Screen } from "../src/types";
+import type { LineBuild, Screen } from "../src/types";
 import { screenFixture } from "./helpers/fixtures";
 
 const NOW = Date.UTC(2026, 9, 10);
@@ -129,12 +129,12 @@ describe("a screen's row in the sidebar (screen-status.ts)", () => {
 });
 
 describe("a build that ends while the page is open", () => {
-  const job = (file: string, state: string, started: number) => ({ file, state, started });
-  it("is read from what changed since it was watched: a new update result, another firmware job", async () => {
+  const ended = (id: number, file: string, state: string) => ({ id, file, state, by: "plugins", action: "install", asked: 1, started: 2, finished: 3 }) as LineBuild;
+  it("is read from what changed since it was watched: a new update result, the outcome the build line keeps by id", async () => {
     const { watchOf, buildOutcome } = await import("../src/model/screen-status");
     const before = screen({ update: { profile: "hall.yaml", result: { state: "success", message: "", time: 100 } } });
-    const watched = watchOf(before, { by: "update", state: "running", file: "hall.yaml" }, null);
-    expect(watched).toEqual({ by: "update", file: "hall.yaml", result: 100, job: null });
+    const watched = watchOf(before, { by: "update", state: "running", file: "hall.yaml", id: 3 });
+    expect(watched).toEqual({ by: "update", file: "hall.yaml", result: 100, id: 3 });
     // The result it had is not this build's; a new one is, whatever the clocks say.
     expect(buildOutcome(before, watched, null)).toBeNull();
     expect(buildOutcome(screen({ update: { profile: "hall.yaml", result: { state: "success", message: "", time: 90 } } }), watched, null)).toBe("ready");
@@ -142,16 +142,14 @@ describe("a build that ends while the page is open", () => {
     // A screen a round passed by has nothing to say.
     expect(buildOutcome(screen({ update: { profile: "hall.yaml", result: { state: "skipped", message: "", time: 200 } } }), watched, null)).toBeNull();
 
-    // A plugin build: its firmware job, one that started after the page began to watch.
-    const plugins = watchOf(before, { by: "plugins", state: "queued", file: "hall.yaml" }, job("hall.yaml", "success", 5));
-    expect(plugins.job).toBe(5);
-    expect(buildOutcome(before, plugins, job("hall.yaml", "success", 5))).toBeNull();
-    expect(buildOutcome(before, plugins, job("hall.yaml", "failed", 9))).toBe("failed");
-    expect(buildOutcome(before, plugins, job("desk.yaml", "success", 9))).toBeNull();
-    // The job that runs as the page begins to watch is this build: its end counts.
-    const running = watchOf(before, { by: "install", state: "running", file: "hall.yaml" }, job("hall.yaml", "running", 7));
-    expect(running.job).toBeNull();
-    expect(buildOutcome(before, running, job("hall.yaml", "success", 7))).toBe("ready");
+    // A plugin build: the outcome of that very build, also when the next build of the line started at once.
+    const plugins = watchOf(before, { by: "plugins", state: "queued", file: "hall.yaml", id: 5 });
+    expect(plugins.id).toBe(5);
+    expect(buildOutcome(before, plugins, [ended(6, "desk.yaml", "running")])).toBeNull();
+    expect(buildOutcome(before, plugins, [ended(6, "hall.yaml", "running"), ended(5, "hall.yaml", "failed")])).toBe("failed");
+    expect(buildOutcome(before, plugins, [ended(5, "hall.yaml", "success"), ended(4, "hall.yaml", "failed")])).toBe("ready");
+    // One the page never knew the id of has nothing to say.
+    expect(buildOutcome(before, watchOf(before, null), [ended(5, "hall.yaml", "success")])).toBeNull();
   });
 
   it("says one thing for the builds that ended together: the first that failed, else who is ready", async () => {

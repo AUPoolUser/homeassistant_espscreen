@@ -245,10 +245,11 @@ export const usePluginsStore = defineStore("plugins", () => {
     partsOn(screen, plugin).reduce((sum, id) => sum + (plugin.parts?.find((part) => part.id === id)?.flash_kb || 0), 0);
   // The add-on keeps a screen's plugins by its inbox, the id every screen route takes.
   const installedOn = (screen: Screen, id: string) => installed.value[nodeOf(screen)]?.find((item) => item.id === id);
-  // Whether this screen's build (the builds store's, live from the add-on) brings this plugin, or the page is asking for it now.
+  // Whether this screen's build (the builds store's, live from the add-on) brings this plugin, or the page is asking for it
+  // now. A plugin build that joined the screen's update is that update now, and brings the plugin all the same.
   const buildingOn = (screen: Screen, id: string) => {
     const build = builds.buildOf(screen);
-    return Boolean((build?.by === "plugins" && build.plugins?.includes(id)) || sending[screen.id]?.includes(id));
+    return Boolean(build?.plugins?.includes(id) || sending[screen.id]?.includes(id));
   };
   // A plugin on a screen the add-on has no manifest of any more (a test folder that went): known only by its record.
   const testsOn = (screen: Screen) => (installed.value[nodeOf(screen)] || [])
@@ -495,7 +496,7 @@ export const usePluginsStore = defineStore("plugins", () => {
       watch(pluginsEnabled, (on) => { if (on) loadPlugins(); }, { immediate: true });
       // A plugin build of some screen that starts or ends (the builds store's, live from the add-on): a record's state and
       // version follow the build without a poll of its own.
-      watch(() => Object.entries(inv.inventory.builds || {}).filter(([, build]) => build.by === "plugins")
+      watch(() => Object.entries(inv.inventory.builds || {}).filter(([, build]) => build.by === "plugins" || build.plugins?.length)
         .map(([screen, build]) => `${screen}:${build.state}`).join(), (now, before) => { if (loaded.value && now !== before) reloadPlugins(); });
     });
     running = () => { running = null; scope.stop(); };

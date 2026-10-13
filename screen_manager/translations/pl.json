@@ -793,7 +793,8 @@
         "build_first": "Najpierw skompiluj firmware; pobieranie pojawi się po zakończeniu kompilacji.",
         "unknown_action": "Nieznana operacja firmware.",
         "host": "Wpisz adres IP lub nazwę hosta właściwego ekranu.",
-        "grid": "Wybierz siatkę, którą ten ekran przyjmuje."
+        "grid": "Wybierz siatkę, którą ten ekran przyjmuje.",
+        "build_gone": "Ta kompilacja nie jest już znana. Najnowsze są w sekcji Firmware i USB."
       },
       "updates": {
         "automatic": "Włącz lub wyłącz automatyczne aktualizacje.",
@@ -1505,7 +1506,6 @@
       "refresh": "Odśwież",
       "update": {
         "button": "Aktualizuj",
-        "queued": "W kolejce do aktualizacji",
         "available": "Aktualizacja {version}",
         "no_profile": "Nie znaleziono profilu ESPHome o tej nazwie urządzenia.",
         "whats_new": "Co nowego",
@@ -2917,7 +2917,8 @@
       "download_target": "Pobierz plik i wgraj go samodzielnie",
       "host": "Adres IP lub nazwa hosta",
       "download_file": "Pobierz {name}",
-      "download_how": "Wgraj go na ekran przez {esphome_web} w Chrome lub Edge: „Connect”, wybierz port USB ekranu, „Install” i wskaż ten plik. Zawiera Twoje hasło Wi-Fi i klucze ekranu: nie udostępniaj go nikomu."
+      "download_how": "Wgraj go na ekran przez {esphome_web} w Chrome lub Edge: „Connect”, wybierz port USB ekranu, „Install” i wskaż ten plik. Zawiera Twoje hasło Wi-Fi i klucze ekranu: nie udostępniaj go nikomu.",
+      "waiting": "czeka, najpierw 1 kompilacja | czeka, najpierw {n} kompilacje | czeka, najpierw {n} kompilacji"
     },
     "installer": {
       "board": "Jaki masz ekran?",
@@ -2977,7 +2978,6 @@
       },
       "install": "Zainstaluj",
       "save_profile": "Zapisz profil",
-      "busy": "Kompilacja lub instalacja już trwa ({file}). Poczekaj, aż się zakończy.",
       "no_cli": "W tej instalacji brakuje narzędzia ESPHome CLI; można tylko zapisać profil.",
       "progress": {
         "saved": "{file} jest w folderze ESPHome",
@@ -2986,7 +2986,8 @@
         "ready": "Firmware gotowy: {name}",
         "installed": "Firmware wgrany: {name}",
         "build_failed": "Kompilacja nieudana",
-        "install_failed": "Instalacja nieudana"
+        "install_failed": "Instalacja nieudana",
+        "waiting": "Czeka na swoją kolej…"
       },
       "detail": {
         "saved": "Zainstaluj go później w sekcji „Firmware i USB”: wybierz ten profil, a potem port USB komputera z Home Assistant albo „Pobierz”, aby wgrać firmware na ekran z własnego komputera. Zachowaj klucz API do parowania:",
@@ -2996,7 +2997,9 @@
         "downloaded": "Wgraj go na ekran z własnego komputera. Pojawi się tutaj, gdy tylko połączy się z Wi-Fi.",
         "booted": "Ekran uruchamia się, łączy z Wi-Fi i sam dołącza do Home Assistant.",
         "booted_calibrate": "Ekran uruchamia się i łączy z Wi-Fi. Najpierw prosi o kalibrację dotyku: dotknij krzyżyków. Potem sam dołącza do Home Assistant.",
-        "see_log": "Zobacz log poniżej."
+        "see_log": "Zobacz log poniżej.",
+        "waiting": "Przed nią jest 1 kompilacja. Ta zacznie sama zaraz potem i możesz opuścić tę stronę. | Przed nią są {n} kompilacje. Ta zacznie sama zaraz potem i możesz opuścić tę stronę. | Przed nią jest {n} kompilacji. Ta zacznie sama zaraz potem i możesz opuścić tę stronę.",
+        "waiting_browser": "Przed nią jest 1 kompilacja. Ta zacznie sama zaraz potem. Nie zamykaj tej strony: zapisze ekran, gdy tylko firmware będzie gotowy. | Przed nią są {n} kompilacje. Ta zacznie sama zaraz potem. Nie zamykaj tej strony: zapisze ekran, gdy tylko firmware będzie gotowy. | Przed nią jest {n} kompilacji. Ta zacznie sama zaraz potem. Nie zamykaj tej strony: zapisze ekran, gdy tylko firmware będzie gotowy."
       },
       "download_steps": {
         "plug": "{bold} kablem USB do transmisji danych.",
@@ -3095,7 +3098,8 @@
       "pair_yourself": "Dodaj go samodzielnie w Home Assistant",
       "grid": "Siatka",
       "grid_hint": "Proponowana siatka jest najlepsza dla tego ekranu. Możesz ją zmienić, wraz z orientacją, później obok stron w edytorze, bez ponownej kompilacji.",
-      "grid_best": "Wróć do najlepszej"
+      "grid_best": "Wróć do najlepszej",
+      "waits_turn": "Teraz kompilowany jest inny ekran. Ten czeka na swoją kolej i zacznie sam zaraz potem."
     },
     "alerts": {
       "eyebrow": "Alerty · ściąga",
@@ -3287,7 +3291,8 @@
       "confirm_example": "Zastąpić obecny tekst przykładem?",
       "example_loaded": "Wczytano przykład. Zapisz go, kiedy zechcesz.",
       "confirm_clear": "Wyczyścić lokalne nadpisanie?",
-      "cleared": "Po zapisaniu nadpisanie będzie puste."
+      "cleared": "Po zapisaniu nadpisanie będzie puste.",
+      "checking_waits": "Czeka na trwającą kompilację, potem sprawdza…"
     },
     "mockup": {
       "home": "Dom",
@@ -3641,12 +3646,12 @@
       "failed": "Ostatnia kompilacja {screen} się nie powiodła. Dziennik mówi dlaczego.",
       "title": "Trwa budowanie",
       "count": "1 kompilacja w toku | {n} kompilacje w toku | {n} kompilacji w toku",
-      "waiting": "Czeka na swoją kolej",
       "ready": "{name} jest gotowy",
       "ready_several": "{names} są gotowe",
       "update_failed": "Aktualizacja {name} nie powiodła się",
       "build_failed": "Kompilacja {name} nie powiodła się",
-      "show_log": "Pokaż log"
+      "show_log": "Pokaż log",
+      "waiting_place": "Czeka, najpierw 1 kompilacja | Czeka, najpierw {n} kompilacje | Czeka, najpierw {n} kompilacji"
     },
     "grid": {
       "title": "Siatka",

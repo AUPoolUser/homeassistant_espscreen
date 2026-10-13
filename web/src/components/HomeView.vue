@@ -6,6 +6,7 @@ import { t } from "../i18n";
 import { barMetricsFor } from "../model/topbar";
 import { boardTitle } from "../model/boards";
 import { homeView } from "../model/overview";
+import { waitingText } from "../model/screen-status";
 import UiMenu from "./ui/UiMenu.vue";
 import UiMenuItem from "./ui/UiMenuItem.vue";
 import UiMenuSeparator from "./ui/UiMenuSeparator.vue";
@@ -100,11 +101,11 @@ onMounted(entities.loadOverview);
         </span>
         <span class="home-foot">
           <ProgressRing v-if="building(screen)" class="home-ring" :size="16" :percent="builds.buildProgress(screen)?.percent ?? 0"
-            :label="builds.buildProgress(screen)?.text || t('editor.build.waiting')" />
+            :label="builds.buildProgress(screen)?.text || waitingText(builds.buildOf(screen))" />
           <span v-else class="led" :class="scr.screenLight(screen)"></span>
           <span class="home-name">
             <strong>{{ screen.name }}</strong>
-            <small v-if="building(screen)" class="building">{{ builds.buildProgress(screen) ? `${builds.buildProgress(screen)!.percent} % · ${builds.buildProgress(screen)!.text}` : t("editor.build.waiting") }}</small>
+            <small v-if="building(screen)" class="building">{{ builds.buildProgress(screen) ? `${builds.buildProgress(screen)!.percent} % · ${builds.buildProgress(screen)!.text}` : waitingText(builds.buildOf(screen)) }}</small>
             <small v-else-if="!scr.screenSubline(screen) && broken.onScreen(screen).length" class="broken">{{ t("editor.broken.short", broken.onScreen(screen).length) }}</small>
             <small v-else-if="scr.screenSubline(screen)" :class="scr.screenSubline(screen)!.kind">{{ scr.screenSubline(screen)!.text }}</small>
             <small v-else-if="place(screen)">{{ place(screen) }}</small>

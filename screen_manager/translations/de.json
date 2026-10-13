@@ -793,7 +793,8 @@
         "build_first": "Erstelle zuerst die Firmware; der Download erscheint, wenn sie fertig ist.",
         "unknown_action": "Unbekannte Firmware-Aktion.",
         "host": "Gib die IP-Adresse oder den Hostnamen des gewünschten Bildschirms ein.",
-        "grid": "Wähle ein Raster, das dieser Bildschirm annimmt."
+        "grid": "Wähle ein Raster, das dieser Bildschirm annimmt.",
+        "build_gone": "Dieser Build ist nicht mehr bekannt. Die neuesten Builds stehen unter Firmware & USB."
       },
       "updates": {
         "automatic": "Wähle für automatische Updates an oder aus.",
@@ -1505,7 +1506,6 @@
       "refresh": "Neu laden",
       "update": {
         "button": "Aktualisieren",
-        "queued": "Für das Update vorgemerkt",
         "available": "Update {version}",
         "no_profile": "Kein ESPHome-Profil mit diesem Gerätenamen gefunden.",
         "whats_new": "Was ist neu",
@@ -2917,7 +2917,8 @@
       "download_target": "Datei herunterladen und selbst flashen",
       "host": "IP-Adresse oder Hostname",
       "download_file": "{name} herunterladen",
-      "download_how": "Spiele sie mit {esphome_web} in Chrome oder Edge auf den Bildschirm: „Connect“ klicken, den USB-Port des Bildschirms wählen, „Install“ klicken und diese Datei auswählen. Sie enthält dein Wi-Fi-Passwort und die Schlüssel des Bildschirms: Behalte sie für dich."
+      "download_how": "Spiele sie mit {esphome_web} in Chrome oder Edge auf den Bildschirm: „Connect“ klicken, den USB-Port des Bildschirms wählen, „Install“ klicken und diese Datei auswählen. Sie enthält dein Wi-Fi-Passwort und die Schlüssel des Bildschirms: Behalte sie für dich.",
+      "waiting": "wartet, 1 Build zuerst | wartet, {n} Builds zuerst"
     },
     "installer": {
       "board": "Welchen Bildschirm hast du?",
@@ -2977,7 +2978,6 @@
       },
       "install": "Installieren",
       "save_profile": "Profil speichern",
-      "busy": "Es wird schon eine Firmware erstellt oder installiert ({file}). Warte, bis das fertig ist.",
       "no_cli": "In dieser Installation fehlt die ESPHome CLI; nur das Speichern des Profils ist möglich.",
       "progress": {
         "saved": "{file} liegt im ESPHome-Ordner",
@@ -2986,7 +2986,8 @@
         "ready": "Firmware für {name} ist fertig",
         "installed": "Firmware ist auf {name}",
         "build_failed": "Erstellen fehlgeschlagen",
-        "install_failed": "Installation fehlgeschlagen"
+        "install_failed": "Installation fehlgeschlagen",
+        "waiting": "Wartet, bis er dran ist…"
       },
       "detail": {
         "saved": "Installiere es später über Firmware & USB: Wähle dieses Profil, dann den USB-Port des Home Assistant-Rechners oder „Download“, um die Firmware von deinem eigenen Computer aus auf den Bildschirm zu spielen. Speichere den API-Schlüssel für die Kopplung:",
@@ -2996,7 +2997,9 @@
         "downloaded": "Spiele sie von deinem eigenen Computer auf den Bildschirm. Er erscheint hier, sobald er im WLAN ist.",
         "booted": "Der Bildschirm startet, verbindet sich mit deinem WLAN und kommt von selbst in Home Assistant.",
         "booted_calibrate": "Der Bildschirm startet und verbindet sich mit deinem WLAN. Zuerst fragt er nach einer Touch-Kalibrierung: tippe auf die Kreuze. Danach kommt er von selbst in Home Assistant.",
-        "see_log": "Siehe das Protokoll unten."
+        "see_log": "Siehe das Protokoll unten.",
+        "waiting": "1 Build kommt zuerst. Dieser startet danach von selbst, und du kannst diese Seite verlassen. | {n} Builds kommen zuerst. Dieser startet danach von selbst, und du kannst diese Seite verlassen.",
+        "waiting_browser": "1 Build kommt zuerst. Dieser startet danach von selbst. Lass diese Seite offen: Sie schreibt den Bildschirm, sobald seine Firmware gebaut ist. | {n} Builds kommen zuerst. Dieser startet danach von selbst. Lass diese Seite offen: Sie schreibt den Bildschirm, sobald seine Firmware gebaut ist."
       },
       "download_steps": {
         "plug": "{bold} – mit einem USB-Datenkabel.",
@@ -3095,7 +3098,8 @@
       "pair_yourself": "Selbst in Home Assistant hinzufügen",
       "grid": "Raster",
       "grid_hint": "Das vorgeschlagene Raster ist das beste für diesen Bildschirm. Du kannst es und die Ausrichtung später neben den Seiten im Editor ändern, ohne neu zu bauen.",
-      "grid_best": "Zurück zum besten"
+      "grid_best": "Zurück zum besten",
+      "waits_turn": "Gerade wird ein anderer Bildschirm gebaut. Dieser wartet, bis er dran ist, und startet danach von selbst."
     },
     "alerts": {
       "eyebrow": "Meldungen · Spickzettel",
@@ -3287,7 +3291,8 @@
       "confirm_example": "Den aktuellen Text durch das Beispiel ersetzen?",
       "example_loaded": "Beispiel geladen. Speichere es, wenn du so weit bist.",
       "confirm_clear": "Die lokale Anpassung leeren?",
-      "cleared": "Nach dem Speichern ist die Anpassung leer."
+      "cleared": "Nach dem Speichern ist die Anpassung leer.",
+      "checking_waits": "Wartet auf den laufenden Build, dann wird geprüft…"
     },
     "mockup": {
       "home": "Zuhause",
@@ -3641,12 +3646,12 @@
       "failed": "Der letzte Build von {screen} ist fehlgeschlagen. Das Protokoll sagt, warum.",
       "title": "Wird gerade gebaut",
       "count": "1 Build unterwegs | {n} Builds unterwegs",
-      "waiting": "Wartet, bis es dran ist",
       "ready": "{name} ist fertig",
       "ready_several": "{names} sind fertig",
       "update_failed": "Update von {name} fehlgeschlagen",
       "build_failed": "Build von {name} fehlgeschlagen",
-      "show_log": "Log anzeigen"
+      "show_log": "Log anzeigen",
+      "waiting_place": "Wartet, 1 Build zuerst | Wartet, {n} Builds zuerst"
     },
     "grid": {
       "title": "Raster",

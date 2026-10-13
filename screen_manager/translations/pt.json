@@ -793,7 +793,8 @@
         "build_first": "Compile primeiro o firmware; a transferência aparece quando a compilação terminar.",
         "unknown_action": "Ação de firmware desconhecida.",
         "host": "Introduza o endereço IP ou o nome do anfitrião do ecrã pretendido.",
-        "grid": "Escolha uma grelha que este ecrã aceite."
+        "grid": "Escolha uma grelha que este ecrã aceite.",
+        "build_gone": "Esta compilação já não é conhecida. As mais recentes estão em Firmware e USB."
       },
       "updates": {
         "automatic": "Escolha se as atualizações automáticas ficam ativadas ou desativadas.",
@@ -1505,7 +1506,6 @@
       "refresh": "Recarregar",
       "update": {
         "button": "Atualizar",
-        "queued": "Na fila para atualizar",
         "available": "Atualização para {version}",
         "no_profile": "Não foi encontrado nenhum perfil ESPHome com este nome de dispositivo.",
         "whats_new": "Novidades",
@@ -2917,7 +2917,8 @@
       "download_target": "Transferir o ficheiro e gravá-lo você mesmo",
       "host": "Endereço IP ou nome do anfitrião",
       "download_file": "Descarregar {name}",
-      "download_how": "Instale-o no ecrã com o {esphome_web} no Chrome ou no Edge: Connect, escolha a porta USB do ecrã, Install e selecione este ficheiro. Contém a sua palavra-passe de Wi-Fi e as chaves do ecrã: não o partilhe."
+      "download_how": "Instale-o no ecrã com o {esphome_web} no Chrome ou no Edge: Connect, escolha a porta USB do ecrã, Install e selecione este ficheiro. Contém a sua palavra-passe de Wi-Fi e as chaves do ecrã: não o partilhe.",
+      "waiting": "à espera, 1 compilação antes | à espera, {n} compilações antes"
     },
     "installer": {
       "board": "Que ecrã tem?",
@@ -2977,7 +2978,6 @@
       },
       "install": "Instalar",
       "save_profile": "Guardar perfil",
-      "busy": "Já está a decorrer uma compilação ou instalação ({file}). Aguarde que termine.",
       "no_cli": "Falta a CLI do ESPHome nesta instalação; só é possível guardar o perfil.",
       "progress": {
         "saved": "{file} está na pasta do ESPHome",
@@ -2986,7 +2986,8 @@
         "ready": "O firmware para {name} está pronto",
         "installed": "O firmware já está em {name}",
         "build_failed": "A compilação falhou",
-        "install_failed": "A instalação falhou"
+        "install_failed": "A instalação falhou",
+        "waiting": "À espera da sua vez…"
       },
       "detail": {
         "saved": "Instale-o mais tarde a partir de Firmware e USB: escolha este perfil e depois a porta USB da máquina do Home Assistant, ou Descarregar para instalar o firmware no ecrã a partir do seu próprio computador. Guarde a chave API para o emparelhamento:",
@@ -2996,7 +2997,9 @@
         "downloaded": "Instale-o no ecrã a partir do seu computador. Aparece aqui assim que estiver na sua Wi-Fi.",
         "booted": "O ecrã arranca, liga-se à sua Wi-Fi e junta-se ao Home Assistant sozinho.",
         "booted_calibrate": "O ecrã arranca e liga-se à sua Wi-Fi. Primeiro pede uma calibração do toque: toque nas cruzes. Depois junta-se ao Home Assistant sozinho.",
-        "see_log": "Consulte o registo abaixo."
+        "see_log": "Consulte o registo abaixo.",
+        "waiting": "Antes vai 1 compilação. Esta começa sozinha logo a seguir, e podes sair desta página. | Antes vão {n} compilações. Esta começa sozinha logo a seguir, e podes sair desta página.",
+        "waiting_browser": "Antes vai 1 compilação. Esta começa sozinha logo a seguir. Mantém esta página aberta: escreve o ecrã assim que o firmware estiver compilado. | Antes vão {n} compilações. Esta começa sozinha logo a seguir. Mantém esta página aberta: escreve o ecrã assim que o firmware estiver compilado."
       },
       "download_steps": {
         "plug": "{bold} com um cabo USB de dados.",
@@ -3095,7 +3098,8 @@
       "pair_yourself": "Adicioná-lo você mesmo no Home Assistant",
       "grid": "Grelha",
       "grid_hint": "A grelha proposta é a melhor para este ecrã. Pode alterá-la, e a orientação, mais tarde ao lado das páginas no editor, sem nova compilação.",
-      "grid_best": "Voltar à melhor"
+      "grid_best": "Voltar à melhor",
+      "waits_turn": "Outro ecrã está a ser compilado agora. Este espera a sua vez e começa sozinho logo a seguir."
     },
     "alerts": {
       "eyebrow": "Alertas · guia rápido",
@@ -3287,7 +3291,8 @@
       "confirm_example": "Substituir o texto atual pelo exemplo?",
       "example_loaded": "Exemplo carregado. Guarde-o quando estiver pronto.",
       "confirm_clear": "Limpar o YAML personalizado local?",
-      "cleared": "O YAML personalizado ficará vazio quando guardar."
+      "cleared": "O YAML personalizado ficará vazio quando guardar.",
+      "checking_waits": "À espera da compilação em curso, depois verifica…"
     },
     "mockup": {
       "home": "Casa",
@@ -3641,12 +3646,12 @@
       "failed": "A última compilação de {screen} falhou. O registo diz porquê.",
       "title": "A compilar agora",
       "count": "1 compilação em curso | {n} compilações em curso",
-      "waiting": "À espera da sua vez",
       "ready": "{name} está pronto",
       "ready_several": "{names} estão prontos",
       "update_failed": "A atualização de {name} falhou",
       "build_failed": "A compilação de {name} falhou",
-      "show_log": "Ver registo"
+      "show_log": "Ver registo",
+      "waiting_place": "À espera, 1 compilação antes | À espera, {n} compilações antes"
     },
     "grid": {
       "title": "Grelha",

@@ -793,7 +793,8 @@
         "build_first": "Előbb fordítsd le a firmware-t; a letöltés a fordítás végeztével jelenik meg.",
         "unknown_action": "Ismeretlen firmware-művelet.",
         "host": "Add meg a kívánt kijelző IP-címét vagy hosztnevét.",
-        "grid": "Válassz olyan rácsot, amelyet ez a kijelző elfogad."
+        "grid": "Válassz olyan rácsot, amelyet ez a kijelző elfogad.",
+        "build_gone": "Ez a fordítás már nem ismert. A legújabbak a Firmware és USB alatt vannak."
       },
       "updates": {
         "automatic": "Kapcsold be vagy ki az automatikus frissítéseket.",
@@ -1505,7 +1506,6 @@
       "refresh": "Frissítés",
       "update": {
         "button": "Frissítés",
-        "queued": "Frissítésre vár",
         "available": "Frissítés: {version}",
         "no_profile": "Nem található ESPHome-profil ezzel az eszköznévvel.",
         "whats_new": "Újdonságok",
@@ -2917,7 +2917,8 @@
       "download_target": "Fájl letöltése és saját flashelés",
       "host": "IP-cím vagy hosztnév",
       "download_file": "{name} letöltése",
-      "download_how": "Töltsd fel a kijelzőre a(z) {esphome_web} segítségével Chrome-ban vagy Edge-ben: Connect, válaszd a kijelző USB-portját, Install, majd jelöld ki ezt a fájlt. Tartalmazza a Wi-Fi-jelszavadat és a kijelző kulcsait: ne add ki másnak."
+      "download_how": "Töltsd fel a kijelzőre a(z) {esphome_web} segítségével Chrome-ban vagy Edge-ben: Connect, válaszd a kijelző USB-portját, Install, majd jelöld ki ezt a fájlt. Tartalmazza a Wi-Fi-jelszavadat és a kijelző kulcsait: ne add ki másnak.",
+      "waiting": "várakozik, 1 fordítás előtte | várakozik, {n} fordítás előtte"
     },
     "installer": {
       "board": "Milyen kijelződ van?",
@@ -2977,7 +2978,6 @@
       },
       "install": "Telepítés",
       "save_profile": "Profil mentése",
-      "busy": "Már fut egy fordítás vagy telepítés ({file}). Várd meg, amíg befejeződik.",
       "no_cli": "Ebből a telepítésből hiányzik az ESPHome CLI; csak a profil mentése lehetséges.",
       "progress": {
         "saved": "{file} az ESPHome mappában van",
@@ -2986,7 +2986,8 @@
         "ready": "A firmware kész ehhez: {name}",
         "installed": "A firmware fent van ezen: {name}",
         "build_failed": "A fordítás sikertelen",
-        "install_failed": "A telepítés sikertelen"
+        "install_failed": "A telepítés sikertelen",
+        "waiting": "Várakozik a sorára…"
       },
       "detail": {
         "saved": "Később telepítsd a Firmware és USB alatt: válaszd ezt a profilt, majd a Home Assistant-gép USB-portját, vagy a Letöltést, ha a saját számítógépedről töltenéd fel a firmware-t. Mentsd el az API-kulcsot a párosításhoz:",
@@ -2996,7 +2997,9 @@
         "downloaded": "Tedd fel a kijelzőre a saját számítógépedről. Itt jelenik meg, amint a Wi-Fi-n van.",
         "booted": "A kijelző elindul, csatlakozik a Wi-Fi-hez, és magától bekerül a Home Assistantbe.",
         "booted_calibrate": "A kijelző elindul és csatlakozik a Wi-Fi-hez. Először érintéskalibrálást kér: koppints a keresztekre. Utána magától bekerül a Home Assistantbe.",
-        "see_log": "Lásd a lenti naplót."
+        "see_log": "Lásd a lenti naplót.",
+        "waiting": "1 fordítás van előtte. Ez utána magától elindul, és elhagyhatod ezt az oldalt. | {n} fordítás van előtte. Ez utána magától elindul, és elhagyhatod ezt az oldalt.",
+        "waiting_browser": "1 fordítás van előtte. Ez utána magától elindul. Hagyd nyitva ezt az oldalt: amint kész a firmware, felírja a kijelzőre. | {n} fordítás van előtte. Ez utána magától elindul. Hagyd nyitva ezt az oldalt: amint kész a firmware, felírja a kijelzőre."
       },
       "download_steps": {
         "plug": "{bold} USB-adatkábellel.",
@@ -3095,7 +3098,8 @@
       "pair_yourself": "Add hozzá magad a Home Assistanthez",
       "grid": "Rács",
       "grid_hint": "A javasolt rács a legjobb ehhez a kijelzőhöz. Később a szerkesztőben, az oldalak mellett, újrafordítás nélkül módosíthatod, a tájolással együtt.",
-      "grid_best": "Vissza a legjobbhoz"
+      "grid_best": "Vissza a legjobbhoz",
+      "waits_turn": "Most egy másik kijelző fordítása fut. Ez kivárja a sorát, és utána magától elindul."
     },
     "alerts": {
       "eyebrow": "Figyelmeztetések · puska",
@@ -3287,7 +3291,8 @@
       "confirm_example": "Lecseréled a jelenlegi szöveget a példára?",
       "example_loaded": "Példa betöltve. Mentsd, ha készen állsz.",
       "confirm_clear": "Törlöd a helyi felülírást?",
-      "cleared": "Mentés után a felülírás üres lesz."
+      "cleared": "Mentés után a felülírás üres lesz.",
+      "checking_waits": "Várakozás a most futó fordításra, utána ellenőrzés…"
     },
     "mockup": {
       "home": "Kezdőlap",
@@ -3641,12 +3646,12 @@
       "failed": "{screen} legutóbbi fordítása nem sikerült. A napló megmondja, miért.",
       "title": "Fordítás folyamatban",
       "count": "1 fordítás folyamatban | {n} fordítás folyamatban",
-      "waiting": "Sorára vár",
       "ready": "{name} kész",
       "ready_several": "{names} kész",
       "update_failed": "{name} frissítése nem sikerült",
       "build_failed": "{name} fordítása nem sikerült",
-      "show_log": "Napló megnyitása"
+      "show_log": "Napló megnyitása",
+      "waiting_place": "Várakozik, 1 fordítás előtte | Várakozik, {n} fordítás előtte"
     },
     "grid": {
       "title": "Rács",
