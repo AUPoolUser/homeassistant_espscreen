@@ -198,7 +198,9 @@ class Updater:
         # `target` is the shared version; what one screen is offered is its own `update.target` (app 0.3.21). `channel`
         # is the branch the screens build from, when the app was added from this repository (docs/RELEASING.md).
         return {'auto': self.auto, 'target': FIRMWARE_VERSION, 'busy': self.current,
-                'pending': len(self.pending(screens, profiles)), 'last_round': self.last_round, 'channel': channel()}
+                'pending': len(self.pending(screens, profiles)), 'last_round': self.last_round, 'channel': channel(),
+                # How many screens Reinstall all from dev would build again; only on the dev channel.
+                **({'reinstallable': len(self.reinstallable(screens, profiles))} if channel() == 'dev' else {})}
 
     def pending(self, screens=None, profiles=None):
         # Callers that already hold the inventory and profile list pass them in; the inventory
@@ -228,8 +230,12 @@ class Updater:
         inbox = self.current_id(inbox)
         if not screen:
             raise ValueError(t('addon.errors.updates.unknown_screen'))
-        # Asked again while it runs or waits (a second click, another tab): it stays the one update it is.
-        if self.build_of(inbox):
+        # Asked again while it runs or waits (a second click, another tab, a round that has it): it stays the one update it
+        # is, and one asked for by itself no longer counts in a round, so another screen's failure leaves it in the line.
+        build = self.build_of(inbox)
+        if build:
+            if build.state == 'queued':
+                build.round = None
             return self.state_for(screen)
         if not screen['online']:
             raise ValueError(t('addon.errors.updates.offline'))
@@ -249,10 +255,27 @@ class Updater:
         self.launch([inbox])
         return self.state_for(screen)
 
-    def start_all(self):
-        """Every screen with an update that is not on its way yet, as one round after whatever builds or waits."""
-        pending = self.pending()
+    def reinstallable(self, screens=None, profiles=None):
+        """The screens Reinstall all from dev builds again (dev channel only): every one that is online, that this app
+        has a profile and an address for, and that has no update on its way yet."""
+        if channel() != 'dev':
+            return []
+        if screens is None:
+            screens = self.manager.screens()
+        if profiles is None:
+            profiles = self.manager.firmware.profile_names()
+        return [s['id'] for s in screens if s['online'] and all(self.resolve(s, profiles)) and not self.build_of(s['id'])]
+
+    def start_all(self, reinstall=False):
+        """Every screen with an update that is not on its way yet, as one round after whatever builds or waits.
+        `reinstall` (dev channel only, docs/RELEASING.md "Testing dev"): every screen again, with the newest dev, since
+        a new dev keeps the number and is never an update by itself."""
+        if reinstall and channel() != 'dev':
+            raise ValueError(t('addon.errors.updates.reinstall_dev'))
+        pending = self.reinstallable() if reinstall else self.pending()
         if not pending:
+            if reinstall:
+                raise ValueError(t('addon.errors.updates.nothing_to_reinstall'))
             # Nothing left to start: every screen with an update has it on its way already, or none has one.
             raise ValueError(t('addon.errors.updates.all_on_the_way' if self.busy() else 'addon.errors.updates.all_updated'))
         for inbox in pending:

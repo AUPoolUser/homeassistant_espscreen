@@ -807,7 +807,8 @@
         "ip_unknown": "IP address unknown. Enter it once; new firmware reports it itself after that.",
         "all_updated": "All reachable screens are already updated.",
         "reinstall_dev": "Reinstalling the same firmware is for the dev channel only.",
-        "all_on_the_way": "Every screen with an update has it on its way already."
+        "all_on_the_way": "Every screen with an update has it on its way already.",
+        "nothing_to_reinstall": "No screen can be reinstalled now: each is offline, already on its way, or has no profile in this app."
       },
       "remove": {
         "not_allowed": "This app may not remove an integration from Home Assistant. Remove the screen in Home Assistant itself, under Settings → Devices & services.",
@@ -1515,7 +1516,8 @@
         "reinstall": "Reinstall from dev",
         "reinstall_why": "Builds this screen again from the newest dev and installs it over Wi-Fi. On dev the version number stays the same, so a new dev is never offered as an update.",
         "in_tessera": "Update in Tessera first",
-        "in_tessera_why": "Update this screen here in Tessera first. It still has the flash layout it was first installed with, and the current firmware no longer fits it, so ESPHome Device Builder cannot update it. Tessera moves it to the new layout on the way and keeps its settings. After that, either way works."
+        "in_tessera_why": "Update this screen here in Tessera first. It still has the flash layout it was first installed with, and the current firmware no longer fits it, so ESPHome Device Builder cannot update it. Tessera moves it to the new layout on the way and keeps its settings. After that, either way works.",
+        "reinstall_short": "Builds the newest dev and installs it over Wi-Fi."
       },
       "host": {
         "hint": "The IP address, once; new firmware reports it itself.",
@@ -1556,7 +1558,8 @@
         "done": "{name} is removed.",
         "kept": "{name} is removed. Its profile {file} is still in the ESPHome folder."
       },
-      "home": "Overview of your screens"
+      "home": "Overview of your screens",
+      "dev_chip": "This is the dev version of the app: every screen it builds comes from the dev branch."
     },
     "palette": {
       "groups": {
@@ -2490,7 +2493,11 @@
         "all": "Update 1 screen | Update all {n} screens",
         "whats_new": "What's new in firmware {version}",
         "auto_label": "Update automatically every night",
-        "auto_hint": "Between 03:00 and 06:00, one screen at a time. Stops on an error and reports it in Home Assistant."
+        "auto_hint": "Between 03:00 and 06:00, one screen at a time. Stops on an error and reports it in Home Assistant.",
+        "reinstall_all": "Reinstall 1 screen from dev | Reinstall all {n} screens from dev",
+        "reinstall_all_hint": "Builds the newest dev for every screen, one after the other, and installs it over Wi-Fi. On dev the version number stays the same, so a new dev is never offered as an update.",
+        "reinstall_all_confirm": "Reinstall 1 screen from the newest dev? It restarts once its firmware is on. | Reinstall {n} screens from the newest dev? They are built one after the other, and each restarts once its firmware is on.",
+        "reinstall_all_go": "Reinstall"
       },
       "claude": {
         "installed": "Skill installed. Claude Code picks it up right away.",

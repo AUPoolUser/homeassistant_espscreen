@@ -4299,7 +4299,9 @@ def create_app(manager, development=False):
         data = await request.json() if request.can_read_body else {}
         return web.json_response(manager.updates.start(request.match_info['inbox'], data.get('host'), data.get('reinstall') is True))
     async def update_all(request):
-        return web.json_response({'started': manager.updates.start_all()})
+        # `reinstall`: Reinstall all from dev, every screen again with the newest dev (dev channel only).
+        data = await request.json() if request.can_read_body else {}
+        return web.json_response({'started': manager.updates.start_all(isinstance(data, dict) and data.get('reinstall') is True)})
     async def update_settings(request):
         manager.updates.set_auto((await request.json()).get('auto'))
         return web.json_response(manager.updates.summary())

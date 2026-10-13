@@ -191,6 +191,26 @@ class TheLine(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((rest.state, apart.state), ('skipped', 'success'))
         self.assertEqual([c[0] for c in owner.firmware.calls], ['hall.yaml', 'kitchen.yaml'])
 
+    async def test_what_is_asked_apart_as_well_is_never_left_out_for_the_round(self):
+        """Found on the bench: Reinstall from dev of a screen whose update waited in the nightly round was left out with
+        that round when another screen of it failed. Asked for by itself, it leaves the round."""
+        owner = Owner()
+        line = owner.build_queue
+        owner.firmware.fail.add(('hall.yaml', 'install'))
+        owner.firmware.gate = asyncio.Event()
+        round = Round(automatic=True)
+        line.add('update', 'hall.yaml', one_step(line, 'hall.yaml'), screen='hall', round=round)
+        desk = line.add('update', 'desk.yaml', one_step(line, 'desk.yaml'), screen='desk', round=round)
+        kitchen = line.add('update', 'kitchen.yaml', one_step(line, 'kitchen.yaml'), screen='kitchen', round=round)
+        # A plugin for the kitchen joins its waiting update: the person asked for it apart.
+        self.assertIs(line.add('plugins', 'kitchen.yaml', one_step(line, 'kitchen.yaml'), screen='kitchen', plugins={'add': ['bus']}), kitchen)
+        self.assertIsNone(kitchen.round)
+        self.assertIs(desk.round, round)
+        owner.firmware.gate.set()
+        await round.wait()
+        await line.idle()
+        self.assertEqual((desk.state, kitchen.state), ('skipped', 'success'))
+
     async def test_a_screen_that_goes_or_is_renamed(self):
         owner = Owner()
         line = owner.build_queue

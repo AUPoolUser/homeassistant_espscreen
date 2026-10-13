@@ -85,7 +85,8 @@ function update(screen: Screen) {
 }
 // The dev channel's own button (docs/RELEASING.md, "Testing dev"): the newest dev keeps the firmware number, so it is
 // never an update by itself; this builds and installs it anyway, the way an update does, after whatever builds before it.
-const reinstallable = (screen: Screen) => inv.inventory.updates?.channel === "dev" && screen.online
+// It stands in the screen's details under its firmware, where an update would be.
+const reinstallable = (screen: Screen) => builds.devChannel && screen.online
   && Boolean(screen.update?.profile && screen.update?.host) && !builds.buildOf(screen) && !builds.updating.includes(screen.id);
 function startWithHost(screen: Screen) {
   const address = host.value.trim();
@@ -147,6 +148,8 @@ const lastLog = () => {
         v-tooltip="tip('brand', t('editor.sidebar.home'))" :aria-current="!scr.selected && ui.route === '' ? 'page' : undefined" @click="session.goHome">
         <TesseraMark class="mark" />
         <span class="txt">Tessera</span>
+        <!-- The dev app (added from the #dev URL) says so beside the name, so nobody mistakes it for the stable one. -->
+        <span v-if="builds.devChannel" class="chip channel-chip" id="dev-chip" :title="t('editor.sidebar.dev_chip')">dev</span>
       </button>
       <BuildIndicator />
       <button type="button" id="side-fold" class="icon-btn side-fold" :aria-pressed="sidebar.folded ? 'true' : 'false'"
@@ -242,6 +245,10 @@ const lastLog = () => {
             </template>
             <small v-else-if="scr.updateState(screen)!.kind !== 'running'" :class="{ failed: scr.updateState(screen)!.kind === 'failed' }">{{ scr.updateState(screen)!.text }}</small>
           </div>
+          <div v-if="reinstallable(screen)" class="screen-dev">
+            <button type="button" class="btn mini reinstall-dev" :title="t('editor.sidebar.update.reinstall_why')" @click="builds.startUpdate(screen, undefined, true)"><Icon name="update" />{{ t("editor.sidebar.update.reinstall") }}</button>
+            <small>{{ t("editor.sidebar.update.reinstall_short") }}</small>
+          </div>
           <div v-if="brokenOn(screen).length" class="screen-broken">
             <small class="screen-broken-head">{{ t("editor.broken.short", brokenOn(screen).length) }}</small>
             <BrokenList :tiles="brokenOn(screen)" :with-screen="false" />
@@ -255,7 +262,6 @@ const lastLog = () => {
           </form>
           <!-- What can be done with the screen, as the rows of a menu: quiet until pointed at, the one that removes in red. -->
           <div class="screen-actions-list">
-            <button v-if="reinstallable(screen)" type="button" class="act reinstall-dev" :title="t('editor.sidebar.update.reinstall_why')" @click="builds.startUpdate(screen, undefined, true)"><Icon name="update" />{{ t("editor.sidebar.update.reinstall") }}</button>
             <button v-if="renameFor !== screen.id" type="button" class="act rename-screen" @click="startRename(screen)"><Icon name="pencil-outline" />{{ t("editor.sidebar.rename.button") }}</button>
             <!-- The screen's YAML, Override YAML and the secrets they use, to build it with ESPHome on your own computer. -->
             <a v-if="screen.update?.profile" class="act screen-files" :href="`api/firmware/profiles/${encodeURIComponent(screen.update.profile)}/files`" download

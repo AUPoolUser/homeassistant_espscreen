@@ -807,7 +807,8 @@
         "ip_unknown": "Az IP-cím ismeretlen. Add meg egyszer; utána az új firmware maga jelenti.",
         "all_updated": "Minden elérhető kijelző már frissítve van.",
         "reinstall_dev": "Ugyanazt a firmware-t újratelepíteni csak a dev csatornán lehet.",
-        "all_on_the_way": "Minden kijelző, amelyhez frissítés van, már sorban áll vele."
+        "all_on_the_way": "Minden kijelző, amelyhez frissítés van, már sorban áll vele.",
+        "nothing_to_reinstall": "Most egy kijelzőt sem lehet újratelepíteni: mindegyik offline, már sorban áll, vagy nincs profilja ebben az alkalmazásban."
       },
       "remove": {
         "not_allowed": "Ez az alkalmazás nem távolíthat el integrációt a Home Assistantból. Töröld a kijelzőt magában a Home Assistantban: Beállítások → Eszközök és szolgáltatások.",
@@ -1515,7 +1516,8 @@
         "reinstall": "Újratelepítés dev-ről",
         "reinstall_why": "Újraépíti ezt a kijelzőt a legfrissebb dev-ből, és Wi-Fi-n telepíti. A dev verziószáma nem változik, ezért egy új dev sosem jelenik meg frissítésként.",
         "in_tessera": "Előbb frissítsd a Tesserában",
-        "in_tessera_why": "Előbb itt, a Tesserában frissítsd ezt a kijelzőt. Még az első telepítéskori flash-felosztása van, és a mostani firmware már nem fér bele, ezért az ESPHome Device Builder nem tudja frissíteni. A Tessera közben átállítja az új felosztásra, és megtartja a beállításait. Utána mindkét út működik."
+        "in_tessera_why": "Előbb itt, a Tesserában frissítsd ezt a kijelzőt. Még az első telepítéskori flash-felosztása van, és a mostani firmware már nem fér bele, ezért az ESPHome Device Builder nem tudja frissíteni. A Tessera közben átállítja az új felosztásra, és megtartja a beállításait. Utána mindkét út működik.",
+        "reinstall_short": "Lefordítja a legújabb dev változatot, és Wi-Fin telepíti."
       },
       "host": {
         "hint": "Az IP-cím, egyszer; az új firmware utána maga jelenti.",
@@ -1556,7 +1558,8 @@
         "done": "{name} eltávolítva.",
         "kept": "{name} eltávolítva. A(z) {file} profilja még az ESPHome mappában van."
       },
-      "home": "Kijelzőid áttekintése"
+      "home": "Kijelzőid áttekintése",
+      "dev_chip": "Ez az alkalmazás dev változata: minden kijelző, amit fordít, a dev ágból jön."
     },
     "palette": {
       "groups": {
@@ -2851,7 +2854,11 @@
         "all": "1 kijelző frissítése | Mind a(z) {n} kijelző frissítése",
         "whats_new": "A(z) {version} firmware újdonságai",
         "auto_label": "Automatikus frissítés minden éjjel",
-        "auto_hint": "03:00 és 06:00 között, egyszerre egy kijelzőt. Hiba esetén leáll, és jelzi a Home Assistantban."
+        "auto_hint": "03:00 és 06:00 között, egyszerre egy kijelzőt. Hiba esetén leáll, és jelzi a Home Assistantban.",
+        "reinstall_all": "1 kijelző újratelepítése dev-ből | Mind a(z) {n} kijelző újratelepítése dev-ből",
+        "reinstall_all_hint": "Minden kijelzőhöz lefordítja a legújabb dev változatot, egymás után, és Wi-Fin telepíti. Dev-en a verziószám nem változik, ezért egy új dev sosem jelenik meg frissítésként.",
+        "reinstall_all_confirm": "Újratelepíted 1 kijelzőt a legújabb dev-ből? Újraindul, amint rajta van a firmware. | Újratelepítesz {n} kijelzőt a legújabb dev-ből? Egymás után fordulnak, és mindegyik újraindul, amint rajta van a firmware.",
+        "reinstall_all_go": "Újratelepítés"
       },
       "claude": {
         "installed": "Skill telepítve. A Claude Code azonnal átveszi.",

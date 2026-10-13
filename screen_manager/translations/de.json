@@ -807,7 +807,8 @@
         "ip_unknown": "IP-Adresse unbekannt. Gib sie einmal ein; neue Firmware meldet sie danach selbst.",
         "all_updated": "Alle erreichbaren Bildschirme sind schon aktuell.",
         "reinstall_dev": "Dieselbe Firmware erneut installieren geht nur im Dev-Kanal.",
-        "all_on_the_way": "Jeder Bildschirm mit einem Update hat es schon auf dem Weg."
+        "all_on_the_way": "Jeder Bildschirm mit einem Update hat es schon auf dem Weg.",
+        "nothing_to_reinstall": "Gerade lässt sich kein Bildschirm neu installieren: Jeder ist offline, schon auf dem Weg oder hat kein Profil in dieser App."
       },
       "remove": {
         "not_allowed": "Diese App darf keine Integration aus Home Assistant entfernen. Entferne den Bildschirm in Home Assistant selbst, unter Einstellungen → Geräte & Dienste.",
@@ -1515,7 +1516,8 @@
         "reinstall": "Neu installieren von dev",
         "reinstall_why": "Baut diesen Bildschirm neu aus dem neuesten dev und installiert ihn über WLAN. Auf dev bleibt die Versionsnummer gleich, daher wird ein neues dev nie als Update angeboten.",
         "in_tessera": "Zuerst in Tessera aktualisieren",
-        "in_tessera_why": "Aktualisiere diesen Bildschirm zuerst hier in Tessera. Er hat noch die Flash-Aufteilung seiner ersten Installation, und die aktuelle Firmware passt nicht mehr hinein, darum kann ESPHome Device Builder ihn nicht aktualisieren. Tessera stellt ihn dabei auf die neue Aufteilung um und behält seine Einstellungen. Danach geht beides."
+        "in_tessera_why": "Aktualisiere diesen Bildschirm zuerst hier in Tessera. Er hat noch die Flash-Aufteilung seiner ersten Installation, und die aktuelle Firmware passt nicht mehr hinein, darum kann ESPHome Device Builder ihn nicht aktualisieren. Tessera stellt ihn dabei auf die neue Aufteilung um und behält seine Einstellungen. Danach geht beides.",
+        "reinstall_short": "Baut den neuesten Dev-Stand und installiert ihn über WLAN."
       },
       "host": {
         "hint": "Gib einmal die IP-Adresse ein; neue Firmware meldet sie selbst.",
@@ -1556,7 +1558,8 @@
         "done": "{name} wurde entfernt.",
         "kept": "{name} wurde entfernt. Das Profil {file} liegt noch im ESPHome-Ordner."
       },
-      "home": "Übersicht deiner Bildschirme"
+      "home": "Übersicht deiner Bildschirme",
+      "dev_chip": "Das ist die Dev-Version der App: Jeder Bildschirm, den sie baut, kommt vom Dev-Branch."
     },
     "palette": {
       "groups": {
@@ -2851,7 +2854,11 @@
         "all": "1 Bildschirm aktualisieren | Alle {n} Bildschirme aktualisieren",
         "whats_new": "Neu in Firmware {version}",
         "auto_label": "Jede Nacht automatisch aktualisieren",
-        "auto_hint": "Zwischen 03:00 und 06:00 Uhr, ein Bildschirm nach dem anderen. Stoppt bei einem Fehler und meldet ihn in Home Assistant."
+        "auto_hint": "Zwischen 03:00 und 06:00 Uhr, ein Bildschirm nach dem anderen. Stoppt bei einem Fehler und meldet ihn in Home Assistant.",
+        "reinstall_all": "1 Bildschirm von Dev neu installieren | Alle {n} Bildschirme von Dev neu installieren",
+        "reinstall_all_hint": "Baut für jeden Bildschirm den neuesten Dev-Stand, einen nach dem anderen, und installiert ihn über WLAN. Auf Dev bleibt die Versionsnummer gleich, darum wird ein neuer Dev-Stand nie als Update angeboten.",
+        "reinstall_all_confirm": "1 Bildschirm vom neuesten Dev-Stand neu installieren? Er startet neu, sobald die Firmware drauf ist. | {n} Bildschirme vom neuesten Dev-Stand neu installieren? Sie werden nacheinander gebaut, und jeder startet neu, sobald seine Firmware drauf ist.",
+        "reinstall_all_go": "Neu installieren"
       },
       "claude": {
         "installed": "Skill installiert. Claude Code nutzt ihn sofort.",

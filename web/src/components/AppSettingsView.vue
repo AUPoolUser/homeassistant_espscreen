@@ -2,8 +2,10 @@
 // Everything around the screens: firmware updates, language and region, alerts, Claude.
 import { computed, ref } from "vue";
 import { useBusy } from "../composables/useBusy";
+import { useConfirm } from "../composables/useConfirm";
 import { haProfile, matchLanguage, numberText, type NumberMarks, type NumberStyle, STYLE_MARKS, t } from "../i18n";
 import BuildLog from "./BuildLog.vue";
+import Icon from "./ui/Icon.vue";
 import { useUiStore } from "../stores/ui";
 import { useRegionStore } from "../stores/region";
 import { useBuildsStore } from "../stores/builds";
@@ -41,6 +43,12 @@ const targetNotes = computed(() => {
   if (!Array.isArray(sections) || !target) return [];
   return sections.filter((s) => s.firmware === target).flatMap((s) => s.lines).slice(0, 10);
 });
+// Reinstall all from dev asks first: it builds every screen again, which takes a while and restarts each one.
+const { confirm } = useConfirm();
+async function reinstallAll() {
+  const count = u.value?.reinstallable || 0;
+  if (await confirm(t("editor.settings.updates.reinstall_all_confirm", count), { confirm: t("editor.settings.updates.reinstall_all_go") })) await builds.runUpdateAll(true);
+}
 const skill = computed(() => inv.inventory.claude_skill);
 const installing = ref(false);
 async function install() {
@@ -107,7 +115,12 @@ const useProfile = () => whileSaving(() => region.saveLanguage(different.value))
         <p id="updates-hint">{{ updatesHint }}</p>
         <!-- Every build on the way, whoever asked: an update, a plugin build, an install (the builds store, stores/builds.ts). -->
         <BuildLog v-for="screen in builds.buildingScreens" :key="screen.id" :screen="screen" name />
-        <button v-if="u.pending && u.pending >= 2" id="update-all" type="button" class="btn primary" @click="builds.runUpdateAll">{{ t("editor.settings.updates.all", u.pending) }}</button>
+        <button v-if="u.pending && u.pending >= 2" id="update-all" type="button" class="btn primary" @click="builds.runUpdateAll()">{{ t("editor.settings.updates.all", u.pending) }}</button>
+        <!-- The dev app (docs/RELEASING.md, "Testing dev"): every screen again with the newest dev, one after the other. -->
+        <div v-if="builds.devChannel && u.reinstallable" class="dev-tools" id="reinstall-all-wrap">
+          <button id="reinstall-all" type="button" class="btn" @click="reinstallAll"><Icon name="update" />{{ t("editor.settings.updates.reinstall_all", u.reinstallable) }}</button>
+          <small>{{ t("editor.settings.updates.reinstall_all_hint") }}</small>
+        </div>
         <details v-if="targetNotes.length && !builds.anyBuilding" class="whatsnew">
           <summary>{{ t("editor.settings.updates.whats_new", { version: u.target }) }}</summary>
           <ul><li v-for="line in targetNotes" :key="line">{{ line }}</li></ul>
