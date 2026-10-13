@@ -181,6 +181,19 @@ class UpdaterTests(unittest.IsolatedAsyncioTestCase):
             m.ha.states['text.fw1'] = {'state': FIRMWARE_VERSION}
             self.assertEqual(m.updates.pending(), [])
 
+    async def test_a_failed_round_is_dropped_once_the_screen_runs_its_version(self):
+        """A round refused while another build ran stays news only until the screen runs what it went for (installed
+        another way): a screen that runs well shows no failure, one still short of it does."""
+        with tempfile.TemporaryDirectory() as tmp:
+            m = self.setup_manager(tmp)
+            m.updates.results['text.screen1'] = {'time': 1.0, 'state': 'failed', 'version': FIRMWARE_VERSION,
+                                                 'message': 'A build or installation is already running.'}
+            first, _ = m.inventory()[0]
+            self.assertEqual(m.updates.state_for(first)['result']['state'], 'failed')
+            m.ha.states['text.fw1'] = {'state': FIRMWARE_VERSION}
+            first, _ = m.inventory()[0]
+            self.assertIsNone(m.updates.state_for(first)['result'])
+
     async def test_a_fix_for_one_board_is_offered_to_that_board_alone(self):
         """A board file that went ahead of the shared firmware (app 0.3.21): its screens are offered its version, a screen
         of any other board on the shared version is up to date, and the round waits for the board's version."""

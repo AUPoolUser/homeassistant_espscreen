@@ -188,10 +188,16 @@ class Updater:
         target = self.target_for(screen, profiles)
         build = self.build_of(screen['id'])
         state = build.state if build else 'idle'
+        result = self.results.get(screen['id'])
+        # A failed round is over once the screen runs what it went for (installed another way, or a later round): it
+        # runs well, so the failure is no longer news. Not while the language it went for is still due.
+        if (result and result.get('state') == 'failed' and screen.get('online') and version and not language
+                and parse_version(result.get('version')) and version >= parse_version(result.get('version'))):
+            result = None
         return {'available': bool(version and version < parse_version(target)) or (bool(version) and language),
                 'language': bool(version) and language, 'target': target,
                 'profile': profile, 'host': host, 'state': state, 'phase': build.phase if state == 'running' else None,
-                'result': shown_result(self.results.get(screen['id']))}
+                'result': shown_result(result)}
 
     def summary(self, screens=None, profiles=None):
         # The changelog goes with the full inventory only (app 0.2.78): this summary is in every live update of the page.

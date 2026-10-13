@@ -1,5 +1,8 @@
 ## Unreleased
 
+- **A screen that runs well no longer shows an old failed update.** An update that failed (for instance because another
+  build was running at that moment) no longer shows as an error with a red light once the screen runs the version it
+  went for, installed another way or by a later update.
 - **Editor: large screens get room.** A page of an 8- or 10-inch screen is drawn larger, as large as its glass up to
   what fits in the window, instead of the same size as a 4-inch one. A zoom in the corner below the pages makes every
   page larger or smaller (50 to 200 %; a click on the percentage goes back to 100 %), and the browser remembers it.
