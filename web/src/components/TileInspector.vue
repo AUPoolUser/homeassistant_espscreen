@@ -6,6 +6,7 @@ import { computed, ref, watch } from "vue";
 import { t } from "../i18n";
 import { domainInfo, entriesOf, inlineControlKind, pageTarget } from "../model/layout";
 import { titleOf } from "../model/pages";
+import { copyChosen, shortcut } from "../editor/clipboard";
 import PluginTileInspector from "./PluginTileInspector.vue";
 import TileEntityFix from "./TileEntityFix.vue";
 import type { Tile } from "../types";
@@ -215,7 +216,8 @@ const backgroundName = computed(() => inv.inventory.backgrounds?.[props.tile.opt
         <UiMenuItem id="tile-rename" icon="pencil-outline" @select="insp.renameTile(tile)">{{ t("editor.naming.rename") }}</UiMenuItem>
         <UiMenuItem v-if="domain !== 'screen'" icon="database-search-outline" @select="inspect">{{ t("editor.common.read_current_data") }}</UiMenuItem>
         <UiMenuItem v-if="domain !== 'screen'" icon="pencil-outline" @select="insp.entityPickerOpen = true">{{ t("editor.broken.change") }}</UiMenuItem>
-        <UiMenuSeparator v-if="domain !== 'screen'" />
+        <UiMenuItem id="tile-copy" icon="content-copy" :hint="shortcut('C')" @select="copyChosen">{{ t("editor.selection.copy") }}</UiMenuItem>
+        <UiMenuSeparator />
         <UiMenuItem icon="delete-outline" danger hint="⌫" @select="removeTile(tile)">{{ t("editor.common.remove") }}</UiMenuItem>
       </UiMenu>
     </template>

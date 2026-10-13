@@ -24,6 +24,7 @@ import { useScreenStore } from "../stores/screen";
 import { useSessionStore } from "../stores/session";
 import { useInventoryStore } from "../stores/inventory";
 import { removeTile } from "../editor/tiles";
+import { copyChosen, cutChosen, pasteCopied, removeTiles, selectPage } from "../editor/clipboard";
 import { useDocumentStore } from "../stores/document";
 import { useInspectorStore } from "../stores/inspector";
 
@@ -102,11 +103,20 @@ function onKey(e: KeyboardEvent) {
     if (ui.menuOpen) closeMenu();
     else if (ui.palette) return;
     else if (insp.inspector && !(e.target as HTMLElement)?.closest?.(".picker")) insp.closeInspector();
-  } else if ((e.key === "Delete" || e.key === "Backspace") && !e.defaultPrevented && insp.inspector?.kind === "tile" && doc.currentTile
-    && !isEditableTarget(e.target) && !(e.target as HTMLElement)?.closest?.("select, [role='menu'], dialog")) {
-    // The selected tile goes, as a selected object does in Keynote (app 0.4.32); Undo brings it back.
+  } else if ((e.key === "Delete" || e.key === "Backspace") && !e.defaultPrevented && insp.chosenTiles.length && !isEditableTarget(e.target) && !inMenu(e)) {
+    // The selected tile goes, as a selected object does in Keynote (app 0.4.32), and so do several chosen together; Undo
+    // brings them back.
     e.preventDefault();
-    removeTile(doc.currentTile);
+    if (insp.inspector?.kind === "tiles") removeTiles(insp.chosenTiles);
+    else removeTile(insp.chosenTiles[0]);
+  } else if (clipboardKey(e)) {
+    // Copy, cut and paste tiles, and every tile of the page chosen, as in Keynote: on the layout, never in a field, and a
+    // copy only while no text of the page is selected, which the browser copies instead.
+    const key = e.key.toLowerCase(), chosen = insp.chosenTiles.length > 0, text = Boolean(window.getSelection()?.toString());
+    if (key === "c" && chosen && !text) { e.preventDefault(); copyChosen(); }
+    else if (key === "x" && chosen && !text) { e.preventDefault(); cutChosen(); }
+    else if (key === "v") { e.preventDefault(); void pasteCopied(); }
+    else if (key === "a") { e.preventDefault(); selectPage(); }
   } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
     e.preventDefault();
     if (doc.dirty) doc.save();
@@ -114,6 +124,12 @@ function onKey(e: KeyboardEvent) {
     e.preventDefault();
     if (e.shiftKey) doc.redo(); else doc.undo();
   }
+}
+const inMenu = (e: KeyboardEvent) => Boolean((e.target as HTMLElement)?.closest?.("select, [role='menu'], dialog"));
+// ⌘ or Ctrl with C, X, V or A, meant for the tiles: on the layout, with no field, menu or question in the way.
+function clipboardKey(e: KeyboardEvent) {
+  return (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && ["c", "x", "v", "a"].includes(e.key.toLowerCase()) && !e.defaultPrevented
+    && ui.tab === "layout" && !ui.route && !ui.palette && Boolean(doc.layout) && !isEditableTarget(e.target) && !inMenu(e);
 }
 useEventListener(document, "keydown", beforeKey, { capture: true });
 useEventListener(document, "keydown", onKey);

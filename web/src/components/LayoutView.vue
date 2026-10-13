@@ -5,6 +5,8 @@
 import { useSwipe } from "@vueuse/core";
 import { computed, ref } from "vue";
 import { useAtMost } from "../composables/useWidths";
+import { useBandSelect } from "../composables/useBandSelect";
+import { modifierKey, shortcut } from "../editor/clipboard";
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from "reka-ui";
 import { t } from "../i18n";
 import { entriesOf } from "../model/layout";
@@ -88,7 +90,12 @@ const redoText = computed(() => doc.redoWhat ? t("editor.undo.redo", { what: doc
 // Page buttons and swiping off: a page no Go to page tile reaches, or one without a way back.
 const reachHint = computed(() => pageReachWarning());
 // Everything the page used to explain in small (i) buttons beside the count, now behind one ? in the toolbar.
-const tips: [IconName, string][] = [["pencil-outline", "change"], ["plus", "add"], ["drag", "move"], ["view-column-outline", "pages"], ["sitemap-outline", "map"], ["play", "preview"]];
+const tips: [IconName, string][] = [["pencil-outline", "change"], ["plus", "add"], ["drag", "move"], ["content-copy", "copy"], ["view-column-outline", "pages"], ["sitemap-outline", "map"], ["play", "preview"]];
+// The keys of copy and paste as this computer writes them (editor/clipboard.ts).
+const keys = { mod: modifierKey(), copy: shortcut("C"), paste: shortcut("V") };
+// A band dragged from beside the tiles chooses the tiles it touches (composables/useBandSelect.ts).
+const canvasView = ref<HTMLElement | null>(null);
+const { band } = useBandSelect(canvasView);
 function onCanvasClick(e: MouseEvent) {
   // A click beside the pages closes the drawer; the cards and the bar handle their own clicks.
   if ((e.target as HTMLElement).closest(".device, .page-label, .page-head, .editor-toolbar, .map-node, .map-links, button, select, input")) return;
@@ -97,7 +104,7 @@ function onCanvasClick(e: MouseEvent) {
 </script>
 
 <template>
-  <div class="canvas" id="canvas" @click="onCanvasClick">
+  <div ref="canvasView" class="canvas" id="canvas" @click="onCanvasClick">
     <div v-if="!doc.layout" class="notice" role="status">
       <Icon name="information-outline" />
       <span class="notice-text">{{ scr.currentScreen?.page_document?.format === 'legacy-v1' ? scr.currentScreen.page_document.migrationError : t('editor.pages.wait_grid') }}</span>
@@ -128,7 +135,7 @@ function onCanvasClick(e: MouseEvent) {
             <h4>{{ t('editor.layout.help.title') }}</h4>
             <div v-for="[icon, key] in tips" :key="key" class="help-tip-row">
               <span class="help-tip-icon"><Icon :name="icon" /></span>
-              <span><b>{{ t(`editor.layout.help.${key}_label`) }}</b> {{ t(`editor.layout.help.${key}`) }}</span>
+              <span><b>{{ t(`editor.layout.help.${key}_label`) }}</b> {{ t(`editor.layout.help.${key}`, keys) }}</span>
             </div>
           </PopoverContent>
         </PopoverPortal>
@@ -205,6 +212,7 @@ function onCanvasClick(e: MouseEvent) {
     </div>
     </template>
   </div>
+  <Teleport to="body"><div v-if="band" class="select-band" :style="{ left: `${band.left}px`, top: `${band.top}px`, width: `${band.width}px`, height: `${band.height}px` }"></div></Teleport>
   <Library v-if="doc.layout" />
   <NavigationPreview v-if="ui.previewOpen && doc.document" :key="scr.selected || ''" @close="ui.previewOpen = false" />
   <PageWizard v-if="ui.pageWizardOpen" :key="scr.selected || ''" @close="ui.pageWizardOpen = false" />
@@ -213,6 +221,7 @@ function onCanvasClick(e: MouseEvent) {
 </template>
 
 <style scoped>
+.select-band { position: fixed; z-index: 40; pointer-events: none; border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 3px; }
 .focused-page { padding: 18px 0; justify-content: center; }
 .back-map { align-self: flex-start; }
 .page-pills { display: flex; gap: 6px; overflow-x: auto; width: 100%; padding-bottom: 4px; }

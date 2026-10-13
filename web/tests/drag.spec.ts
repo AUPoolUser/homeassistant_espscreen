@@ -1,6 +1,7 @@
 // What a drag near an edge scrolls (app 0.2.78): on a phone the row of pages sideways and the page itself up and
 // down, on a wide window the canvas both ways.
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { HOLD_MS } from "../src/composables/usePointerDrag";
 import { dragScrollers, edgeStep, nearestRect, scrollsAlong, slotAt, vDrag } from "../src/drag";
 import { useDragStore } from '../src/stores/drag';
 import { useDocumentStore } from "../src/stores/document";
@@ -117,5 +118,57 @@ describe("who a press belongs to", () => {
     pointer("pointerdown", pages.querySelector(".key-empty")!, 0);
     pointer("pointermove", card, 20);
     expect(useDragStore().active).toBe(false);
+  });
+});
+
+// Chrome on Android decides when a finger lands whether its moves can be stopped: a card carries a touchmove listener
+// that may stop them from the start, and stops them only while a drag is under way; a finger held on it opens no menu.
+describe("a finger on a card", () => {
+  function touch(type: string, target: Element) {
+    const event = new Event(type, { bubbles: true, cancelable: true });
+    target.dispatchEvent(event);
+    return event;
+  }
+  function pointer(type: string, target: Element, x: number) {
+    const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: 10, button: 0 });
+    Object.defineProperties(event, { pointerId: { value: 2 }, pointerType: { value: "touch" } });
+    target.dispatchEvent(event);
+    return event;
+  }
+  it("is followed by a listener that may stop the page scrolling, before any drag begins", () => {
+    vi.useFakeTimers();
+    pages.innerHTML = '<div class="tile"></div>';
+    const card = pages.querySelector<HTMLElement>(".tile")!, added: [string, unknown][] = [];
+    const add = card.addEventListener.bind(card);
+    card.addEventListener = ((type: string, listener: any, options?: any) => { added.push([type, options]); add(type, listener, options); }) as any;
+    vDrag.mounted!(card, { value: { kind: "tile", tile: { entity: "light.a", name: "", slot: 0, id: "a" } } } as any, null as any, null as any);
+    expect(added).toContainEqual(["touchmove", { passive: false }]);
+    // Scrolling stays the page's until the hold makes it a drag.
+    expect(touch("touchmove", card).defaultPrevented).toBe(false);
+    pointer("pointerdown", card, 0);
+    expect(touch("contextmenu", card).defaultPrevented).toBe(true);
+    vi.advanceTimersByTime(HOLD_MS);
+    expect(useDragStore().active).toBe(true);
+    expect(touch("touchmove", card).defaultPrevented).toBe(true);
+    pointer("pointerup", document.documentElement, 0);
+    expect(useDragStore().active).toBe(false);
+    expect(touch("contextmenu", card).defaultPrevented).toBe(false);
+  });
+  it("keeps stopping the moves of a finger whose node the mockup drew away", () => {
+    vi.useFakeTimers();
+    pages.innerHTML = '<div class="tile"><span class="nm">Lamp</span></div>';
+    const card = pages.querySelector<HTMLElement>(".tile")!, name = card.querySelector(".nm")!;
+    vDrag.mounted!(card, { value: { kind: "tile", tile: { entity: "light.a", name: "", slot: 0, id: "a" } } } as any, null as any, null as any);
+    touch("touchstart", name);
+    pointer("pointerdown", name, 0);
+    vi.advanceTimersByTime(HOLD_MS);
+    expect(useDragStore().active).toBe(true);
+    // The card is drawn again: the node the finger landed on leaves the page, and Chrome still sends it every move.
+    name.remove();
+    expect(touch("touchmove", name).defaultPrevented).toBe(true);
+    pointer("pointerup", document.documentElement, 0);
+    // Once the finger lifts the node lets go.
+    touch("touchend", name);
+    expect(touch("touchmove", name).defaultPrevented).toBe(false);
   });
 });

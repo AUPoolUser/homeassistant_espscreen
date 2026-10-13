@@ -1714,6 +1714,8 @@
         "add": "Fai clic su uno spazio vuoto, poi su qualcosa nella libreria. Oppure trascinalo sulla pagina.",
         "move_label": "Sposta",
         "move": "Trascina un riquadro. Rilascialo sulla pagina successiva per una nuova pagina.",
+        "copy_label": "Copia",
+        "copy": "Tieni premuto {mod} o Maiusc e fai clic sui riquadri, oppure trascina un riquadro di selezione da accanto. {copy}, poi {paste} su un'altra pagina o un altro schermo.",
         "pages_label": "Pagine",
         "pages": "Trascina una pagina dal suo numero. Il resto è nel suo menu ···.",
         "map_label": "Mappa",
@@ -1721,7 +1723,8 @@
         "preview_label": "Anteprima",
         "preview": "Prova lo scorrimento e i riquadri di pagina. In casa non si accende nulla."
       },
-      "copy_needs_migration": "Apri una volta lo schermo di origine perché il suo layout passi alle pagine, poi copialo."
+      "copy_needs_migration": "Apri una volta lo schermo di origine perché il suo layout passi alle pagine, poi copialo.",
+      "removed_several": "1 riquadro rimosso | {n} riquadri rimossi"
     },
     "page": {
       "label": "Pagina {page}",
@@ -3671,6 +3674,22 @@
       "landscape": "Orizzontale",
       "portrait": "Verticale",
       "turn_hint": "Quando ruota, lo schermo si riavvia una volta per misurare la nuova immagine."
+    },
+    "clipboard": {
+      "copied": "1 riquadro copiato. Incollalo con {key} su qualsiasi pagina o schermo | {n} riquadri copiati. Incollali con {key} su qualsiasi pagina o schermo",
+      "cut": "1 riquadro tagliato | {n} riquadri tagliati",
+      "pasted": "1 riquadro incollato | {n} riquadri incollati",
+      "pasted_pages": "{n} riquadri incollati, il resto su una nuova pagina | {n} riquadri incollati, il resto su {pages} nuove pagine",
+      "pasted_some": "{n} riquadri su {total} incollati. Questo schermo non ha spazio per gli altri",
+      "none_fit": "Niente incollato. Questo schermo non ha spazio per questi riquadri",
+      "empty": "Ancora niente copiato"
+    },
+    "selection": {
+      "title": "1 riquadro | {n} riquadri",
+      "leave": "Togli {name} dalla selezione",
+      "copy": "Copia",
+      "hint": "{copy} copia i riquadri con tutte le loro impostazioni. Scegli una pagina o una cella, qui o su un altro schermo, e premi {paste}.",
+      "remove": "Rimuovi riquadro | Rimuovi {n} riquadri"
     }
   }
 }

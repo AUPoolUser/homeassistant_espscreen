@@ -11,6 +11,7 @@ import SaverAdd from "./SaverAdd.vue";
 import SaverInspector from "./SaverInspector.vue";
 import InspectPanel from "./InspectPanel.vue";
 import PageInspector from "./PageInspector.vue";
+import SelectionInspector from "./SelectionInspector.vue";
 import { useUiStore } from "../stores/ui";
 import { useDocumentStore } from "../stores/document";
 import { useInspectorStore } from "../stores/inspector";
@@ -30,6 +31,7 @@ const open = computed(() => Boolean(insp.inspector && (insp.inspector.kind !== "
     <div v-if="insp.inspector" class="drawer-inner">
       <!-- Keyed by the tile: another tile's settings start as a tile's settings start, with More settings and every chooser closed. -->
       <TileInspector v-if="insp.inspector.kind === 'tile' && doc.currentTile" :key="doc.currentTile.id" :tile="doc.currentTile" />
+      <SelectionInspector v-else-if="insp.inspector.kind === 'tiles'" />
       <TopbarInspector v-else-if="insp.inspector.kind === 'bar'" :index="insp.inspector.index" />
       <TopbarAdd v-else-if="insp.inspector.kind === 'bar-add'" />
       <SaverItemInspector v-else-if="insp.inspector.kind === 'saver-item'" :index="insp.inspector.index" />

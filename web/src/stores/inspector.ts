@@ -14,6 +14,8 @@ import { useUiStore } from "./ui";
 
 export type Inspector =
   | { kind: "tile" }
+  // Several tiles chosen at once (Cmd or Shift and a click, or a band dragged over them): stores/inspector.ts selection.
+  | { kind: "tiles" }
   | { kind: "bar"; index: number }
   | { kind: "bar-add" }
   | { kind: "saver-item"; index: number }
@@ -48,6 +50,19 @@ export const useInspectorStore = defineStore("inspector", () => {
   // asking again for the same one focuses it again.
   const naming = ref<{ kind: "tile" | "page"; id: string; asked: number } | null>(null);
   let asked = 0;
+  // The tiles chosen together, by id, in the order they were chosen: two or more while the drawer shows them
+  // (SelectionInspector), none otherwise. One tile chosen is the tile's own drawer.
+  const selection = ref<string[]>([]);
+  const selectedTiles = computed(() => {
+    const tiles = doc.layout?.tiles || [];
+    return selection.value.map((id) => tiles.find((tile) => tile.id === id)).filter((tile): tile is Tile => Boolean(tile));
+  });
+  // Every tile chosen: the several, or the one whose drawer is open.
+  const chosenTiles = computed<Tile[]>(() => inspector.value?.kind === "tiles" ? selectedTiles.value
+    : inspector.value?.kind === "tile" && doc.currentTile ? [doc.currentTile] : []);
+  // The tiles under a band being drawn (composables/useBandSelect.ts), chosen once it is let go.
+  const band = ref<string[] | null>(null);
+  const isPicked = (tile: Tile) => Boolean(tile.id) && ((inspector.value?.kind === "tiles" && selection.value.includes(tile.id!)) || Boolean(band.value?.includes(tile.id!)));
   // A marked cell forgotten (another page, the library closed), a marked key place kept.
   function forgetCell() { if (insert.value?.kind === "cell") insert.value = null; }
 
@@ -60,7 +75,28 @@ export const useInspectorStore = defineStore("inspector", () => {
   }
 
   // ---- What the drawer shows ----
+  /** These tiles chosen: none closes the drawer, one opens its own, more show what they have in common. Only tiles on the
+   * grid, not keys under a bedside clock. */
+  function selectTiles(ids: readonly string[]) {
+    const tiles = doc.layout?.tiles || [];
+    const found = [...new Set(ids)].map((id) => tiles.find((tile) => tile.id === id && tile.in === undefined)).filter((tile): tile is Tile => Boolean(tile));
+    if (!found.length) { if (inspector.value?.kind === "tiles" || inspector.value?.kind === "tile") closeInspector(); return; }
+    if (found.length === 1) { openTile(found[0]); return; }
+    iconPickerOpen.value = false; actionPickerOpen.value = false; entityPickerOpen.value = false; optionPreview.value = null;
+    // The drawer first: a tile's drawer closes itself (and lets go of every choice) once its tile is no longer chosen.
+    inspector.value = { kind: "tiles" };
+    selection.value = found.map((tile) => tile.id!);
+    doc.selectedTileId = null;
+    doc.selectedPageId = doc.document?.pages.find((page) => page.tiles.some((item) => item.id === found[0].id))?.id || doc.selectedPageId;
+  }
+  /** A tile taken into the choice, or out of it (Cmd, Ctrl or Shift and a click): the tile already open counts along. */
+  function toggleTile(tile: Tile) {
+    if (!tile.id || tile.in !== undefined) return;
+    const now = chosenTiles.value.map((item) => item.id!);
+    selectTiles(now.includes(tile.id) ? now.filter((id) => id !== tile.id) : [...now, tile.id]);
+  }
   function openTile(tile: Tile) {
+    selection.value = [];
     if (!doc.isSelected(tile)) { iconPickerOpen.value = false; actionPickerOpen.value = false; actionSearch.value = ""; entityPickerOpen.value = false; }
     doc.selectedTileId = tile.id || null;
     doc.selectedPageId = doc.document?.pages.find((page) => page.tiles.some((item) => item.id === tile.id ||
@@ -69,6 +105,7 @@ export const useInspectorStore = defineStore("inspector", () => {
     entities.loadCapabilities([tile.entity]);
   }
   function openPage(id: string) {
+    selection.value = [];
     doc.selectedPageId = id; doc.selectedTileId = null;
     inspector.value = { kind: "page", id };
   }
@@ -113,6 +150,7 @@ export const useInspectorStore = defineStore("inspector", () => {
   }
   function closeInspector() {
     inspector.value = null;
+    selection.value = [];
     doc.selectedTileId = null;
     optionPreview.value = null;
   }
@@ -120,6 +158,12 @@ export const useInspectorStore = defineStore("inspector", () => {
   // ---- Closing by itself ----
   // A tile's drawer goes with its tile (removed, its page removed, undone), at once, so nothing draws a tile that is gone.
   watch(() => doc.currentTile, (tile) => { if (!tile && inspector.value?.kind === "tile") closeInspector(); }, { flush: "sync" });
+  // Tiles chosen together that go (removed, undone) leave the choice; one left is that tile's own drawer.
+  watch(() => inspector.value?.kind === "tiles" ? selectedTiles.value : null, (left) => {
+    if (left && left.length !== selection.value.length) selectTiles(left.map((tile) => tile.id!));
+  });
+  // Anything else opened in the drawer lets go of the tiles chosen together.
+  watch(inspector, (open) => { if (open?.kind !== "tiles") selection.value = []; }, { flush: "sync" });
   // The screensaver's drawers belong to the settings: they close when the layout comes back.
   watch(() => ui.tab, (tab) => { if (tab !== "settings" && inspector.value?.kind.startsWith("saver")) closeInspector(); });
   // Another screen, none, or another draft of this one (copied, imported, the saved one read again): every drawer closes,
@@ -130,7 +174,7 @@ export const useInspectorStore = defineStore("inspector", () => {
   }));
 
   return {
-    inspector, iconPickerOpen, actionPickerOpen, actionSearch, entityPickerOpen, insert, insertAt, insertKey, optionPreview, naming, renameTile, renamePage,
+    inspector, selection, band, selectedTiles, chosenTiles, isPicked, selectTiles, toggleTile, iconPickerOpen, actionPickerOpen, actionSearch, entityPickerOpen, insert, insertAt, insertKey, optionPreview, naming, renameTile, renamePage,
     // What the mockup reads as it draws (stores/lookup.ts).
     ...lookups({ previewed }),
     forgetCell, openTile, openPage, openBar, openBarAdd, openSaverItem, openSaverStep, openSaverAdd, closeInspector,

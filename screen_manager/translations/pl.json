@@ -1714,6 +1714,8 @@
         "add": "Kliknij puste miejsce, a potem coś w bibliotece. Albo przeciągnij to na stronę.",
         "move_label": "Przenoszenie",
         "move": "Przeciągnij kafelek. Upuść go na następnej stronie, aby utworzyć nową.",
+        "copy_label": "Kopiuj",
+        "copy": "Przytrzymaj {mod} lub Shift i klikaj kafelki albo przeciągnij ramkę obok nich. {copy}, a potem {paste} na innej stronie lub ekranie.",
         "pages_label": "Strony",
         "pages": "Przeciągnij stronę za jej numer. Resztę znajdziesz w jej menu ···.",
         "map_label": "Mapa",
@@ -1721,7 +1723,8 @@
         "preview_label": "Podgląd",
         "preview": "Wypróbuj przesuwanie i kafelki stron. W domu nic się nie przełącza."
       },
-      "copy_needs_migration": "Otwórz raz ekran źródłowy, aby jego układ przeszedł na strony, a potem go skopiuj."
+      "copy_needs_migration": "Otwórz raz ekran źródłowy, aby jego układ przeszedł na strony, a potem go skopiuj.",
+      "removed_several": "Usunięto 1 kafelek | Usunięto {n} kafelki | Usunięto {n} kafelków"
     },
     "page": {
       "label": "Strona {page}",
@@ -3671,6 +3674,22 @@
       "landscape": "Poziomo",
       "portrait": "Pionowo",
       "turn_hint": "Po obróceniu ekran raz uruchamia się ponownie, aby zmierzyć nowy obraz."
+    },
+    "clipboard": {
+      "copied": "Skopiowano 1 kafelek. Wklej go skrótem {key} na dowolnej stronie lub ekranie | Skopiowano {n} kafelki. Wklej je skrótem {key} na dowolnej stronie lub ekranie | Skopiowano {n} kafelków. Wklej je skrótem {key} na dowolnej stronie lub ekranie",
+      "cut": "Wycięto 1 kafelek | Wycięto {n} kafelki | Wycięto {n} kafelków",
+      "pasted": "Wklejono 1 kafelek | Wklejono {n} kafelki | Wklejono {n} kafelków",
+      "pasted_pages": "Wklejono {n} kafelków, resztę na nowej stronie | Wklejono {n} kafelków, resztę na {pages} nowych stronach | Wklejono {n} kafelków, resztę na {pages} nowych stronach",
+      "pasted_some": "Wklejono {n} z {total} kafelków. Ten ekran nie ma miejsca na pozostałe",
+      "none_fit": "Nic nie wklejono. Ten ekran nie ma miejsca na te kafelki",
+      "empty": "Nic jeszcze nie skopiowano"
+    },
+    "selection": {
+      "title": "1 kafelek | {n} kafelki | {n} kafelków",
+      "leave": "Pomiń {name}",
+      "copy": "Kopiuj",
+      "hint": "{copy} kopiuje kafelki ze wszystkimi ustawieniami. Wybierz stronę lub komórkę, tutaj lub na innym ekranie, i naciśnij {paste}.",
+      "remove": "Usuń kafelek | Usuń {n} kafelki | Usuń {n} kafelków"
     }
   }
 }

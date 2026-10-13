@@ -54,6 +54,18 @@ export const vDrag: ObjectDirective<HTMLElement, DragSource | null> = {
     const cancel = () => { if (drag.element === element && !useDragStore().active) { clearTimeout(drag.timer); drag.start = null; } };
     element.addEventListener("pointerup", cancel);
     element.addEventListener("pointercancel", cancel);
+    // Chrome on Android (a Samsung phone, the Home Assistant app) sends every move of a finger to the node it landed
+    // on, also once the mockup has drawn that node away: the card under the finger is drawn again as the tile is carried
+    // over another one. Such a node is no longer in the page, so the listener the drag adds to the page no longer heard
+    // its moves, the page scrolled under the finger, Chrome cancelled the pointer and the tile went back halfway. The node
+    // itself now stops its moves while a drag is under way, for as long as the finger is down (Safari on iOS never
+    // showed it). The card's own listener is there from the start, so a move over it can be stopped whatever else listens to the page. A finger held on the
+    // card is also no long press: no menu, no text selected, no picture of the card dragged out of the page, each of
+    // which ends the pointer as well.
+    element.addEventListener("touchmove", blockScroll, { passive: false });
+    element.addEventListener("touchstart", (e) => holdNode(e.target), { passive: true });
+    element.addEventListener("contextmenu", (e) => { if (drag.element === element && (drag.start || useDragStore().active)) e.preventDefault(); });
+    element.addEventListener("dragstart", (e) => e.preventDefault());
   },
   updated(element, binding) {
     (element as any).__dragSource = binding.value;
@@ -120,7 +132,7 @@ export function dragScrollers(doc: Document): { x: Element | null; y: Element | 
   };
 }
 // The part of a scroller on screen along one axis; the page itself is the whole window.
-function visibleSpan(element: Element, axis: "x" | "y"): [number, number] {
+export function visibleSpan(element: Element, axis: "x" | "y"): [number, number] {
   const view = axis === "x" ? window.innerWidth : window.innerHeight;
   if (element === element.ownerDocument.scrollingElement) return [0, view];
   const r = element.getBoundingClientRect();
@@ -131,6 +143,18 @@ export function edgeStep(position: number, [start, end]: [number, number]) {
   return position < start + 60 ? -12 : position > end - 60 ? 12 : 0;
 }
 function blockScroll(e: TouchEvent) { if (useDragStore().active) e.preventDefault(); }
+// The node a finger landed on stops its moves while a drag is under way, until the finger lifts.
+function holdNode(node: EventTarget | null) {
+  if (!node) return;
+  const done = () => {
+    node.removeEventListener("touchmove", blockScroll as EventListener);
+    node.removeEventListener("touchend", done);
+    node.removeEventListener("touchcancel", done);
+  };
+  node.addEventListener("touchmove", blockScroll as EventListener, { passive: false });
+  node.addEventListener("touchend", done);
+  node.addEventListener("touchcancel", done);
+}
 function finishDrag(e: PointerEvent) { if (e.pointerId === drag.pointerId) endDrag(e.type === "pointerup"); }
 function moveDrag(e: PointerEvent) {
   if (!drag.ghost || e.pointerId !== drag.pointerId) return;

@@ -394,6 +394,10 @@ a:hover { text-decoration: underline; }
 .tile { position: relative; background: #fff; border: 1px solid #dcdcdc; border-radius: 12px; padding: 8px 9px; display: flex; flex-direction: column; justify-content: space-between; gap: 4px; min-height: 0; cursor: pointer; text-align: left; overflow: hidden; isolation: isolate; color: #1b1b1b; touch-action: manipulation; }
 .tile:hover { border-color: #b9c4d3; }
 .tile.chosen { outline: 2px solid var(--kind-tile); outline-offset: 1px; }
+/* What can be carried (drag.ts vDrag) is held, not read: a finger held on it selects no text and opens no menu or picture
+   drag of the browser's own, which on Android ended the pointer under a tile being carried. */
+[data-drag] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+[data-drag] img { -webkit-user-drag: none; }
 .tile.wide { grid-column: span var(--screen-wide-span, 2); flex-direction: row; align-items: center; gap: 8px; }
 .tile.bare { background: transparent; border-style: dashed; border-color: #c3c9d0; }
 .tile.placeholder { opacity: 0.55; border: 2px dashed var(--accent); background: var(--accent-soft); cursor: default; }

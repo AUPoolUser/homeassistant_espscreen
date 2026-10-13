@@ -1714,6 +1714,8 @@
         "add": "Haz clic en un hueco vacío y luego en algo de la biblioteca. O arrástralo a la página.",
         "move_label": "Mover",
         "move": "Arrastra un mosaico. Suéltalo en la página siguiente para una página nueva.",
+        "copy_label": "Copiar",
+        "copy": "Mantén {mod} o Mayús y haz clic en los mosaicos, o arrastra un recuadro desde al lado. {copy} y luego {paste} en otra página o pantalla.",
         "pages_label": "Páginas",
         "pages": "Arrastra una página por su número. Lo demás está en su menú ···.",
         "map_label": "Mapa",
@@ -1721,7 +1723,8 @@
         "preview_label": "Vista previa",
         "preview": "Prueba a deslizar y los mosaicos de página. En casa no se activa nada."
       },
-      "copy_needs_migration": "Abre una vez la pantalla de origen para que su diseño pase a páginas y luego cópialo."
+      "copy_needs_migration": "Abre una vez la pantalla de origen para que su diseño pase a páginas y luego cópialo.",
+      "removed_several": "Se eliminó 1 mosaico | Se eliminaron {n} mosaicos"
     },
     "page": {
       "label": "Página {page}",
@@ -3671,6 +3674,22 @@
       "landscape": "Horizontal",
       "portrait": "Vertical",
       "turn_hint": "Al girar, la pantalla se reinicia una vez para medir su nueva imagen."
+    },
+    "clipboard": {
+      "copied": "1 mosaico copiado. Pégalo con {key} en cualquier página o pantalla | {n} mosaicos copiados. Pégalos con {key} en cualquier página o pantalla",
+      "cut": "1 mosaico cortado | {n} mosaicos cortados",
+      "pasted": "1 mosaico pegado | {n} mosaicos pegados",
+      "pasted_pages": "{n} mosaicos pegados, el resto en una página nueva | {n} mosaicos pegados, el resto en {pages} páginas nuevas",
+      "pasted_some": "{n} de {total} mosaicos pegados. Esta pantalla no tiene sitio para los demás",
+      "none_fit": "No se pegó nada. Esta pantalla no tiene sitio para estos mosaicos",
+      "empty": "Aún no se ha copiado nada"
+    },
+    "selection": {
+      "title": "1 mosaico | {n} mosaicos",
+      "leave": "Quitar {name} de la selección",
+      "copy": "Copiar",
+      "hint": "{copy} copia los mosaicos con todos sus ajustes. Elige una página o una celda, aquí o en otra pantalla, y pulsa {paste}.",
+      "remove": "Eliminar mosaico | Eliminar {n} mosaicos"
     }
   }
 }

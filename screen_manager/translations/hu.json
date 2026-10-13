@@ -1714,6 +1714,8 @@
         "add": "Kattints egy üres helyre, majd valamire a könyvtárban. Vagy húzd rá az oldalra.",
         "move_label": "Áthelyezés",
         "move": "Húzz el egy csempét. Új oldalhoz a következő oldalra ejtsd.",
+        "copy_label": "Másolás",
+        "copy": "Tartsd lenyomva a(z) {mod} vagy a Shift billentyűt és kattints a csempékre, vagy húzz keretet mellőlük. {copy}, majd {paste} egy másik oldalon vagy képernyőn.",
         "pages_label": "Oldalak",
         "pages": "Egy oldalt a számánál fogva húzhatsz. A többi a ··· menüjében van.",
         "map_label": "Térkép",
@@ -1721,7 +1723,8 @@
         "preview_label": "Előnézet",
         "preview": "Próbáld ki a lapozást és az oldalcsempéket. Otthon semmi sem kapcsol át."
       },
-      "copy_needs_migration": "Nyisd meg egyszer a forráskijelzőt, hogy az elrendezése oldalakra költözhessen, aztán másold."
+      "copy_needs_migration": "Nyisd meg egyszer a forráskijelzőt, hogy az elrendezése oldalakra költözhessen, aztán másold.",
+      "removed_several": "1 csempe eltávolítva | {n} csempe eltávolítva"
     },
     "page": {
       "label": "{page}. oldal",
@@ -3671,6 +3674,22 @@
       "landscape": "Fekvő",
       "portrait": "Álló",
       "turn_hint": "Elforgatáskor a kijelző egyszer újraindul, hogy felmérje az új képét."
+    },
+    "clipboard": {
+      "copied": "1 csempe másolva. Illeszd be a(z) {key} billentyűvel bármely oldalra vagy képernyőre | {n} csempe másolva. Illeszd be a(z) {key} billentyűvel bármely oldalra vagy képernyőre",
+      "cut": "1 csempe kivágva | {n} csempe kivágva",
+      "pasted": "1 csempe beillesztve | {n} csempe beillesztve",
+      "pasted_pages": "{n} csempe beillesztve, a többi egy új oldalra | {n} csempe beillesztve, a többi {pages} új oldalra",
+      "pasted_some": "{total} csempéből {n} beillesztve. Ezen a képernyőn nincs hely a többinek",
+      "none_fit": "Semmi sem lett beillesztve. Ezen a képernyőn nincs hely ezeknek a csempéknek",
+      "empty": "Még nincs semmi másolva"
+    },
+    "selection": {
+      "title": "1 csempe | {n} csempe",
+      "leave": "{name} kihagyása",
+      "copy": "Másolás",
+      "hint": "A(z) {copy} minden beállításukkal együtt másolja a csempéket. Válassz egy oldalt vagy cellát, itt vagy egy másik képernyőn, és nyomd meg a(z) {paste} billentyűt.",
+      "remove": "Csempe eltávolítása | {n} csempe eltávolítása"
     }
   }
 }

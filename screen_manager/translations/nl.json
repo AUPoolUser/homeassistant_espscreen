@@ -1714,6 +1714,8 @@
         "add": "Klik op een lege plek en dan op iets in de bibliotheek. Of sleep het op de pagina.",
         "move_label": "Verplaatsen",
         "move": "Sleep een tegel. Laat hem los op de volgende pagina voor een nieuwe pagina.",
+        "copy_label": "Kopiëren",
+        "copy": "Houd {mod} of Shift vast en klik, of sleep een kader naast de tegels. {copy}, dan {paste} op een andere pagina of ander scherm.",
         "pages_label": "Pagina’s",
         "pages": "Sleep een pagina aan zijn nummer. De rest zit in zijn ···-menu.",
         "map_label": "Kaart",
@@ -1721,7 +1723,8 @@
         "preview_label": "Voorvertoning",
         "preview": "Probeer vegen en de pagina-tegels. Er schakelt niets in huis."
       },
-      "copy_needs_migration": "Open het bronscherm één keer zodat zijn indeling naar pagina's kan overgaan, en kopieer het dan."
+      "copy_needs_migration": "Open het bronscherm één keer zodat zijn indeling naar pagina's kan overgaan, en kopieer het dan.",
+      "removed_several": "1 tegel verwijderd | {n} tegels verwijderd"
     },
     "page": {
       "label": "Pagina {page}",
@@ -3671,6 +3674,22 @@
       "landscape": "Liggend",
       "portrait": "Staand",
       "turn_hint": "Bij een draai start het scherm één keer opnieuw om zijn nieuwe beeld op te meten."
+    },
+    "clipboard": {
+      "copied": "1 tegel gekopieerd. Plak hem met {key} op een pagina of scherm | {n} tegels gekopieerd. Plak ze met {key} op een pagina of scherm",
+      "cut": "1 tegel geknipt | {n} tegels geknipt",
+      "pasted": "1 tegel geplakt | {n} tegels geplakt",
+      "pasted_pages": "{n} tegels geplakt, de rest op een nieuwe pagina | {n} tegels geplakt, de rest op {pages} nieuwe pagina's",
+      "pasted_some": "{n} van {total} tegels geplakt. Dit scherm heeft geen ruimte of geen plek voor de rest",
+      "none_fit": "Niets geplakt. Dit scherm heeft geen ruimte of geen plek voor deze tegels",
+      "empty": "Nog niets gekopieerd"
+    },
+    "selection": {
+      "title": "1 tegel | {n} tegels",
+      "leave": "{name} weglaten",
+      "copy": "Kopiëren",
+      "hint": "{copy} kopieert de tegels met al hun instellingen. Kies een pagina of een cel, hier of op een ander scherm, en druk op {paste}.",
+      "remove": "Tegel verwijderen | {n} tegels verwijderen"
     }
   }
 }

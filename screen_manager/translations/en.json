@@ -1714,6 +1714,8 @@
         "add": "Click an empty spot, then something in the library. Or drag it onto the page.",
         "move_label": "Move",
         "move": "Drag a tile. Drop it on the next page for a new page.",
+        "copy_label": "Copy",
+        "copy": "Hold {mod} or Shift and click, or drag a band beside the tiles. {copy}, then {paste} on another page or screen.",
         "pages_label": "Pages",
         "pages": "Drag a page by its number. Its ··· menu has the rest.",
         "map_label": "Map",
@@ -1721,7 +1723,8 @@
         "preview_label": "Preview",
         "preview": "Try swiping and the page tiles. Nothing at home switches."
       },
-      "copy_needs_migration": "Open the source screen once so its layout can move to pages, then copy it."
+      "copy_needs_migration": "Open the source screen once so its layout can move to pages, then copy it.",
+      "removed_several": "1 tile removed | {n} tiles removed"
     },
     "page": {
       "label": "Page {page}",
@@ -3671,6 +3674,22 @@
       "landscape": "Landscape",
       "portrait": "Portrait",
       "turn_hint": "When it turns, the screen starts again once to measure its new canvas."
+    },
+    "clipboard": {
+      "copied": "1 tile copied. Paste it with {key} on any page or screen | {n} tiles copied. Paste them with {key} on any page or screen",
+      "cut": "1 tile cut | {n} tiles cut",
+      "pasted": "1 tile pasted | {n} tiles pasted",
+      "pasted_pages": "{n} tiles pasted, the rest on a new page | {n} tiles pasted, the rest on {pages} new pages",
+      "pasted_some": "{n} of {total} tiles pasted. This screen has no room or no place for the others",
+      "none_fit": "Nothing pasted. This screen has no room or no place for these tiles",
+      "empty": "Nothing copied yet"
+    },
+    "selection": {
+      "title": "1 tile | {n} tiles",
+      "leave": "Leave {name} out",
+      "copy": "Copy",
+      "hint": "{copy} copies the tiles with every setting. Choose a page or a cell, here or on another screen, and press {paste}.",
+      "remove": "Remove tile | Remove {n} tiles"
     }
   }
 }

@@ -12,6 +12,8 @@ import { useSessionStore } from "../src/stores/session";
 import { useInventoryStore } from "../src/stores/inventory";
 import { setTileOption } from "../src/editor/tiles";
 import { useDocumentStore } from "../src/stores/document";
+import { useInspectorStore } from "../src/stores/inspector";
+import { forgetCopied } from "../src/editor/clipboard";
 
 let doc: ReturnType<typeof useDocumentStore>;
 beforeEach(() => { doc = useDocumentStore(); });
@@ -60,5 +62,39 @@ describe("a screen's head", () => {
     expect(asked).toEqual([{ kind: "prompt", message: "Name in this app", value: "Hall", confirm: "Rename" }]);
     expect(api.asked("PUT screens/:id/name")[0].body).toEqual({ name: "Living room" });
     expect(useInventoryStore().inventory.screens[0].name).toBe("Living room");
+  });
+});
+
+// ⌘A, ⌘C, ⌘V and Delete on the layout (app 0.4.x): the page's tiles chosen, copied, pasted beside them and removed
+// together; in a field the keys stay the field's.
+describe("the layout's keys", () => {
+  const key = (key: string, target: Element = document.body, meta = true) => {
+    const event = new KeyboardEvent("keydown", { key, metaKey: meta, bubbles: true, cancelable: true });
+    target.dispatchEvent(event);
+    return event;
+  };
+  it("chooses, copies, pastes and removes tiles", async () => {
+    fakeApi({ states: { states: {} }, capabilities: { capabilities: {} } });
+    // A screen that takes an entity on several tiles (firmware 0.16.0+); an older one leaves the copy out.
+    useInventoryStore().inventory.screens[0].firmware = "0.56.0";
+    const view = mount(ScreenView, { attachTo: document.body });
+    forgetCopied();
+    const insp = useInspectorStore();
+    expect(key("a").defaultPrevented).toBe(true);
+    expect(insp.chosenTiles.map((tile) => tile.entity)).toEqual(["light.a"]);
+    key("c");
+    key("v");
+    await flushPromises();
+    expect(doc.layout!.tiles.map((tile) => [tile.entity, tile.slot])).toEqual([["light.a", 0], ["light.a", 1]]);
+    key("a");
+    expect(insp.inspector).toEqual({ kind: "tiles" });
+    key("Backspace", document.body, false);
+    expect(doc.layout!.tiles).toEqual([]);
+    // A field keeps its own keys.
+    doc.undo();
+    const field = document.createElement("input");
+    document.body.append(field);
+    expect(key("a", field).defaultPrevented).toBe(false);
+    view.unmount();
   });
 });

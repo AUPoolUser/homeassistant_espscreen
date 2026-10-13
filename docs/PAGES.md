@@ -19,6 +19,18 @@ The new page gets a title from its shared HA area, or from its entity domain whe
 there is no shared area. Mixed content without a common area uses the screen title.
 Suggestions are applied only at creation and never rename an existing page.
 
+Several tiles can be chosen at once: hold ⌘ (Ctrl on Windows and Linux) or Shift and click them, drag a band with the
+mouse from beside the tiles, or press ⌘A for every tile of the chosen page. The inspector then lists them, with Copy and
+Remove. ⌘C copies them with every setting and ⌘X cuts them. ⌘V pastes them on the chosen page, at the empty cell marked
+on it if there is one, on the same screen or on another one; another browser tab of the editor can paste them too. The
+group keeps its arrangement where it fits. Otherwise the tiles fill the free places of the page in reading order, and
+what does not fit goes on new pages right after it, so tiles from a large screen spread over the pages of a smaller
+one. A tile larger than the grid it lands on takes the largest size that grid offers for it; a full-page tile stays a
+full page. A Go to page tile that leads to a page of another screen, an entity the screen takes only once that is
+already there, and anything past the screen's tile limit or page limit are left out, and the message says how many
+went on. Paste, cut and removing several tiles are each one undo step. The pasted tiles stay chosen, so they can be
+moved or pasted again at once.
+
 Contextual help uses Floating Vue through `HelpTip.vue`: a small help icon beside a label, only where the
 words alone don't say it. Help icons work with keyboard focus, pointer hover and a tap; Escape or leaving the
 help closes it. Errors, compatibility notices and unsaved-change status remain visible.

@@ -195,7 +195,7 @@ export function useTileCard(props: TileCardProps) {
     .filter((place) => place.tile || !props.preview));
 
   // ---- Where it stands in the editor ----
-  const chosen = computed(() => doc.isSelected(props.tile) && insp.inspector?.kind === "tile");
+  const chosen = computed(() => (doc.isSelected(props.tile) && insp.inspector?.kind === "tile") || insp.isPicked(props.tile));
   const live = computed(() => !props.placeholder && Boolean(doc.layout?.tiles.some((tile) => tile.id === props.tile.id)));
 
   return proxyRefs({

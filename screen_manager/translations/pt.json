@@ -1714,6 +1714,8 @@
         "add": "Clique num espaço vazio e depois em algo da biblioteca. Ou arraste-o para a página.",
         "move_label": "Mover",
         "move": "Arraste um mosaico. Largue-o na página seguinte para uma página nova.",
+        "copy_label": "Copiar",
+        "copy": "Mantenha {mod} ou Shift e clique nos mosaicos, ou arraste uma moldura a partir do lado. {copy} e depois {paste} noutra página ou ecrã.",
         "pages_label": "Páginas",
         "pages": "Arraste uma página pelo número. O resto está no menu ···.",
         "map_label": "Mapa",
@@ -1721,7 +1723,8 @@
         "preview_label": "Pré-visualizar",
         "preview": "Experimente deslizar e os mosaicos de página. Nada muda em casa."
       },
-      "copy_needs_migration": "Abra uma vez o ecrã de origem para que a disposição passe para páginas e depois copie-a."
+      "copy_needs_migration": "Abra uma vez o ecrã de origem para que a disposição passe para páginas e depois copie-a.",
+      "removed_several": "1 mosaico removido | {n} mosaicos removidos"
     },
     "page": {
       "label": "Página {page}",
@@ -3671,6 +3674,22 @@
       "landscape": "Horizontal",
       "portrait": "Vertical",
       "turn_hint": "Ao rodar, o ecrã reinicia uma vez para medir a nova imagem."
+    },
+    "clipboard": {
+      "copied": "1 mosaico copiado. Cole-o com {key} em qualquer página ou ecrã | {n} mosaicos copiados. Cole-os com {key} em qualquer página ou ecrã",
+      "cut": "1 mosaico cortado | {n} mosaicos cortados",
+      "pasted": "1 mosaico colado | {n} mosaicos colados",
+      "pasted_pages": "{n} mosaicos colados, o resto numa página nova | {n} mosaicos colados, o resto em {pages} páginas novas",
+      "pasted_some": "{n} de {total} mosaicos colados. Este ecrã não tem espaço para os outros",
+      "none_fit": "Nada foi colado. Este ecrã não tem espaço para estes mosaicos",
+      "empty": "Ainda nada foi copiado"
+    },
+    "selection": {
+      "title": "1 mosaico | {n} mosaicos",
+      "leave": "Retirar {name} da seleção",
+      "copy": "Copiar",
+      "hint": "{copy} copia os mosaicos com todas as definições. Escolha uma página ou uma célula, aqui ou noutro ecrã, e prima {paste}.",
+      "remove": "Remover mosaico | Remover {n} mosaicos"
     }
   }
 }

@@ -1714,6 +1714,8 @@
         "add": "Klicke auf einen freien Platz und dann auf etwas in der Bibliothek. Oder ziehe es auf die Seite.",
         "move_label": "Verschieben",
         "move": "Ziehe eine Kachel. Lass sie auf der nächsten Seite los für eine neue Seite.",
+        "copy_label": "Kopieren",
+        "copy": "Halte {mod} oder Umschalt und klicke auf Kacheln, oder ziehe einen Rahmen von neben den Kacheln. {copy}, dann {paste} auf einer anderen Seite oder einem anderen Bildschirm.",
         "pages_label": "Seiten",
         "pages": "Ziehe eine Seite an ihrer Nummer. Der Rest steckt in ihrem ···-Menü.",
         "map_label": "Karte",
@@ -1721,7 +1723,8 @@
         "preview_label": "Vorschau",
         "preview": "Probiere Wischen und die Seiten-Kacheln aus. Zu Hause schaltet nichts."
       },
-      "copy_needs_migration": "Öffne den Quellbildschirm einmal, damit sein Layout auf Seiten umgestellt wird, und kopiere es dann."
+      "copy_needs_migration": "Öffne den Quellbildschirm einmal, damit sein Layout auf Seiten umgestellt wird, und kopiere es dann.",
+      "removed_several": "1 Kachel entfernt | {n} Kacheln entfernt"
     },
     "page": {
       "label": "Seite {page}",
@@ -3671,6 +3674,22 @@
       "landscape": "Quer",
       "portrait": "Hoch",
       "turn_hint": "Beim Drehen startet der Bildschirm einmal neu, um sein neues Bild auszumessen."
+    },
+    "clipboard": {
+      "copied": "1 Kachel kopiert. Mit {key} auf einer Seite oder einem Bildschirm einfügen | {n} Kacheln kopiert. Mit {key} auf einer Seite oder einem Bildschirm einfügen",
+      "cut": "1 Kachel ausgeschnitten | {n} Kacheln ausgeschnitten",
+      "pasted": "1 Kachel eingefügt | {n} Kacheln eingefügt",
+      "pasted_pages": "{n} Kacheln eingefügt, der Rest auf einer neuen Seite | {n} Kacheln eingefügt, der Rest auf {pages} neuen Seiten",
+      "pasted_some": "{n} von {total} Kacheln eingefügt. Für die anderen hat dieser Bildschirm keinen Platz",
+      "none_fit": "Nichts eingefügt. Für diese Kacheln hat dieser Bildschirm keinen Platz",
+      "empty": "Noch nichts kopiert"
+    },
+    "selection": {
+      "title": "1 Kachel | {n} Kacheln",
+      "leave": "{name} weglassen",
+      "copy": "Kopieren",
+      "hint": "{copy} kopiert die Kacheln mit allen Einstellungen. Wähle eine Seite oder ein Feld, hier oder auf einem anderen Bildschirm, und drücke {paste}.",
+      "remove": "Kachel entfernen | {n} Kacheln entfernen"
     }
   }
 }

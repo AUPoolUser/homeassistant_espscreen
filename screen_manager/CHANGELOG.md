@@ -1,5 +1,15 @@
 ## Unreleased
 
+- **Editor: choose several tiles, and copy them to another page or screen.** ⌘ (or Ctrl) or Shift with a click adds
+  a tile to the choice, and a band dragged with the mouse from beside the tiles chooses every tile it touches; ⌘A
+  chooses the whole page. ⌘C copies the tiles with every setting, ⌘X cuts them and ⌘V pastes them on the chosen page
+  (at the empty cell marked on it, if there is one), on this screen or another one. The group keeps its arrangement
+  where it fits; what the page has no room for goes on new pages right after it, so tiles from a large screen spread
+  over the pages of a smaller one, each in the largest size that screen has for it. Delete removes them all, and undo
+  brings back a paste, a cut or a removal in one step.
+- **Editor: dragging a tile works on Android.** In Chrome on Android (also in the Home Assistant app) a tile carried
+  over another one went back to its place halfway, because the page began to scroll under the finger. Holding a tile
+  also no longer selects text or opens the browser's menu.
 - **Screens keep taking new layouts.** On a screen that keeps its pages (every board with PSRAM), a layout that added or
   took away a page left what the old cards had drawn behind in the memory inside the chip. After a few such changes a
   4-inch Guition refused new layouts until it was restarted, or lost Wi-Fi. That memory now comes back with every

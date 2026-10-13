@@ -1714,6 +1714,8 @@
         "add": "Cliquez sur un emplacement vide, puis sur un élément de la bibliothèque. Ou faites-le glisser sur la page.",
         "move_label": "Déplacer",
         "move": "Faites glisser une tuile. Déposez-la sur la page suivante pour une nouvelle page.",
+        "copy_label": "Copier",
+        "copy": "Maintenez {mod} ou Maj et cliquez sur des tuiles, ou tracez un cadre depuis l'espace à côté. {copy}, puis {paste} sur une autre page ou un autre écran.",
         "pages_label": "Pages",
         "pages": "Faites glisser une page par son numéro. Le reste est dans son menu ···.",
         "map_label": "Carte",
@@ -1721,7 +1723,8 @@
         "preview_label": "Aperçu",
         "preview": "Essayez de balayer et les tuiles de page. Rien ne s’allume à la maison."
       },
-      "copy_needs_migration": "Ouvrez une fois l'écran source pour que sa disposition passe aux pages, puis copiez-la."
+      "copy_needs_migration": "Ouvrez une fois l'écran source pour que sa disposition passe aux pages, puis copiez-la.",
+      "removed_several": "1 tuile retirée | {n} tuiles retirées"
     },
     "page": {
       "label": "Page {page}",
@@ -3671,6 +3674,22 @@
       "landscape": "Paysage",
       "portrait": "Portrait",
       "turn_hint": "Quand il tourne, l’écran redémarre une fois pour mesurer sa nouvelle image."
+    },
+    "clipboard": {
+      "copied": "1 tuile copiée. Collez-la avec {key} sur n'importe quelle page ou écran | {n} tuiles copiées. Collez-les avec {key} sur n'importe quelle page ou écran",
+      "cut": "1 tuile coupée | {n} tuiles coupées",
+      "pasted": "1 tuile collée | {n} tuiles collées",
+      "pasted_pages": "{n} tuiles collées, le reste sur une nouvelle page | {n} tuiles collées, le reste sur {pages} nouvelles pages",
+      "pasted_some": "{n} tuiles collées sur {total}. Cet écran n'a pas de place pour les autres",
+      "none_fit": "Rien n'a été collé. Cet écran n'a pas de place pour ces tuiles",
+      "empty": "Rien n'a encore été copié"
+    },
+    "selection": {
+      "title": "1 tuile | {n} tuiles",
+      "leave": "Retirer {name} de la sélection",
+      "copy": "Copier",
+      "hint": "{copy} copie les tuiles avec tous leurs réglages. Choisissez une page ou une case, ici ou sur un autre écran, et appuyez sur {paste}.",
+      "remove": "Retirer la tuile | Retirer {n} tuiles"
     }
   }
 }
