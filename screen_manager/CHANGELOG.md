@@ -1,5 +1,7 @@
 ## Unreleased
 
+- **Editor: a map tile grown to two rows saves at once.** Dragging a new map tile (or an energy card) from one row to
+  two gave it a setting the app does not keep for it, and the save asked to adjust the tile's settings first.
 - **Plugin API 0.10: pictures on a plugin's tile.** A plugin can lay out places for pictures on its tile and name an
   address for each (a film's poster beside its title), and the screen shows them the way it shows a camera tile or an
   album cover: the app fetches each picture once, from a host the plugin's manifest names or from Home Assistant's own
