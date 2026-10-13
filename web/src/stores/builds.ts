@@ -1,9 +1,11 @@
 // ---- Builds: one source for "something is building" ----
 // The add-on builds one firmware at a time, and everything that builds waits its turn in its one build line
-// (build_queue.py, docs/BUILDS.md): updates, plugin builds, New screen, Firmware & USB and the YAML check. It says per
-// screen what is being built for it now, whoever asked (inventory.builds, Manager.builds), and the firmware answer
-// (api/firmware) holds the line itself: every build by its id, what runs, what waits and the last ones that ended with
-// their outcome. Every part of the page that shows a build reads it here: the screen list, the Plugins entry and tab,
+// (build_queue.py, docs/BUILDS.md): updates, plugin builds, New screen, Firmware & USB and the YAML check. Every live
+// answer of the add-on (the inventory, pushed whenever the line changes) holds the line itself (`line`: every build by
+// its id, what runs, what waits and the last ones that ended with their outcome) and, from the same look at it, what is
+// built for each screen now (`builds`, Manager.builds). That one answer is the one source; the firmware answer
+// (api/firmware), asked only while something builds, adds ESPHome's log of the build that runs. Every part of the page
+// that shows a build reads it here: the screen list, the Plugins entry and tab,
 // the settings' Updates card, the build log, New screen, Firmware & USB and the YAML check (useLineBuild follows one).
 // `updating` holds the screens the page just asked to update, for the moment until the add-on's builds name them.
 // Updates start here too (one screen, all of them, automatic), and so does every other build the page asks for
@@ -75,15 +77,14 @@ export const useBuildsStore = defineStore("builds", () => {
         Object.assign(seen, { by: build.by, file: build.file ?? seen.file, id: build.id ?? seen.id });
       else if (!build && !asked(screen) && seen) { ended.push({ screen, watch: seen }); delete watched.value[screen.id]; }
     }
-    if (ended.length) void told(ended);
+    if (ended.length) told(ended);
   }
-  // A plugin build's or an install's outcome is the one the build line keeps for it by its id, asked for once more: the
-  // poll that followed it stopped with the build.
-  async function told(ended: { screen: Screen; watch: status.Watched }[]) {
-    const builds = ended.some(({ watch: seen }) => seen.by !== "update") ? (await fetchFirmware().catch(() => null))?.builds : null;
+  // A plugin build's or an install's outcome is the one the build line keeps for it by its id: in the same answer that
+  // no longer names the build for its screen.
+  function told(ended: { screen: Screen; watch: status.Watched }[]) {
     const ends: status.BuildEnd[] = [];
     for (const { screen, watch: seen } of ended) {
-      const outcome = status.buildOutcome(screen, seen, builds);
+      const outcome = status.buildOutcome(screen, seen, line.value);
       if (outcome) ends.push({ screen, by: seen.by, outcome });
     }
     const said = status.buildEndText(ends);
@@ -123,8 +124,8 @@ export const useBuildsStore = defineStore("builds", () => {
     }
   }
 
-  // ---- The build line (api/firmware `builds`): every build by its id ----
-  const line = computed<LineBuild[]>(() => answer.value?.builds || []);
+  // ---- The build line (the live inventory's `line`): every build by its id ----
+  const line = computed<LineBuild[]>(() => inv.inventory.line || []);
   /** A build of the line by its id; null before the add-on named it, or once it is no longer kept. */
   const lineBuild = (id: number | null | undefined): LineBuild | null =>
     id === null || id === undefined ? null : line.value.find((build) => build.id === id) ?? null;
@@ -137,10 +138,10 @@ export const useBuildsStore = defineStore("builds", () => {
   /** A build that ended: it no longer waits or runs. */
   const lineEnded = (build: LineBuild | null | undefined) => Boolean(build && build.state !== "queued" && build.state !== "running");
   /** One ESPHome action the page asks for (New screen's retry, Firmware & USB, the YAML check). It waits its turn in the
-   * line; the answer is the build, followed by its id. */
+   * line; the answer is the build, followed by its id, and the line comes with the next live answer. */
   async function askBuild(request: { file: string; action: string; target?: string }): Promise<LineBuild> {
     const build = await send<LineBuild>("firmware/jobs", "POST", request);
-    await fetchFirmware().catch(() => null);
+    await inv.refresh(false).catch(() => null);
     return build;
   }
   // The log of a build that ended is the add-on's to keep (api/firmware/builds/{id}/log), asked once per build; the log of

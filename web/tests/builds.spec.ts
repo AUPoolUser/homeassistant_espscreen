@@ -54,8 +54,8 @@ describe("builds", () => {
 
   it("a build log shows the progress, and the lines of this screen's build when opened", async () => {
     useInventoryStore().inventory.builds = { [hall.id]: { id: 4, by: "plugins", state: "running", plugins: ["bus"], file: "hall.yaml", stage: "upload" } };
-    useBuildsStore().answer = { job: { file: "hall.yaml", state: "running", stage: "upload", started: 11 }, logs: ["Compiling", "Uploading"],
-      builds: [{ id: 4, by: "plugins", file: "hall.yaml", action: "install", state: "running", asked: 9, started: 10, finished: null, stage: "upload" }] };
+    useInventoryStore().inventory.line = [{ id: 4, by: "plugins", file: "hall.yaml", action: "install", state: "running", asked: 9, started: 10, finished: null, stage: "upload" }];
+    useBuildsStore().answer = { job: { file: "hall.yaml", state: "running", stage: "upload", started: 11 }, logs: ["Compiling", "Uploading"] };
     const view = mount(BuildLog, { props: { screen: hall, name: true } });
     await nextTick();
     expect(view.text()).toContain("hall · 66 %");
@@ -66,16 +66,16 @@ describe("builds", () => {
     // The next build of the line (desk's) started at once, so ESPHome's log is desk's: hall's own is the add-on's to keep.
     kept[4] = ["error: plugin ov_departures"];
     useInventoryStore().inventory.builds = { [desk.id]: { id: 5, by: "update", state: "running", file: "desk.yaml" } };
-    useBuildsStore().answer = { job: { file: "desk.yaml", state: "running", started: 21 }, logs: ["Compiling desk"],
-      builds: [{ id: 5, by: "update", file: "desk.yaml", action: "install", state: "running", asked: 19, started: 20, finished: null },
-               { id: 4, by: "plugins", file: "hall.yaml", action: "install", state: "failed", asked: 9, started: 10, finished: 18 }] };
+    useInventoryStore().inventory.line = [{ id: 5, by: "update", file: "desk.yaml", action: "install", state: "running", asked: 19, started: 20, finished: null },
+      { id: 4, by: "plugins", file: "hall.yaml", action: "install", state: "failed", asked: 9, started: 10, finished: 18 }];
+    useBuildsStore().answer = { job: { file: "desk.yaml", state: "running", started: 21 }, logs: ["Compiling desk"] };
     const view = mount(BuildLog, { props: { screen: hall } });
     await vi.waitFor(() => expect(view.find("pre").exists()).toBe(true));
     expect(view.text()).toContain("The last build of hall failed");
     expect(view.find("pre").text()).toContain("error: plugin ov_departures");
     expect(view.find("pre").text()).not.toContain("Compiling desk");
     useInventoryStore().inventory.builds = {};
-    useBuildsStore().answer = { ...useBuildsStore().answer, builds: useBuildsStore().answer.builds.slice(1) };
+    useInventoryStore().inventory.line = useInventoryStore().inventory.line!.slice(1);
     const other = mount(BuildLog, { props: { screen: desk } });
     await nextTick();
     expect(other.find(".build-log").exists()).toBe(false);

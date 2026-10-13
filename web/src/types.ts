@@ -275,8 +275,8 @@ export type Build = {
   id?: number; by: "update" | "plugins" | "install"; state: "queued" | "running"; place?: number; file?: string | null;
   stage?: string | null; phase?: string | null; plugins?: string[];
 };
-// One build of the add-on's build line (api/firmware `builds`, build_queue.BuildQueue.view): what runs, what waits in
-// order and the last ones that ended, newest first. `check` is a YAML check. While it waits, `place` is its turn and
+// One build of the add-on's build line (the live inventory's `line`, build_queue.BuildQueue.view): what runs, what waits
+// in order and the last ones that ended, newest first. `check` is a YAML check. While it waits, `place` is its turn and
 // `after` the profile that builds now; while it runs, ESPHome's `stage` and the build's `memory`; once it ended, why
 // (`reason`) and the memory it had. Its log is asked by its id (stores/builds.ts loadBuildLog).
 export type LineState = "queued" | "running" | "success" | "failed" | "skipped" | "interrupted";
@@ -301,6 +301,9 @@ export type Inventory = {
   // `channel`: the branch the screens build from, when the app was added from this repository (docs/RELEASING.md).
   updates?: { target: string; busy?: boolean | string | null; pending?: number; auto?: boolean; channel?: "main" | "dev" | null };
   builds?: Record<string, Build>;
+  // The add-on's build line (build_queue.py, docs/BUILDS.md): what runs, what waits and the last that ended (newest
+  // first), from the same look at the line as `builds`, in every live answer.
+  line?: LineBuild[];
   // The CHANGELOG by release, newest first: only in the full inventory, not in the live payload (app 0.2.78).
   changelog?: ChangelogSection[];
   claude_skill?: { path: string; installed: boolean; current: boolean; restart?: boolean };

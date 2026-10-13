@@ -217,6 +217,23 @@ class TheLine(unittest.IsolatedAsyncioTestCase):
         owner.firmware.task.cancel()
 
 
+class ThePageHears(unittest.TestCase):
+    def test_every_change_of_the_line_and_of_esphome_s_step_asks_for_a_live_answer(self):
+        """The page has the line from the live inventory alone, so it must hear of every change: a build asked, begun or
+        ended, and ESPHome's step or memory of the build that runs (Firmware._changed)."""
+        from unittest import mock
+        from firmware import Firmware
+        with tempfile.TemporaryDirectory() as tmp:
+            firmware = Firmware(Path(tmp) / 'esphome', Path(tmp) / 'data')
+            firmware._changed()   # on its own, without a line: nothing to tell
+            firmware.builds = mock.Mock()
+            firmware._changed()
+            firmware.builds.changed.assert_called_once()
+        owner = Owner()
+        owner.build_queue.changed()
+        self.assertEqual(owner.told, 1)
+
+
 @unittest.skipUnless(HAS_AIOHTTP, 'Run using .venv-portal/bin/python for server tests')
 class TheApp(unittest.IsolatedAsyncioTestCase):
     """The whole app: what a person asks while something builds waits its turn instead of being refused."""
@@ -300,7 +317,7 @@ class TheApp(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual((check['state'], check['place'], check['by'], check['after']), ('queued', 1, 'check', 'living-room.yaml'))
                 gate.set()
                 await m.build_queue.idle()
-                line = (await (await client.get('/api/firmware')).json())['builds']
+                line = (await (await client.get('/api/inventory?light=1')).json())['line']
                 self.assertEqual([(b['id'], b['state']) for b in line], [(check['id'], 'success'), (running.id, 'success')])
                 log = await client.get(f"/api/firmware/builds/{check['id']}/log")
                 self.assertEqual(log.status, 200)

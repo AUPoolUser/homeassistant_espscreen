@@ -49,17 +49,23 @@ plugin build, stay in the line. Between two updates of one round there is a paus
 
 ## Following a build
 
-Every build has an id. The firmware answer (`GET api/firmware`) holds the line under `builds`: what runs, what waits in
-order (with its turn, `place`, and the profile it waits for, `after`) and the last builds that ended (`ENDED`, newest
-first), with how each ended (`success`, `failed`, `skipped`, `interrupted`), its `reason` and the memory it had. The log
-of one build, also after the next one started, is `GET api/firmware/builds/{id}/log`.
+Every build has an id. The line goes to the editor with every live answer of the app, the inventory it pushes over its
+event stream (`light_payload`): `line` holds what runs, what waits in order (with its turn, `place`, and the profile it
+waits for, `after`) and the last builds that ended (`ENDED`, newest first), with how each ended (`success`, `failed`,
+`skipped`, `interrupted`), its `reason` and the memory it had. `builds` (`Manager.builds`) is, from the same look at the
+line, the build on its way for each screen (`id`, `by`, `state`, `place`, `phase`, `plugins`, `stage`); a YAML check
+builds nothing and has no record there. Every change of the line asks for a live answer (`BuildQueue._changed`), and so
+does a new ESPHome step or memory plan of the build that runs (`Firmware._changed`).
 
-`Manager.builds` gives the editor one record per screen (`id`, `by`, `state`, `place`, `phase`, `plugins`, `stage`) in
-the live inventory. A YAML check builds nothing and has no record there.
+Logs are too large for every live answer. ESPHome's log of the build that runs is in the firmware answer
+(`GET api/firmware`), asked every few seconds only while someone follows a running build. The log of one build that
+ended, also after the next one started, is `GET api/firmware/builds/{id}/log`.
 
-In the editor, the builds store (`web/src/stores/builds.ts`) is the one place that reads both. `useLineBuild` (in
-`composables/useFirmwareJob.ts`) follows one build by its id: New screen, Firmware & USB and the YAML check use it.
-Never follow a build by "the firmware job that runs now": the next build starts at once, and its job is another one.
+In the editor, the builds store (`web/src/stores/builds.ts`) is the one place that reads them: `line`, `lineBuild`,
+`buildOf` and the outcome of a build that ended all come from the inventory, the logs through `buildLogOf` and
+`loadBuildLog`. `useLineBuild` (in `composables/useFirmwareJob.ts`) follows one build by its id: New screen, Firmware &
+USB and the YAML check use it. A view keeps only which build it follows. Never follow a build by "the firmware job that
+runs now": the next build starts at once, and its job is another one.
 
 ## Adding a kind of build
 

@@ -14,7 +14,8 @@ The build keeps the slot until all of its steps are done, so nothing else starts
   update of one screen are one build, since an update builds the screen's plugins file too. A build that runs takes
   nothing more (it may have read its YAML already); what is asked meanwhile waits for a build after it.
 - Every build has an id, and the last ones that ended stay (`ENDED`) with their outcome and their log, so whoever
-  follows one (the page, a test) reads how it ended, also when the next build started at once.
+  follows one (the page, a test) reads how it ended, also when the next build started at once. The line goes to the
+  page with every live answer (`payload`, the inventory's `line`), and every change of it asks for one (`_changed`).
 - A round (Update all, the nightly round) is several builds that belong together: one that fails ends the ones of its
   round that still wait, so a bad build never reaches the next screen.
 """
@@ -239,6 +240,10 @@ class BuildQueue:
         finally:
             build.done.set()
             self._changed()
+
+    def changed(self):
+        """Something the page shows of the line changed (also ESPHome's step of the build that runs: Firmware)."""
+        self._changed()
 
     def _changed(self):
         notify = getattr(self.manager, 'notify', None)

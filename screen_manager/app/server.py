@@ -4040,7 +4040,9 @@ def create_app(manager, development=False):
                 'editor_features': editor_features,
                 'pending': manager.pending_profiles(screens, profiles),
                 'updates': manager.updates.summary(screens, profiles),
-                # Every build on the way, per screen (Manager.builds): the editor's one source for "something is building".
+                # The app's build line (docs/BUILDS.md): every build that runs, waits or ended last, and per screen the one
+                # on its way (Manager.builds), from one look at the line, so the editor has one source for every build.
+                'line': manager.build_queue.payload(),
                 'builds': manager.builds(screens, profiles),
                 'language': manager.region.view()}
     async def seen_pending(payload):
@@ -4589,10 +4591,9 @@ def create_app(manager, development=False):
         return web.Response(body=claude_skill.archive(), content_type='application/zip',
                             headers={'Content-Disposition': f'attachment; filename="{claude_skill.NAME}.zip"'})
     async def firmware_status(request):
-        # New screen asks what is taken while the name is typed, so a clash is said before anything is written. `builds`:
-        # the build line, what runs and waits and what ended last (BuildQueue.payload).
-        return web.json_response({**manager.firmware.status(), 'taken': manager.taken_names(),
-                                  'builds': manager.build_queue.payload()})
+        # New screen asks what is taken while the name is typed, so a clash is said before anything is written. The build
+        # line itself goes with the live inventory (`line`); this answer has ESPHome's job and the log of what runs now.
+        return web.json_response({**manager.firmware.status(), 'taken': manager.taken_names()})
     async def firmware_start(request):
         """Firmware & USB and the YAML check: one ESPHome action, which waits its turn in the build line. The answer is
         that build (BuildQueue.view), followed by its `id` in the firmware answer's `builds`."""

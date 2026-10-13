@@ -91,8 +91,8 @@ describe("the firmware job", () => {
 describe("a build that ends while the page is open", () => {
   const living = (result?: { state: string; time: number }) =>
     ({ id: "text.living", name: "Living room", online: true, layout: {}, update: { profile: "living.yaml", host: "10.0.0.2", ...(result ? { result: { message: "", ...result } } : {}) } }) as unknown as Screen;
-  const arrive = (screen: Screen, builds: Record<string, any> = {}) => {
-    useInventoryStore().inventory = { screens: [screen], entities: [], builds } as any;
+  const arrive = (screen: Screen, builds: Record<string, any> = {}, line: any[] = []) => {
+    useInventoryStore().inventory = { screens: [screen], entities: [], builds, line } as any;
     useBuildsStore().prune();
   };
 
@@ -128,17 +128,15 @@ describe("a build that ends while the page is open", () => {
     expect(location.hash).toBe("#firmware");
   });
 
-  it("reads a plugin build's outcome from the build line by its id, asked for once more as it ends", async () => {
-    // The next build of the line started at once (another screen's): the firmware job is that one, the outcome is this
-    // build's own.
-    const api = fakeApi({ "GET firmware": { job: { file: "desk.yaml", state: "running", started: 9 }, logs: [],
-      builds: [{ id: 8, by: "update", file: "desk.yaml", action: "install", state: "running", asked: 7, started: 8, finished: null },
-               { id: 7, by: "plugins", file: "living.yaml", action: "install", state: "failed", asked: 1, started: 2, finished: 6 }] } });
+  it("reads a plugin build's outcome from the build line by its id, in the same answer that no longer names it", async () => {
+    // The next build of the line started at once (another screen's): the outcome is this build's own, and nothing is asked.
+    const api = fakeApi({});
     arrive(living(), { "text.living": { id: 7, by: "plugins", state: "queued", place: 1, file: "living.yaml" } });
     arrive(living(), { "text.living": { id: 7, by: "plugins", state: "running", file: "living.yaml" } });
-    arrive(living());
-    await vi.waitFor(() => expect(useUiStore().notice?.message).toBe(t("editor.build.build_failed", { name: "Living room" })));
-    expect(api.count("GET firmware")).toBe(1);
+    arrive(living(), {}, [{ id: 8, by: "update", file: "desk.yaml", action: "install", state: "running", asked: 7, started: 8, finished: null },
+                          { id: 7, by: "plugins", file: "living.yaml", action: "install", state: "failed", asked: 1, started: 2, finished: 6 }]);
+    expect(useUiStore().notice?.message).toBe(t("editor.build.build_failed", { name: "Living room" }));
+    expect(api.calls.length).toBe(0);
   });
 
   it("follows a plugin build that became the screen's update, and reads that update's result", async () => {

@@ -235,7 +235,7 @@ class DownloadRoute(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(early.status, 400)
                 self.assertIn('still being built', (await early.json())['error'])
                 await m.build_queue.idle()
-                ended = (await (await client.get('/api/firmware')).json())['builds']
+                ended = (await (await client.get('/api/inventory?light=1')).json())['line']
                 self.assertEqual([(b['id'], b['state']) for b in ended], [(build['id'], 'success')])
                 log = await (await client.get(f"/api/firmware/builds/{build['id']}/log")).json()
                 self.assertIn('Succeeded: download', log['logs'])

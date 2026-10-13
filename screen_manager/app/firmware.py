@@ -1013,6 +1013,11 @@ packages:
         self.task=asyncio.create_task(self.run(profile,action,target))
         return dict(self.job)
 
+    def _changed(self):
+        """ESPHome's step or the build's memory changed: the page hears of it with the build line's next live answer."""
+        if self.builds is not None:
+            self.builds.changed()
+
     def build_env(self, profile, jobs=None):
         """The ESPHome CLI's environment: everything it downloads or builds goes in the app's own /data, which an app
         update or restart keeps and a backup leaves out (config.yaml backup_exclude), none of it in the ESPHome folder.
@@ -1115,10 +1120,12 @@ packages:
                 cmd=['esphome']+(['--quiet'] if stage=='config' else [])+[stage]+(['--partition-table'] if action=='widen' else [])+[str(profile)]
                 if stage=='upload': cmd += ['--device',target]
                 self.job['stage']=stage
+                self._changed()
                 if stage == 'compile':
                     # As many compilers at once as the memory that is free takes (build_memory, app 0.4.65). The job
                     # carries the plan, so the editor can say why this build is slower than the machine's cores allow.
                     memory = self.job['memory'] = self.memory_plan()
+                    self._changed()
                     env = self.build_env(profile, memory['jobs'])
                     if memory['reason']:
                         self.logs.append(self.memory_note(memory))

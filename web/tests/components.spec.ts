@@ -1122,9 +1122,10 @@ describe("New screen and the Wi-Fi", () => {
       const method = options.method || "GET";
       calls.push({ url: String(url), method, body: options.body ? JSON.parse(options.body) : undefined });
       const asked = calls.some((c) => c.url.endsWith("firmware/profiles"));
-      if (String(url).endsWith("api/firmware")) return Promise.resolve({ ok: true, json: () => Promise.resolve({ available: true, ports: ["/dev/ttyUSB0"], profiles: [], logs: [], wifi: { state: "ready", missing: [] }, boards: BOARD_CHOICES, taken: { nodes: [], prefixes: [] }, job: asked ? job : null, builds: asked ? [job] : [] }) });
+      if (String(url).endsWith("api/firmware")) return Promise.resolve({ ok: true, json: () => Promise.resolve({ available: true, ports: ["/dev/ttyUSB0"], profiles: [], logs: [], wifi: { state: "ready", missing: [] }, boards: BOARD_CHOICES, taken: { nodes: [], prefixes: [] }, job: asked ? job : null }) });
       if (/firmware\/builds\/\d+\/log$/.test(String(url))) return Promise.resolve({ ok: true, json: () => Promise.resolve({ build: job, logs: [] }) });
-      if (String(url).includes("inventory")) return Promise.resolve({ ok: true, json: () => Promise.resolve({ ...useInventoryStore().inventory, ...inventory }) });
+      // The live inventory carries the build line (the add-on's build_queue).
+      if (String(url).includes("inventory")) return Promise.resolve({ ok: true, json: () => Promise.resolve({ ...useInventoryStore().inventory, ...inventory, line: asked ? [job] : [] }) });
       const answer = String(url).endsWith("firmware/profiles") ? { file: "hall.yaml", api_key: "k", build: job } : String(url).endsWith("firmware/jobs") ? job : { state: "ready" };
       return Promise.resolve({ ok: true, text: () => Promise.resolve(JSON.stringify(answer)), json: () => Promise.resolve(answer) });
     }));

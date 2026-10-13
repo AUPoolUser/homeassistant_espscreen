@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import FirmwareView from "../src/components/FirmwareView.vue";
 import { t } from "../src/i18n";
-import { useBuildsStore } from "../src/stores/builds";
+import { useInventoryStore } from "../src/stores/inventory";
 import InstallerView from "../src/components/InstallerView.vue";
 import { chipMatches, connectProblem, flashSupport, imageChip, pickProblem, writtenPercent } from "../src/flasher/logic";
 import { setFlasherLoader, useBrowserFlash } from "../src/flasher/session";
@@ -210,16 +210,15 @@ describe("New screen from this browser", () => {
   const SHAPES = JSON.parse(readFileSync("../screen_manager/app/boards.json", "utf8"));
   const boards = { cyd: { ...SHAPES.cyd, ...SHAPES.cyd.catalog, orientations: SHAPES.cyd.orientations } };
   const flush = async () => { await flushPromises(); await new Promise((done) => setTimeout(done, 0)); await flushPromises(); };
+  const build = (state: string) => ({ id: 4, by: "install", file: "hall.yaml", action: "download", state, asked: 1, started: state === "queued" ? null : 2,
+    finished: state === "success" ? 3 : null, ...(state === "queued" ? { place: 1, after: "desk.yaml" } : {}) });
   function addonWithBuild(image: Uint8Array) {
     const posted: any[] = [];
     // The build in the add-on's line: it waits its turn behind another screen's first (the add-on's answer), then the line
     // says it is done.
-    const build = (state: string) => ({ id: 4, by: "install", file: "hall.yaml", action: "download", state, asked: 1, started: state === "queued" ? null : 2,
-      finished: state === "success" ? 3 : null, ...(state === "queued" ? { place: 1, after: "desk.yaml" } : {}) });
     const calls = addon(image, (url, options) => {
       if (url.endsWith("api/firmware")) {
-        const builds = posted.length ? [build("success")] : [];
-        return new Response(JSON.stringify({ available: true, ports: [], profiles: [], logs: [], wifi: { state: "ready" }, boards, taken: { nodes: [], prefixes: [] }, builds }));
+        return new Response(JSON.stringify({ available: true, ports: [], profiles: [], logs: [], wifi: { state: "ready" }, boards, taken: { nodes: [], prefixes: [] } }));
       }
       if (/api\/firmware\/builds\/\d+\/log$/.test(url)) return new Response(JSON.stringify({ build: build("success"), logs: ["Succeeded: download"] }));
       if (url.endsWith("api/firmware/profiles") && options.method === "POST") {
@@ -260,8 +259,8 @@ describe("New screen from this browser", () => {
     expect(view.find("#progress-title").text()).toBe(t("editor.installer.progress.waiting"));
     expect(view.find("#progress-detail").text()).toBe(t("editor.installer.detail.waiting_browser", 1));
     expect(flasher.writeImage).not.toHaveBeenCalled();
-    // The next look at the line (the poll's, every three seconds): built, and the page writes it.
-    await useBuildsStore().fetchFirmware();
+    // The add-on's next live answer: built, and the page writes it.
+    useInventoryStore().applyLive({ line: [build("success") as any] });
     await flush();
     await vi.waitFor(() => expect(flasher.writeImage).toHaveBeenCalledOnce());
     expect(flasher.writeImage.mock.calls[0][2]).toBe(true);
@@ -293,8 +292,10 @@ describe("Firmware & USB from this browser", () => {
     addon(factoryImage(0, 0x1000), (url, options) => {
       if (url.endsWith("api/firmware")) {
         return new Response(JSON.stringify({ available: true, ports: [], logs: [], wifi: { state: "ready" }, boards: {},
-          profiles: [{ file: "hall.yaml", chip: "ESP32" }], job, builds: job ? [job] : [] }));
+          profiles: [{ file: "hall.yaml", chip: "ESP32" }], job }));
       }
+      // The live inventory carries the build line.
+      if (url.includes("api/inventory")) return new Response(JSON.stringify({ screens: [], line: job ? [job] : [] }));
       if (/api\/firmware\/builds\/\d+\/log$/.test(url)) return new Response(JSON.stringify({ build: job, logs: [] }));
       if (url.endsWith("api/firmware/jobs") && options.method === "POST") {
         job = { id: 9, by: "install", ...JSON.parse(options.body), state: "success", asked: 6, started: 7, finished: 8 };
