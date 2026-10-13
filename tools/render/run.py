@@ -740,7 +740,13 @@ class Run:
         start = len(self.lines)
         tile = (await self.navigation_state())['tile']
         await self.tap(*tile)
-        await self.until(lambda l: probe(l, 'tile=0 tap'), 10, 'on_tap', start)
+        tapped = await self.until(lambda l: probe(l, 'tile=0 tap'), 10, 'on_tap', start)
+        # Where the finger was (plugin API 0.10): in the tile's own pixels, so within its drawing area.
+        made = next(l for l in self.lines if probe(l, 'tile=0 create'))
+        tw, th = (int(v) for v in re.search(r'create (\d+)x(\d+)', made).groups())
+        tx, ty = (int(v) for v in re.search(r'at=(-?\d+),(-?\d+)', tapped).groups())
+        if not (0 <= tx < tw and 0 <= ty < th):
+            self.failures.append(f'the tap point {tx},{ty} is not within the tile\'s {tw}x{th}: {tapped}')
         await self.until(lambda l: probe(l, 'touch'), 10, 'on_touch', start)
         await self.until(lambda l: probe(l, 'card open') and 'tile=0' in l, 10, 'the card opened', start)
         await self.until(lambda l: probe(l, 'card tick'), 10, 'the card ticked', start)

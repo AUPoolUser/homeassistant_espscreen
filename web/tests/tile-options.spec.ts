@@ -76,6 +76,9 @@ describe("the canonical options (tile-options.ts)", () => {
     expect(canonicalOptions("camera.door", { display: "live", fit: "fill", overlay: "name" })).toEqual({ display: "live" });
     expect(canonicalOptions("screen.page_2", { display: "watch", controls: "none", icon: "auto" })).toEqual({ icon: "auto" });
     expect(canonicalOptions("weather.home", { display: "forecast" })).toEqual({ display: "forecast", size: "wide" });
+    // The map tile and the energy card have no controls, slider or second line (core.validate_layout drops them).
+    expect(canonicalOptions("screen.map", { size: "square", controls: "none" })).toEqual({ display: "map", size: "square" });
+    expect(canonicalOptions("screen.energy", { size: "tall", controls: "none", inline: "none", sub: "none" })).toEqual({ size: "tall" });
     // A map (app 0.4.33) keeps its name choice, its framing and who rides along; defaults and an empty list are not stored.
     expect(canonicalOptions("person.p", { display: "map", map: [], framing: "everyone", distance: "neighbourhood", overlay: "name" })).toEqual({ display: "map" });
     expect(canonicalOptions("person.p", { display: "map", map: ["person.q"], framing: "home", distance: "street", overlay: "none" }))

@@ -22,8 +22,9 @@ bool known(const runtime_tiles::Tile &t);
 void render(runtime_tiles::Widgets &w, const runtime_tiles::Tile &t, int width, int height);
 // The card shows something else, or goes: its plugin tile goes with it.
 void release(runtime_tiles::Widgets &w);
-// A tap on a plugin tile's card.
-void tap(runtime_tiles::Widgets &w);
+// A tap on a plugin tile's card, with the finger's place on the glass (-1,-1 unknown): the tile reads it in its own
+// pixels through tessera::tap_point().
+void tap(runtime_tiles::Widgets &w, int x, int y);
 // Once a second: every plugin card on the glass.
 void tick_cards(uint32_t epoch);
 // A plugin's card over the page (key: plugin:<plugin>.<card>). False when this screen has no such card.

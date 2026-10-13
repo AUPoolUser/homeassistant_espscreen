@@ -131,6 +131,18 @@ it('resizes a Go to page tile by its edge without giving it controls (app 0.4.1)
   expect(tile().options?.controls).toBeUndefined();
 });
 
+it('grows the map tile by its edge without giving it controls, so the add-on saves it', () => {
+  useInventoryStore().inventory.editor_features = { tall_tiles: true };
+  useInventoryStore().inventory.screens[0] = screenFixture({ id: 'test', name: 'Test', firmware: '0.3.1', online: true,
+    tile_sizes: ['single', 'wide', 'full', 'tall', 'square'], layout: { title: 'Home', tiles: [{ entity: 'screen.map', name: '', slot: 0, options: { size: 'wide', display: 'map' } }] } });
+  useScreenStore().selected = null; useSessionStore().select('test');
+  // As the editor makes it: the built-in card by its name (the fixture reads every entity as one of Home Assistant's).
+  doc.document!.pages[0].tiles[0].content = { kind: 'builtin', name: 'map' };
+  expect(resizeTile(tile(), 'square', 'rows')).toBe(true);
+  expect(tile().options?.size).toBe('square');
+  expect(tile().options?.controls).toBeUndefined();
+});
+
 const pluginTile = async () => {
   const { usePluginsStore } = await import("../src/stores/plugins");
   usePluginsStore().index = [{ id: 'waste_collection', tiles: [{ id: 'next', min: '1x1', max: '2x2' }] }] as never;

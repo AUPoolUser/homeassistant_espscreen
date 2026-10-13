@@ -46,7 +46,8 @@ namespace tessera {
 // Tone::GOOD, and the tones for a block too (ui::set_fill, ui::tone_color); ui::label is one line high as it says.
 // 0.10: pictures on a tile (ui::picture, ui::set_picture, ui::pictures; the manifest's `pictures` of a tile): places a
 // tile lays out, each with an address the app fetches and paints for exactly that place, through the route every
-// picture of the screen takes (tile_picture.h "parts"); and ui::text, a label of several lines.
+// picture of the screen takes (tile_picture.h "parts"); ui::text, a label of several lines; and tap_point(), where the
+// finger of a tile's on_tap was.
 constexpr uint8_t PLUGIN_API_MAJOR = 0, PLUGIN_API_MINOR = 10;
 
 // The screen's fixed fonts, largest first. A tile takes the largest that fits; a plugin brings no font of its own.
@@ -297,6 +298,13 @@ bool open_card(const char *plugin_id, const char *card, const std::string &entit
                const std::string &title = "");
 // Close the card that is open, as Back does.
 void close_card();
+// Where the finger of a tile's on_tap was (0.10), in the pixels of the tile's drawing area (TileContext::parent: 0,0
+// its top left, width and height as create() got them), so a tile with a list or a row of posters knows which one was
+// tapped. Valid during on_tap; -1,-1 when the screen could not say.
+struct Point {
+  int x = -1, y = -1;
+};
+Point tap_point();
 // Ask the app something on this plugin's behalf: a Home Assistant command its manifest names under
 // permissions.ha_commands, such as {"ask": "call_service:calendar.get_events", "data": {"entity_id": "calendar.waste",
 // "duration": {"days": 28}}}. Returns the number the answer carries as "re" (0 when it could not be sent: no app, or a

@@ -5738,8 +5738,11 @@ inline void event(lv_event_t *event) {
   // A plugin's tile (docs/PLUGINS.md): a short tap goes to the plugin, through the same guard as every tile's.
   if (model.tiles[w.index].is_plugin()) {
     if (code == LV_EVENT_SHORT_CLICKED && model.tiles[w.index].tap != "none" && w.plugin &&
-        allowed(esphome::millis(), TILE_TOUCH + static_cast<int>(w.index), model.tiles[w.index].entity))
-      plugin_host::tap(w);
+        allowed(esphome::millis(), TILE_TOUCH + static_cast<int>(w.index), model.tiles[w.index].entity)) {
+      lv_point_t at{-1, -1};
+      if (!finger_at(at)) at = {-1, -1};
+      plugin_host::tap(w, at.x, at.y);
+    }
     return;
   }
   if (!fresh()) return;

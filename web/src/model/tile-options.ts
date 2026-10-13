@@ -58,6 +58,8 @@ const pageTile = (entity: string) => /^screen\.page_\d+$/.test(entity);
 export function canonicalOptions(entity: string, options: TileOptions = {}, key = false): TileOptions {
   const out: TileOptions = { ...options };
   if (entity === MAP_TILE) { out.display = "map"; for (const field of ["inline", "controls", "history_hours", "sub"]) delete out[field]; }
+  // The energy card draws its diagram on every size, with no face, slider, controls or second line of its own.
+  if (entity === "screen.energy") for (const field of ["display", "inline", "controls", "history_hours", "sub"]) delete out[field];
   if (typeof out.sub === "string" && out.sub.startsWith("text:")) {
     const words = out.sub.slice(5).trim();
     out.sub = words ? `text:${words}` : "none";

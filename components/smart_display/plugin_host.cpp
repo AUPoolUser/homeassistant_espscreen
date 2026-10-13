@@ -9,12 +9,14 @@
 #include "esphome/core/application.h"
 #include "runtime_tiles.h"
 #include "plugin_host.h"
+#include "plugin_api.h"
 #include <algorithm>
 #include <functional>
 #include <memory>
 #include <vector>
 
 namespace rt = runtime_tiles;
+namespace plugin_host { extern tessera::Point tapped; }
 // ---- The register (plugin_api.h) ----
 namespace tessera {
 
@@ -224,6 +226,8 @@ bool open_card(const char *plugin_id, const char *card, const std::string &entit
 }
 
 void close_card() { plugin_host::close_card(); }
+
+Point tap_point() { return plugin_host::tapped; }
 
 uint32_t send(const Plugin *plugin, JsonObjectConst request) {
   static uint32_t next = 0;
@@ -455,8 +459,17 @@ void render(rt::Widgets &w, const rt::Tile &t, int width, int height) {
   if (!card->places.empty()) rt::tile_picture_place(w, t, 0, 0, 0);
 }
 
-void tap(rt::Widgets &w) {
+// Where the finger of the tap under way was, in the tile's own pixels (tessera::tap_point).
+tessera::Point tapped;
+
+void tap(rt::Widgets &w, int x, int y) {
   if (!w.plugin || !w.plugin->tile) return;
+  tapped = {-1, -1};
+  if (x >= 0 && y >= 0 && w.extra) {
+    lv_area_t area;
+    lv_obj_get_coords(w.extra, &area);
+    tapped = {x - area.x1, y - area.y1};
+  }
   Making call(w.plugin);
   w.plugin->tile->on_tap();
 }
@@ -1019,7 +1032,7 @@ namespace plugin_host {
 bool known(const runtime_tiles::Tile &) { return false; }
 void render(runtime_tiles::Widgets &, const runtime_tiles::Tile &, int, int) {}
 void release(runtime_tiles::Widgets &) {}   // no plugin card is ever made in this build
-void tap(runtime_tiles::Widgets &) {}
+void tap(runtime_tiles::Widgets &, int, int) {}
 void tick_cards(uint32_t) {}
 uint16_t bytes(const std::string &) { return PLACEHOLDER_BYTES; }
 bool pictured(const runtime_tiles::Widgets &) { return false; }

@@ -91,7 +91,9 @@ class ProbeTile : public tessera::Tile {
     ui::set_color(number_, theme::INK);
   }
   void on_tap() override {
-    ESP_LOGI(TAG, "tile=%d tap", tile_);
+    // Where the finger was (0.10), in the tile's own pixels.
+    const tessera::Point at = tessera::tap_point();
+    ESP_LOGI(TAG, "tile=%d tap at=%d,%d", tile_, at.x, at.y);
     tessera::open_card(plugin_->plugin_id(), "detail", "", tile_, "Probe card");
   }
 
