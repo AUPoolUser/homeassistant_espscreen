@@ -173,6 +173,13 @@ enum class Tone : uint8_t { NORMAL, ACCENT, BUSY, ALERT, GOOD };
 // How a picture fills its place (0.10): COVER fills the place and cuts away what is over (a poster in a poster's
 // frame), CONTAIN shows the whole picture within it, on the card's own colour (a logo, a map).
 enum class Fit : uint8_t { COVER, CONTAIN };
+// How a picture turns in its place (0.10), as the covers beside the middle one of a cover flow turn to face it: the app
+// draws the whole picture in perspective within the place, its near edge the place's height and its far edge 70 % of
+// it. LEFT faces the left (its left edge far: a cover right of the middle), RIGHT faces the right (a cover left of it).
+enum class Turn : uint8_t { NONE, LEFT, RIGHT };
+// A reflection under a picture (0.10, ui::set_picture's `mirror`): it takes this share of the picture's height under it,
+// within the place, so a place for a picture of height h with its reflection is h * (100 + MIRROR_PERCENT) / 100 high.
+constexpr int MIRROR_PERCENT = 30;
 struct BarItem {
   bool shown = false;
   uint32_t icon = 0;         // a codepoint of Tessera's icon set (0xF00E7), 0 for none
@@ -373,6 +380,10 @@ lv_obj_t *picture(lv_obj_t *parent);
 // every on_state for free); another address asks the app again; "" takes the picture away and shows the block. A
 // place that lies outside the card, or has no size, gets no picture.
 void set_picture(lv_obj_t *place, const std::string &url, Fit fit = Fit::COVER);
+// The same, turned in perspective (Turn) and with a reflection fading out under it (`mirror`: the place's lower part,
+// MIRROR_PERCENT of the picture's height, holds it). Places may overlap: they are layers, a place made later lies over
+// one made earlier, and the app paints them so (a cover flow, a stack of photos). An older app draws them flat.
+void set_picture(lv_obj_t *place, const std::string &url, Fit fit, Turn turn, bool mirror = false);
 }  // namespace ui
 
 }  // namespace tessera

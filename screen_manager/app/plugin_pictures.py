@@ -36,17 +36,26 @@ HA_PICTURES = ('/api/image/serve/', '/api/image_proxy/', '/local/')
 
 class Question:
     """What one plugin tile asked for."""
-    __slots__ = ('entity', 'plugin', 'tile', 'index', 'atlas', 'sources', 'fits', 'ground', 'dark')
+    __slots__ = ('entity', 'plugin', 'tile', 'index', 'atlas', 'sources', 'fits', 'ground', 'dark', 'turns', 'mirrors')
 
-    def __init__(self, entity, plugin, tile, index, atlas, sources, fits, ground, dark):
+    def __init__(self, entity, plugin, tile, index, atlas, sources, fits, ground, dark, turns=None, mirrors=None):
         self.entity, self.plugin, self.tile, self.index = entity, plugin, tile, index
         self.atlas, self.sources, self.fits, self.ground, self.dark = atlas, sources, fits, ground, dark
+        self.turns = turns or [''] * len(sources)
+        self.mirrors = mirrors or [False] * len(sources)
+
+    def styles(self):
+        """How each frame is painted (tile_art.layers): its fit, its turn and whether a reflection goes under it."""
+        return [('fill' if fit == 'cover' else 'within', turn, mirror)
+                for fit, turn, mirror in zip(self.fits, self.turns, self.mirrors)]
 
 
 def parse(request, canvas):
     """The Question a plugin tile's request carries, or None when it is not one the app can serve: `tiles` one plugin
     tile, `idx` its index, `atlas` its frames within `canvas` (the screen's shape), `src` one address per frame and
-    `fit` one of FITS per frame (cover without), `bg` the card's colour behind the corners."""
+    `fit` one of FITS per frame (cover without), `bg` the card's colour behind the corners; and, when a place asks
+    for them, `turn` one of tile_art.TURNS per frame and `mirror` 0 or 1 per frame. The frames may overlap: they are the
+    layers of one card."""
     if not isinstance(request, dict):
         return None
     entity = request.get('tiles')
@@ -68,11 +77,20 @@ def parse(request, canvas):
     fits = fits or ['cover'] * len(sources)
     if len(fits) != len(sources) or any(f not in FITS for f in fits):
         return None
-    atlas = tile_art.parse(request.get('atlas'), canvas, len(sources))
+    try:
+        turns = json.loads(request['turn']) if request.get('turn') else [''] * len(sources)
+        mirrors = json.loads(request['mirror']) if request.get('mirror') else [0] * len(sources)
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(turns, list) or len(turns) != len(sources) or any(t not in tile_art.TURNS for t in turns):
+        return None
+    if not isinstance(mirrors, list) or len(mirrors) != len(sources) or any(m not in (0, 1) for m in mirrors):
+        return None
+    atlas = tile_art.parse(request.get('atlas'), canvas, len(sources), overlap=True)
     if atlas is None:
         return None
     return Question(entity, parts[0], parts[1], int(idx), atlas, sources, fits, int(ground, 16),
-                    str(request.get('dark') or '') == '1')
+                    str(request.get('dark') or '') == '1', turns, [bool(m) for m in mirrors])
 
 
 def allowed(url, manifest, tile):
@@ -163,9 +181,8 @@ class Pictures:
     async def atlas(self, question, raws, compact=False):
         """The BMP of a question's frames with their pictures (None where one did not come: the frame stays the card's
         colour), painted as every tile picture is."""
-        modes = [('fill' if fit == 'cover' else 'within', False) for fit in question.fits]
-        grounds = [question.ground] * len(raws)
-        return await asyncio.get_running_loop().run_in_executor(None, tile_art.encode, raws, grounds, question.atlas, modes, compact)
+        return await asyncio.get_running_loop().run_in_executor(
+            None, tile_art.layers, raws, question.ground, question.atlas, question.styles(), compact)
 
     def forget(self):
         self.cache.clear()

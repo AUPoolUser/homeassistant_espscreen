@@ -375,6 +375,8 @@ struct Place {
   lv_obj_t *place = nullptr, *image = nullptr;
   std::string url;
   bool contain = false;
+  uint8_t turn = 0;      // tessera::Turn
+  bool mirror = false;
 };
 struct Card {
   std::unique_ptr<tessera::Tile> tile;
@@ -514,6 +516,8 @@ static int measure(const rt::Widgets &w, std::vector<tile_picture::Part> &parts,
     part.radius = lv_obj_get_style_radius(p.place, LV_PART_MAIN);
     part.url = p.url;
     part.contain = p.contain;
+    part.turn = p.turn;
+    part.mirror = p.mirror;
     parts.push_back(std::move(part));
     owners.push_back(&p);
     right = std::max(right, part.x + part.w);
@@ -588,6 +592,16 @@ void picture_place(rt::Widgets &w, void *picture) {
   for (auto &p : w.plugin->places) place_clear(p);
   (void) picture;
 #endif
+}
+
+const void *picture_drawn(const rt::Widgets &w) {
+  if (!w.plugin) return nullptr;
+#if LV_USE_IMAGE
+  for (const auto &p : w.plugin->places)
+    if (p.image && !lv_obj_has_flag(p.image, LV_OBJ_FLAG_HIDDEN))
+      if (const void *src = lv_image_get_src(p.image)) return src;
+#endif
+  return nullptr;
 }
 
 bool picture_draws(const rt::Widgets &w, const void *picture) {
@@ -1012,16 +1026,22 @@ lv_obj_t *picture(lv_obj_t *parent) {
   return place;
 }
 
-void set_picture(lv_obj_t *place, const std::string &url, Fit fit) {
+void set_picture(lv_obj_t *place, const std::string &url, Fit fit) { set_picture(place, url, fit, Turn::NONE, false); }
+
+void set_picture(lv_obj_t *place, const std::string &url, Fit fit, Turn turn, bool mirror) {
   plugin_host::Place *p = plugin_host::find_place(place);
   if (!p) return;
   const bool contain = fit == Fit::CONTAIN;
-  if (p->url == url && p->contain == contain) return;
+  const uint8_t turned = static_cast<uint8_t>(turn);
+  if (p->url == url && p->contain == contain && p->turn == turned && p->mirror == mirror) return;
   p->url = url;
   p->contain = contain;
-  // Another picture: the block until it is here (the next round asks, the address is in the picture's key); "" the
-  // block for good.
-  plugin_host::place_clear(*p);
+  p->turn = turned;
+  p->mirror = mirror;
+  // Another picture: the next round asks for it (the address is in the picture's key), and the place keeps what it
+  // showed until it is here (tile_picture_place), so a row of posters turns without a flash of blocks; "" takes the
+  // picture away at once, and a place that showed none keeps its block.
+  if (url.empty()) plugin_host::place_clear(*p);
 }
 }  // namespace tessera::ui
 #else
@@ -1041,6 +1061,7 @@ uint16_t bytes(const std::string &) { return PLACEHOLDER_BYTES; }
 bool pictured(const runtime_tiles::Widgets &) { return false; }
 bool picture_ask(const runtime_tiles::Widgets &, const runtime_tiles::Tile &, tile_picture::Ask &) { return false; }
 void picture_place(runtime_tiles::Widgets &, void *) {}
+const void *picture_drawn(const runtime_tiles::Widgets &) { return nullptr; }
 bool picture_draws(const runtime_tiles::Widgets &, const void *) { return false; }
 bool picture_let_go(runtime_tiles::Widgets &, const void *) { return false; }
 bool open_card(const std::string &, const std::string &, int, const std::string &) { return false; }

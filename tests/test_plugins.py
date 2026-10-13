@@ -16,6 +16,7 @@ import page_layout  # noqa: E402
 import plugin_fetch  # noqa: E402
 import plugin_manifest as pm  # noqa: E402
 import plugin_pictures  # noqa: E402
+import tile_art  # noqa: E402
 from firmware import Firmware  # noqa: E402
 from page_delivery import plugins_of  # noqa: E402
 
@@ -204,6 +205,50 @@ class Pictures(unittest.IsolatedAsyncioTestCase):
                     dict(fit='["cover"]'), dict(fit='["fill","cover"]'), dict(atlas='[[0,0,60,90,6,0]]'), dict(src='[]'),
                     dict(src='[' + ','.join(['"https://api.example.org/x.jpg"'] * 9) + ']'), dict(atlas='[[0,0,600,90,6,0],[70,0,60,90,6,0]]')):
             self.assertIsNone(self.question(**bad), bad)
+
+    def test_places_may_overlap_turn_and_mirror(self):
+        """The places of one card are its layers (0.10): their frames may overlap, each may turn and have a reflection."""
+        q = self.question(atlas='[[0,0,60,90,6,0],[40,0,60,90,6,0]]', turn='["right",""]', mirror='[0,1]')
+        self.assertEqual((q.turns, q.mirrors), (['right', ''], [False, True]))
+        self.assertEqual(q.styles(), [('fill', 'right', False), ('within', '', True)])
+        self.assertEqual(self.question().turns, ['', ''])   # a flat card asks without them
+        for bad in (dict(turn='["up",""]'), dict(turn='["left"]'), dict(mirror='[2,0]'), dict(mirror='{}'), dict(turn='x')):
+            self.assertIsNone(self.question(**bad), bad)
+        # Covers of different tiles still never overlap.
+        self.assertIsNone(tile_art.parse('[[0,0,60,90,6,0],[40,0,60,90,6,0]]', (480, 480), 2))
+
+    def test_the_reflection_is_the_screens_share(self):
+        header = (ROOT / 'components/smart_display/plugin_api.h').read_text()
+        self.assertIn(f'constexpr int MIRROR_PERCENT = {tile_art.MIRROR_PERCENT};', header)
+
+    @unittest.skipUnless(__import__('importlib').util.find_spec('PIL'), 'Pillow')
+    def test_layers_overlap_turn_and_mirror(self):
+        from PIL import Image
+        import io
+        def picture(colour):
+            raw = io.BytesIO()
+            Image.new('RGB', (100, 150), colour).save(raw, 'PNG')
+            return raw.getvalue()
+        red, blue = picture((255, 0, 0)), picture((0, 0, 255))
+        atlas = tile_art.parse('[[0,0,60,90,8,0],[40,0,60,117,8,0]]', (480, 480), 2, overlap=True)
+        body = tile_art.layers([red, blue], 0x202020, atlas, [('fill', '', False), ('fill', '', True)])
+        with Image.open(io.BytesIO(body)) as image:
+            rgb = image.convert('RGB')
+            self.assertEqual(rgb.getpixel((20, 45)), (255, 0, 0))      # the first, where nothing lies over it
+            self.assertEqual(rgb.getpixel((50, 45)), (0, 0, 255))      # the later place lies over the earlier
+            self.assertGreater(rgb.getpixel((40, 1))[0], 245)          # its rounded corner shows the red under it
+            self.assertEqual(rgb.getpixel((99, 0)), (0x20, 0x20, 0x20))  # and the card where nothing lies under it
+            below = rgb.getpixel((70, 92))                            # the reflection: faint blue on the card
+            self.assertTrue(below[2] > 0x40 and below[2] < 160 and below[0] < 0x30, below)
+            self.assertTrue(all(abs(c - 0x20) <= 3 for c in rgb.getpixel((70, 116))))   # faded out at its foot
+        # Turned to face the right: the left edge near (full height), the right edge far (lower and shorter).
+        atlas = tile_art.parse('[[0,0,40,100,0,0]]', (480, 480), 1)
+        body = tile_art.layers([red], 0x202020, atlas, [('fill', 'right', False)])
+        with Image.open(io.BytesIO(body)) as image:
+            rgb = image.convert('RGB')
+            self.assertEqual(rgb.getpixel((1, 2))[0], 255)
+            self.assertEqual(rgb.getpixel((38, 2)), (0x20, 0x20, 0x20))
+            self.assertEqual(rgb.getpixel((38, 50))[0], 255)
 
     def test_where_a_picture_may_come_from(self):
         checked = pm.check(manifest(), ENGLISH)

@@ -10465,6 +10465,10 @@ inline bool pictures_kept() {
     // budget; it says how much is kept beside them.
     const size_t psram = heap_caps_get_total_size(MALLOC_CAP_SPIRAM);
     pictures.budget = std::min<size_t>(6u << 20, psram / 5);
+#elif defined(KEPT_PAGES_HOST)
+    // tools/render with KEPT_PAGES_HOST=1 draws as a board with PSRAM, its pictures too: the store of a 4-inch Guition.
+    // Without it the host keeps one download at a time, and a page of several pictured tiles shows only the last.
+    pictures.budget = 1200u << 10;
 #endif
     pictures.allocate = kept_allocate;
     pictures.release = kept_free;
@@ -10798,7 +10802,19 @@ inline void tile_picture_place(Widgets &w, const Tile &t, int size, int x, int y
   // A plugin tile's picture is an atlas of its places' pieces (plugin API 0.10): the host lays each on its place.
   if (w.plugin) {
     const bool its = tile_picture::belongs(w.art_key, w.index, t.entity);
-    plugin_host::picture_place(w, its ? picture_of(w.art_key) : nullptr);
+    lv_image_dsc_t *src = its ? picture_of(w.art_key) : nullptr;
+#if LV_USE_IMAGE
+    // Its last picture stays on its places while the next one comes (other addresses in the same frame: a carousel that
+    // turned), as a tile's own picture does; the store keeps it, since the places still draw it.
+    if (!src && its && pictures_kept()) {
+      const auto *held = pictures.holder(static_cast<const lv_image_dsc_t *>(plugin_host::picture_drawn(w)));
+      if (held && tile_picture::place_of(held->key) == tile_picture::place_of(w.art_key)) {
+        ESP_LOGD("picture", "tile %u keeps %s until %s", (unsigned) w.index, held->key.c_str(), w.art_key.c_str());
+        return;
+      }
+    }
+#endif
+    plugin_host::picture_place(w, src);
     return;
   }
 #if LV_USE_IMAGE
@@ -10867,6 +10883,10 @@ inline void tile_picture_done(size_t index, picture_loader::Outcome outcome) {
     ESP_LOGI("camera", "tile %u: picture loaded", (unsigned) index);
   else
     ESP_LOGD("picture", "tile %u: shows the picture the store kept", (unsigned) index);
+  // A plugin card that kept its last picture while asking lets go of it when the next one did not come: its places show
+  // their blocks, not a picture of the addresses before.
+  if (!shows(outcome) && index < model.count)
+    each_card([&](Widgets &w) { if (w.index == index && w.plugin) plugin_host::picture_place(w, nullptr); });
   if (shows(outcome) && index < model.count)
     each_card([&](Widgets &w) {
       if (w.index != index || !w.tile) return;

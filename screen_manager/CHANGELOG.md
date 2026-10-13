@@ -8,7 +8,8 @@
   pictures of the tile's entity, cuts or fits it to its place and sends all the places of a tile as one picture. The
   manifest says how many places a tile has (`pictures`). A board without the memory for pictures shows the tile
   without them. Also a label of several lines for a plugin's tile, and where a finger tapped a tile, so a list or a
-  row of posters knows which one. The plugins repository's docs say how.
+  row of posters knows which one. The places of a tile may overlap, and a picture can be turned in perspective and
+  get a reflection under it, drawn by the app, so a plugin can make a cover flow. The plugins repository's docs say how.
 - **Live camera on the P4 boards: the panel keeps up, and a live tile never stays where its card was.** The PPA, which
   scales and turns every live picture and, on a turned glass, every flush of LVGL, moves in bursts of 64 bytes instead
   of 128, so the panel's own DMA gets its turn on the memory bus; a frame of blue (the panel's colour for no data, seen

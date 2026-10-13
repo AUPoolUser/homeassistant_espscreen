@@ -9,11 +9,13 @@ import io
 import json
 
 
-def parse(value, canvas, count):
+def parse(value, canvas, count, overlap=False):
     """Validated immutable (width, height, frames), or None for malformed input.
 
     Each frame is x, y, width, height, corner radius, darkening (0 or 170).
     The last two fields are baked into RGB pixels, avoiding device mask layers.
+    Frames of different tiles never overlap; the places of one plugin tile may (`overlap`, plugin API 0.10): they are
+    layers of one card, painted in their order (layers()).
     """
     if not isinstance(value, str) or len(value) > 8192 or not 1 <= count <= 64:
         return None
@@ -36,11 +38,111 @@ def parse(value, canvas, count):
             return None
         if not 0 <= radius <= min(w, h)//2 or shade not in (0, 170):
             return None
-        if any(x < a+c and a < x+w and y < b+d and b < y+h for a,b,c,d,_,_ in checked):
+        if not overlap and any(x < a+c and a < x+w and y < b+d and b < y+h for a,b,c,d,_,_ in checked):
             return None
         checked.append(tuple(frame))
         right, bottom = max(right, x+w), max(bottom, y+h)
     return right, bottom, tuple(checked)
+
+
+# A plugin tile's picture turned in its place (plugin API 0.10, tessera::Turn), as the covers beside the middle one of a
+# cover flow: the far edge this share of the near one's height. A reflection under a picture (tessera::ui mirror) takes
+# MIRROR_PERCENT of the picture's height under it (plugin_api.h MIRROR_PERCENT, a test keeps them equal), starting at
+# MIRROR_ALPHA of the picture and fading out.
+FAR_EDGE = 0.70
+MIRROR_PERCENT = 30
+MIRROR_ALPHA = 0.38
+TURNS = ('', 'left', 'right')
+
+
+def _perspective(size, quad):
+    """Pillow's PERSPECTIVE coefficients that draw a picture of `size` into `quad` (its top left, top right, bottom
+    right and bottom left corners in the output): the transform maps each output point back to the picture."""
+    w, h = size
+    source = [(0, 0), (w, 0), (w, h), (0, h)]
+    rows, rhs = [], []
+    for (x, y), (u, v) in zip(quad, source):
+        rows.append([x, y, 1, 0, 0, 0, -u * x, -u * y]); rhs.append(u)
+        rows.append([0, 0, 0, x, y, 1, -v * x, -v * y]); rhs.append(v)
+    # Gaussian elimination with partial pivoting: eight equations, no numpy in the app.
+    n = 8
+    m = [row + [r] for row, r in zip(rows, rhs)]
+    for c in range(n):
+        pivot = max(range(c, n), key=lambda r: abs(m[r][c]))
+        m[c], m[pivot] = m[pivot], m[c]
+        for r in range(n):
+            if r != c and m[c][c]:
+                f = m[r][c] / m[c][c]
+                m[r] = [a - f * b for a, b in zip(m[r], m[c])]
+    return [m[i][n] / m[i][i] for i in range(n)]
+
+
+def layer(raw, w, h, radius, fit, turn='', mirror=False):
+    """One place's picture as an RGBA layer of w x h: cut to the place (fit 'fill') or whole within it ('within'),
+    corners rounded; with `mirror` the picture takes the top of the place and a reflection fades out under it; turned
+    ('left' or 'right') the picture (and its reflection) is drawn whole in perspective, its near edge the place's height,
+    its far edge FAR_EDGE of it. Transparent where nothing is drawn, so what lies under it shows."""
+    from PIL import Image, ImageDraw, ImageOps
+    picture_h = max(1, round(h * 100 / (100 + MIRROR_PERCENT))) if mirror else h
+    with (contextlib.nullcontext(raw) if isinstance(raw, Image.Image) else Image.open(io.BytesIO(raw))) as source:
+        source = ImageOps.exif_transpose(source).convert('RGBA')
+        if turn:
+            # Whole, at its own proportions: the turn squeezes it into the place as a cover turned away is squeezed.
+            base = source.resize((max(1, round(picture_h * source.width / source.height)), picture_h), Image.Resampling.LANCZOS)
+        elif fit == 'within':
+            base = ImageOps.contain(source, (w, picture_h), method=Image.Resampling.LANCZOS)
+        else:
+            base = ImageOps.fit(source, (w, picture_h), method=Image.Resampling.LANCZOS)
+    if radius:
+        mask = Image.new('L', (base.width * 4, base.height * 4))
+        ImageDraw.Draw(mask).rounded_rectangle((0, 0, base.width * 4 - 1, base.height * 4 - 1), radius=radius * 4, fill=255)
+        mask = mask.resize(base.size, Image.Resampling.LANCZOS)
+        base.putalpha(Image.composite(base.getchannel('A'), Image.new('L', base.size), mask))
+    total = base.height + (h - picture_h if mirror else 0)
+    tall = Image.new('RGBA', (base.width, total))
+    tall.paste(base, (0, 0))
+    if mirror and total > base.height:
+        reflection = base.transpose(Image.Transpose.FLIP_TOP_BOTTOM).crop((0, 0, base.width, total - base.height))
+        ramp = Image.linear_gradient('L').resize((base.width, reflection.height))
+        fade = ramp.point(lambda v: round((255 - v) * MIRROR_ALPHA))
+        alpha = Image.composite(fade, Image.new('L', reflection.size), reflection.getchannel('A'))
+        reflection.putalpha(alpha)
+        tall.paste(reflection, (0, base.height))
+    if not turn:
+        out = Image.new('RGBA', (w, h))
+        out.paste(tall, ((w - tall.width) // 2, (picture_h - base.height) // 2))
+        return out
+    # Turned: the near edge the full height, the far edge FAR_EDGE of the picture's height, both about the middle of
+    # the picture (the reflection follows the same lines).
+    inset = picture_h * (1 - FAR_EDGE) / 2
+    far_total = total * FAR_EDGE
+    if turn == 'left':    # facing left: the left edge far, the right edge near (a cover right of the middle)
+        quad = [(0, inset), (w, 0), (w, total), (0, inset + far_total)]
+    else:                 # facing right: the right edge far (a cover left of the middle)
+        quad = [(0, 0), (w, inset), (w, inset + far_total), (0, total)]
+    coefficients = _perspective(tall.size, quad)
+    return tall.transform((w, h), Image.Transform.PERSPECTIVE, coefficients, Image.Resampling.BICUBIC)
+
+
+def layers(raws, ground, atlas, styles, compact=False):
+    """A plugin tile's atlas (plugin API 0.10): its places painted in their order, each over what the ones before it
+    left, on the card's colour `ground` where nothing lies yet. `styles` gives each frame (fit, turn, mirror). The screen
+    draws its places in the same order, the later over the earlier, and each place shows its piece of this one picture,
+    so places that overlap show as layers."""
+    from PIL import Image
+    width, height, frames = atlas
+    colour = tuple((ground >> shift) & 255 for shift in (16, 8, 0))
+    image = Image.new('RGBA', (width, height), colour + (255,))
+    for raw, frame, (fit, turn, mirror) in zip(raws, frames, styles):
+        x, y, w, h, radius, _shade = frame
+        if raw is None:
+            continue
+        try:
+            painted = layer(raw, w, h, radius, fit, turn, mirror)
+        except Exception:   # a picture Pillow cannot read stays the card's colour
+            continue
+        image.alpha_composite(painted, (x, y))
+    return bmp(image.convert('RGB'), compact)
 
 
 # The shade under a camera's name (app 0.3.8): the bottom share of the card, from clear to this much black.

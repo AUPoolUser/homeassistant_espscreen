@@ -48,6 +48,9 @@ bool picture_ask(const runtime_tiles::Widgets &w, const runtime_tiles::Tile &t, 
 // The card's picture (an lv_image_dsc_t of the store, or nullptr for none) onto its places, each its own piece; a
 // place whose piece is not in it shows its block again.
 void picture_place(runtime_tiles::Widgets &w, void *picture);
+// The picture the card's places draw now (its last atlas), nullptr for none: while the next one comes, a card whose
+// addresses changed keeps showing it (tile_picture_place), as a tile's own picture keeps its last.
+const void *picture_drawn(const runtime_tiles::Widgets &w);
 // Whether a place of the card draws this picture (the store frees nothing a card draws).
 bool picture_draws(const runtime_tiles::Widgets &w, const void *picture);
 // The places let go of this picture (nullptr: of every picture): another layout, or the store takes it off a page out

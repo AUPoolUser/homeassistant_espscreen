@@ -713,7 +713,7 @@ class Run:
                     assert question.sources == [poster, poster] and question.fits == ['cover', 'contain'], \
                         f'the places asked for {question.sources} as {question.fits}'
                     raw = porch(300, 450)
-                    body = tile_art.encode([raw, raw], [question.ground] * 2, question.atlas, [('fill', False), ('within', False)], compact=True)
+                    body = tile_art.layers([raw, raw], question.ground, question.atlas, question.styles(), compact=True)
                     url = self.pictures.url(f'{self.item.key}-posters-{served["posters"]}.bmp', body)
                     served['posters'] += 1
                     await self.send({'v': 1, 'op': 'camera', 't': 'live', 'e': data['tiles'], 'u': url, 'view': int(data['view'])})
@@ -736,6 +736,32 @@ class Run:
             inner = shot.convert('RGB').crop((x1 + 2, y1 + 2, x2 - 1, y2 - 1))
             colours = inner.getcolors(1 << 16) or []
             assert len(colours) > 12, f'the first place shows {len(colours)} colours at {x1},{y1}-{x2},{y2}, not the poster'
+            if os.environ.get('KEPT_PAGES_HOST') == '1':
+                # Another address (a carousel that turned): with the store the places keep the poster they show until the
+                # next picture is here, no flash of blocks; then the next one comes the same way.
+                poster = 'https://image.tmdb.org/t/p/w342/probe-next.jpg'
+                start, since = len(self.lines), len(calls)
+                await self.sender.synchronize(self.inbox.object_id, record, region, values(3, {**x, 'picture': poster}), bars)
+                await self.until(lambda l: probe(l, 'tile=0 picture set ' + poster), 10, 'the next picture was set', start)
+                # Until the card asked for the next picture: before that it shows the last one anyway.
+                for _ in range(40):
+                    if any(c.service == 'esphome.screen_camera' and poster in str(dict(c.data).get('src', '')) for c in calls[since:]):
+                        break
+                    await asyncio.sleep(0.25)
+                else:
+                    raise AssertionError('the card did not ask for its next picture')
+                await asyncio.sleep(0.8)
+                held = (await self.render('plugin-pictures-next', keep=False)).convert('RGB').crop((x1 + 2, y1 + 2, x2 - 1, y2 - 1))
+                kept = len(held.getcolors(1 << 16) or [])
+                assert kept > 12, f'the first place shows {kept} colours while the next picture comes: it did not keep its poster'
+                more = 0
+                for _ in range(24):
+                    await asyncio.sleep(0.5)
+                    more += await answer_posters()
+                    if more and any('tile 0: picture loaded' in l for l in self.lines[start:]):
+                        break
+                assert more, 'the plugin tile did not ask for its next picture'
+                answered += more
             self.warnings.append(f'pictures: {answered} question(s) of the plugin tile answered with an atlas of two posters')
         # The question the first tile asked: the app's answer reaches on_message (the harness stands in for the app).
         sent = next((c for c in calls if c.service == 'esphome.screen_plugin'), None)

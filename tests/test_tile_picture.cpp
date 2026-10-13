@@ -113,6 +113,16 @@ int main() {
     parts[1].contain = true;
     set_parts(b, parts, 0x202020);
     assert(key(a) == key(b) && belongs(key(a), 4, "plugin:films.tonight"));
+    // A turn and a reflection (0.10) go with the frames only when a place asks for them, and make another picture.
+    parts[0].turn = 2;
+    parts[1].mirror = true;
+    set_parts(b, parts, 0x202020);
+    assert(key(a) != key(b));
+    std::map<std::string, std::string> g;
+    for (const auto &field : fields(b)) g[field.first] = field.second;
+    assert(g.size() == 10 && g["turn"] == "[\"right\",\"\"]" && g["mirror"] == "[0,1]");
+    parts[0].turn = 0;
+    parts[1].mirror = false;
     // A card over the cap: every piece comes smaller alike, and the frames still do not overlap.
     std::vector<Part> wide;
     for (int i = 0; i < 4; ++i) wide.push_back({i * 400, 0, 400, 760, 24, "https://image.tmdb.org/x" + std::to_string(i) + ".jpg", false});

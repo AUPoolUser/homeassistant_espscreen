@@ -265,6 +265,18 @@ pictures (no `SCREEN_PICTURES`) has the calls and shows blocks; `ui::pictures()`
 without the places. Nothing of this counts in the layout memory: the store's budget and its rule of the picture used
 longest ago hold for a plugin's atlas as for every picture.
 
+**Layers, turns and reflections.** The places of one card may overlap: they are its layers, and a place made later
+lies over one made earlier. The screen draws them in that order, and the app paints the atlas in the same order
+(`tile_art.layers`): each frame over what the ones before it left, on the card's colour where nothing lies yet, so a
+rounded corner shows the poster under it. Covers of different tiles still never overlap (`tile_art.parse`). A place may
+also ask for its picture turned (`tessera::Turn`, `turn` in the question: `left` faces the left, its left edge far) and
+with a reflection (`mirror`, the lower `MIRROR_PERCENT` of the place under the picture); the app draws both into the
+atlas with Pillow (`tile_art.layer`), so the screen pays nothing for them. The question names `turn` and `mirror` only
+when a place asks for them, and an older app ignores them and draws the pictures flat. A place keeps the picture it
+shows while the next one comes (`set_picture` no longer clears it, and `tile_picture_place` keeps the last atlas while
+the store holds it), so a cover flow turns without a flash of blocks; the render host with `KEPT_PAGES_HOST=1` has a
+picture store of a 4-inch Guition's size, so its renders show every picture of a page as a board with PSRAM does.
+
 ## What is not built yet
 
 A plugin's own messages beyond Home Assistant commands, Python modules of Tessera's own plugins in the add-on (the

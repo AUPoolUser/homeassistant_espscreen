@@ -69,6 +69,8 @@ struct Part {
   int x = 0, y = 0, w = 0, h = 0, radius = 0;
   std::string url;
   bool contain = false;       // the whole picture within the place; else the place filled and the rest cut away
+  uint8_t turn = 0;           // 0 flat, 1 facing left, 2 facing right (plugin_api.h Turn), drawn by the app
+  bool mirror = false;        // a reflection under the picture, within the place
 };
 // The frame a part takes in the atlas, at the atlas's scale (a card over the cap comes smaller, as a whole).
 struct Piece {
@@ -115,7 +117,7 @@ inline void set_parts(Ask &a, std::vector<Part> parts, uint32_t ground, const pi
     right = std::max(right, p.x + p.w);
     bottom = std::max(bottom, p.y + p.h);
     what += std::to_string(p.x) + "," + std::to_string(p.y) + "," + std::to_string(p.w) + "," + std::to_string(p.h) + "," +
-            std::to_string(p.radius) + (p.contain ? "c" : "f") + p.url + ";";
+            std::to_string(p.radius) + (p.contain ? "c" : "f") + std::to_string(p.turn) + (p.mirror ? "m" : "") + p.url + ";";
   }
   a.frame = frame(right, bottom, 0, 0, ground, ground, cap);
   a.scale = picture_store::fit_scale(right, bottom, cap);
@@ -197,6 +199,19 @@ inline std::vector<std::pair<std::string, std::string>> fields(const Ask &a) {
     }
     out.push_back({"src", src + "]"});
     out.push_back({"fit", fit + "]"});
+    // Only when a place asks for it, so a flat card's question stays as it was: how each turns, and its reflection.
+    bool styled = false;
+    for (const auto &p : a.parts) styled = styled || p.turn || p.mirror;
+    if (styled) {
+      std::string turn = "[", mirror = "[";
+      for (const auto &p : a.parts) {
+        if (turn.size() > 1) { turn += ","; mirror += ","; }
+        turn += p.turn == 1 ? "\"left\"" : p.turn == 2 ? "\"right\"" : "\"\"";
+        mirror += p.mirror ? "1" : "0";
+      }
+      out.push_back({"turn", turn + "]"});
+      out.push_back({"mirror", mirror + "]"});
+    }
   }
   return out;
 }
