@@ -9,7 +9,8 @@ upgrade from main, and then moves main to it.
                                            hotfix dev lacks
     tools/release.py prepare [--version X.Y.Z]
                                            the release's edits in the working tree, for you to commit: the app version
-                                           in screen_manager/config.yaml, the CHANGELOG heading in place of
+                                           in screen_manager/config.yaml and its name without " (dev)", the CHANGELOG
+                                           heading in place of
                                            "## Unreleased", the firmware numbers tools/affected_boards.py works out
                                            (packages/core.yaml and core.FIRMWARE_VERSION, or the board files), and
                                            screen_manager/app/boards.json
@@ -22,7 +23,8 @@ upgrade from main, and then moves main to it.
     tools/release.py candidate --delete    removes that branch again
     tools/release.py publish --notes FILE [--yes]
                                            main fast-forwards to HEAD, the tag screens-vX.Y.Z, the GitHub release with
-                                           FILE as its notes, and the candidate branch goes. Only for a commit that is
+                                           FILE as its notes, and the candidate branch goes; from dev, dev then names
+                                           the app "(dev)" again in a commit of its own. Only for a commit that is
                                            pushed, green in CI and the one the candidate was made of; without --yes it
                                            says what it would do and does nothing
 
@@ -56,6 +58,10 @@ UNRELEASED = re.compile(r'^## Unreleased[ \t]*$', re.M)
 SECTION = re.compile(r'^#{1,2} ', re.M)
 FIRST_HEADING = re.compile(r'^## (.+)$', re.M)
 APP_VERSION = re.compile(r'^(version:[ \t]*)["\']?(\d+\.\d+\.\d+)["\']?[ \t]*$', re.M)
+# The app's name in the App store (docs/RELEASING.md, "Testing dev"): on dev it says so, since the store shows the app
+# added from the #dev URL beside the stable one; a release takes the mark off, and main never has it.
+APP_NAME = re.compile(r'^(name:[ \t]*)(.+?)[ \t]*$', re.M)
+DEV_MARK = ' (dev)'
 CORE_NUMBER = re.compile(r'^(  SCREEN_FIRMWARE_VERSION:[ \t]*)"[^"\n]*"[ \t]*$', re.M)
 CORE_PY_NUMBER = re.compile(r"^(FIRMWARE_VERSION = )'[^'\n]*'[ \t]*$", re.M)
 BOARD_ID = re.compile(r'^  BOARD_ID:.*\n', re.M)
@@ -115,6 +121,22 @@ def next_version(version):
 
 def with_version(config, version):
     return APP_VERSION.sub(lambda m: f'{m.group(1)}"{version}"', config, count=1)
+
+
+def name_of(config):
+    found = APP_NAME.search(config)
+    if not found:
+        raise Refusal(f'{CONFIG} has no name: line')
+    return found.group(2)
+
+
+def with_name(config, dev):
+    """The config with the app's name as the store shows it: with " (dev)" on dev, without it in a release."""
+    found = APP_NAME.search(config)
+    if not found:
+        raise Refusal(f'{CONFIG} has no name: line')
+    name = found.group(2).removesuffix(DEV_MARK) + (DEV_MARK if dev else '')
+    return config[:found.start()] + found.group(1) + name + config[found.end():]
 
 
 def one(pattern, text, replacement, where):
@@ -311,7 +333,7 @@ def prepare(args):
         raise Refusal('packages/core.yaml names no SCREEN_FIRMWARE_VERSION')
     line = heading(version, release)
     write(CHANGELOG, named(changelog, line))
-    write(CONFIG, with_version(config, version))
+    write(CONFIG, with_name(with_version(config, version), dev=False))
     touched = [CHANGELOG, CONFIG]
     if release['kind'] == 'shared':
         write('packages/core.yaml', with_core_number(read('packages/core.yaml'), release['firmware']))
@@ -428,6 +450,8 @@ def publish(args):
         problems.append(f'origin/{RELEASES} has commits HEAD lacks: merge them first, main only moves forward')
     changelog = read(CHANGELOG)
     version = version_of(read(CONFIG))
+    if name_of(read(CONFIG)).endswith(DEV_MARK):
+        problems.append(f'{CONFIG} names the app "{name_of(read(CONFIG))}": tools/release.py prepare takes the dev mark off')
     if unreleased(changelog) is not None:
         problems.append('the CHANGELOG still has "## Unreleased": tools/release.py prepare names it')
     first = FIRST_HEADING.search(changelog)
@@ -465,6 +489,8 @@ def publish(args):
     plan = [f'tag {tag} on {head[:12]} and push it with main (a fast-forward from {git("rev-parse", "--short", f"origin/{RELEASES}")}) in one atomic push',
             f'GitHub release "{name}" with the notes in {notes}',
             f'remove {CANDIDATE}']
+    if here == WORK:
+        plan.append(f'name the app "{name_of(with_name(read(CONFIG), dev=True))}" on {WORK} again, in a commit pushed to {WORK}')
     if not args.yes:
         print('Would:\n- ' + '\n- '.join(plan) + '\nNothing done: run again with --yes.')
         return 0
@@ -480,6 +506,12 @@ def publish(args):
     if git('ls-remote', '--heads', 'origin', CANDIDATE):
         git('push', '--quiet', 'origin', '--delete', CANDIDATE)
     print(f'Published {name}: main is {head[:12]}, tag {tag}.')
+    if here == WORK:
+        # The store shows the dev app beside the stable one: dev says it is dev again, now that main has the release.
+        write(CONFIG, with_name(read(CONFIG), dev=True))
+        git('commit', '--quiet', '-m', f'Dev app: the App store names it "{name_of(read(CONFIG))}" again after the release of {version}', CONFIG)
+        git('push', '--quiet', 'origin', f'HEAD:refs/heads/{WORK}')
+        print(f'{WORK} names the app "{name_of(read(CONFIG))}" again.')
     named = issues_in(found[1])
     if named:
         print('Reply on each with the version that has it and how to get it, then close it: '

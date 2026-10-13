@@ -137,6 +137,23 @@ class TheNumbers(unittest.TestCase):
                          'substitutions:\n  # The key of this board file.\n  BOARD_ID: "tab5"\n  DEVICE_NAME: "tab5-new"\n')
 
 
+class TheName(unittest.TestCase):
+    """The App store shows the app from the #dev URL beside the stable one: on dev its name says dev, a release takes
+    that off, and publish refuses a release that still has it (docs/RELEASING.md, "Testing dev")."""
+    def test_dev_names_the_app_dev(self):
+        self.assertEqual(release.name_of(CONFIG), 'Tessera Screen Manager (dev)')
+
+    def test_a_release_takes_the_mark_off_and_dev_puts_it_back(self):
+        stable = release.with_name(CONFIG, dev=False)
+        self.assertEqual(release.name_of(stable), 'Tessera Screen Manager')
+        self.assertEqual(release.with_name(stable, dev=False), stable)
+        self.assertEqual(release.with_name(stable, dev=True), release.with_name(CONFIG, dev=True))
+        self.assertEqual(release.name_of(release.with_name(stable, dev=True)), 'Tessera Screen Manager (dev)')
+        self.assertEqual(len(stable.splitlines()), len(CONFIG.splitlines()))
+        # Only the app's own name: the version and everything else stay as they are.
+        self.assertEqual(stable.replace('Tessera Screen Manager', ''), CONFIG.replace('Tessera Screen Manager (dev)', ''))
+
+
 class TheCandidate(unittest.TestCase):
     def test_every_published_entry_fetches_from_the_candidate(self):
         for package in [*profiles.PACKAGES, 'packages/bridge.yaml']:
