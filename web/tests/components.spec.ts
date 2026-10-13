@@ -1151,6 +1151,17 @@ describe("New screen and the Wi-Fi", () => {
     expect(writes[0].body).toEqual({ wifi_ssid: "Home", wifi_password: "secret" });
     expect(writes[1].body.wifi_password).toBeUndefined();
   });
+  it("says why when its build was refused at its turn, such as a cable pulled while it waited", async () => {
+    addon({ id: 2, by: "install", file: "hall.yaml", action: "install", state: "failed", asked: 1, started: 2, finished: 3,
+      reason: "Choose the USB port of the board." });
+    const view = mount(InstallerView);
+    await flush();
+    await toDone(view);
+    await view.find("#install-form").trigger("submit");
+    await flush();
+    expect(view.find("#progress-detail").text()).toBe("Choose the USB port of the board.");
+    expect(view.find("#install-retry").exists()).toBe(true);
+  });
   it("follows the screen onto the network, and after three minutes without it offers the fix", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {

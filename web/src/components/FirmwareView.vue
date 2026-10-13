@@ -62,7 +62,7 @@ const statusText = computed(() => {
   if (!data.value) return t("editor.common.loading");
   if (!data.value.available) return t("editor.firmware.no_cli");
   const own = followed.build.value;
-  if (own) return `${own.file} · ${own.action} · ${own.state === "queued" ? t("editor.firmware.waiting", own.place || 1) : own.state}`;
+  if (own) return `${own.file} · ${own.action} · ${own.state === "queued" ? t("editor.firmware.waiting", own.place || 1) : own.state}${own.reason ? ` · ${own.reason}` : ""}`;
   return data.value.job ? `${data.value.job.file} · ${data.value.job.action} · ${data.value.job.state}` : t("editor.firmware.choose");
 });
 // What the add-on says about the memory the build has (build_memory.py, app 0.4.65), under the status line.

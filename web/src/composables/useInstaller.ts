@@ -158,7 +158,8 @@ export function useInstaller() {
     built: job.value?.state === "success", stopped: memory.value?.reason === "out" || memory.value?.reason === "limit",
     name: installer.friendly, file: installer.file || "" }));
   const progressTitle = computed(() => followTitle(follow.value));
-  const progressDetail = computed(() => followDetail(follow.value, errorLine(logs.value)));
+  // Why it failed: the log's line, or the add-on's reason when it was refused at its turn (a USB cable pulled while it waited).
+  const progressDetail = computed(() => followDetail(follow.value, errorLine(logs.value) || job.value?.reason || undefined));
   const image = computed(() => firmwareImage(installer.file || ""));
   const progress = computed(() => installProgress(job.value, logs.value, { browser: installer.browser, mode: download.value ? "download" : "install", flash: flash.state }));
   // The clock of the time it takes, every second while the page is in sight.

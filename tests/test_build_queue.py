@@ -324,5 +324,97 @@ class TheApp(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual((await client.get('/api/firmware/builds/nothing/log')).status, 400)
 
 
+
+@unittest.skipUnless(HAS_AIOHTTP, 'Run using .venv-portal/bin/python for server tests')
+class RealESPHomeJobs(unittest.IsolatedAsyncioTestCase):
+    """The whole route with the app's own Firmware and an ESPHome that only pretends (test_firmware_download.fake_cli):
+    what the editor asks over HTTP waits its turn, the live stream says every step, and every build keeps its own log."""
+
+    async def test_jobs_wait_their_turn_and_the_live_stream_follows_every_step(self):
+        import os
+        from unittest import mock
+        from aiohttp.test_utils import TestClient, TestServer
+        from server import Manager, create_app
+        from test_firmware_download import PROFILE, fake_cli
+        from test_screen_owned_settings import fake_ha
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {**fake_cli(tmp), 'FAKE_SLEEP': '0.4',
+                                                                                'ESPHOME_CONFIG': str(Path(tmp) / 'esphome')}):
+            m = Manager(fake_ha(), Path(tmp) / 'screens.json')
+            for name in ('kitchen', 'hall'):
+                m.firmware.create({**PROFILE, 'name': name, 'friendly_name': name.title()})
+            async with TestClient(TestServer(create_app(m, True))) as client:
+                headers = {'X-Screen-CSRF': (await (await client.get('/api/inventory')).json())['csrf']}
+                seen = []
+
+                async def follow(stream):
+                    async for raw in stream.content:
+                        line = raw.decode().strip()
+                        if line.startswith('data: '):
+                            seen.append(json.loads(line[6:]).get('line') or [])
+                async with client.get('/api/events') as stream:
+                    reader = asyncio.get_running_loop().create_task(follow(stream))
+                    post = lambda body: client.post('/api/firmware/jobs', headers=headers, json=body)
+                    first = await (await post({'file': 'kitchen.yaml', 'action': 'install', 'target': '10.0.0.7'})).json()
+                    second = await (await post({'file': 'hall.yaml', 'action': 'build'})).json()
+                    check = await (await post({'file': 'kitchen.yaml', 'action': 'validate'})).json()
+                    self.assertEqual([first['state'], second['state'], check['state']], ['running', 'queued', 'queued'])
+                    self.assertEqual((second['place'], check['place']), (1, 2))
+                    # Refused at once, before it waits: a wrong address.
+                    wrong = await post({'file': 'hall.yaml', 'action': 'install', 'target': 'not a host!'})
+                    self.assertEqual(wrong.status, 400)
+                    # New screen while the line is busy: its build waits too, and its file is not offered half made.
+                    created = await client.post('/api/firmware/profiles', headers=headers,
+                                                json={**PROFILE, 'name': 'desk', 'friendly_name': 'Desk', 'target': 'download'})
+                    self.assertEqual(created.status, 200)
+                    new = (await created.json())['build']
+                    self.assertEqual((new['state'], new['by'], new['action']), ('queued', 'install', 'download'))
+                    early = await client.get('/api/firmware/profiles/desk.yaml/download')
+                    self.assertIn('still being built', (await early.json())['error'])
+                    # A profile whose build waits is not removed under it.
+                    forget = await client.delete('/api/firmware/profiles/desk.yaml', headers=headers)
+                    self.assertEqual(forget.status, 400)
+                    await m.build_queue.idle()
+                    await asyncio.sleep(3.2)   # the stream's own look, every three seconds
+                    reader.cancel()
+                states = {b['id']: b['state'] for b in (await (await client.get('/api/inventory?light=1')).json())['line']}
+                self.assertEqual([states[b['id']] for b in (first, second, check, new)], ['success'] * 4)
+                # The stream said each build's turn and ESPHome's step of the one that ran, as it went.
+                running = [(b['id'], b.get('stage')) for line in seen for b in line if b['state'] == 'running']
+                self.assertIn((first['id'], 'compile'), running)
+                self.assertIn((first['id'], 'upload'), running)
+                self.assertEqual([i for i, _ in dict.fromkeys(running)][:1], [first['id']])
+                order = list(dict.fromkeys(i for i, _ in running))
+                self.assertEqual(order, [first['id'], second['id'], check['id'], new['id']],
+                                 'all four are followed by a person: in the order asked')
+                # Every build kept its own log, though the next started at once.
+                for build, profile in ((first, 'kitchen'), (second, 'hall'), (new, 'desk')):
+                    log = (await (await client.get(f"/api/firmware/builds/{build['id']}/log")).json())['logs']
+                    self.assertTrue(any(profile + '.yaml' in line for line in log), (profile, log))
+                    self.assertFalse(any(other + '.yaml' in line for other in {'kitchen', 'hall', 'desk'} - {profile} for line in log))
+                self.assertEqual((await client.get('/api/firmware/profiles/desk.yaml/download')).status, 200)
+
+    async def test_the_app_stops_while_one_builds_and_another_waits(self):
+        import os
+        from unittest import mock
+        from server import Manager
+        from test_firmware_download import PROFILE, fake_cli
+        from test_screen_owned_settings import fake_ha
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {**fake_cli(tmp), 'FAKE_SLEEP': '5',
+                                                                                'ESPHOME_CONFIG': str(Path(tmp) / 'esphome')}):
+            m = Manager(fake_ha(), Path(tmp) / 'screens.json')
+            for name in ('kitchen', 'hall'):
+                m.firmware.create({**PROFILE, 'name': name, 'friendly_name': name.title()})
+            running = m.build_queue.attended({'file': 'kitchen.yaml', 'action': 'build'})
+            waiting = m.build_queue.attended({'file': 'hall.yaml', 'action': 'build'})
+            while not m.firmware.process:
+                await asyncio.sleep(0.05)
+            process = m.firmware.process
+            await m.build_queue.close()
+            self.assertEqual((running.state, waiting.state), ('interrupted', 'interrupted'))
+            # ESPHome itself went with it: no compiler is left running after the app.
+            self.assertIsNotNone(process.returncode)
+            self.assertEqual(m.firmware.job['state'], 'interrupted')
+
+
 if __name__ == '__main__':
     unittest.main()
