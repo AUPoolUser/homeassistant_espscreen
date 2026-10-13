@@ -1626,7 +1626,10 @@ section.advanced code { font-size: 11.5px; }
 .build-note .ui-icon { font-size: 16px; }
 .plugin-builds { display: grid; gap: 8px; }
 .updates .build-log { padding: 0; border: 0; background: none; }
-.updates .dev-tools { display: grid; gap: 4px; justify-items: start; }
+/* Its one column is the card's width, never the button's: a long label (Reinstall all 4 screens from dev) wraps inside the
+   card instead of pushing the button and the line under it out of it. */
+.updates .dev-tools { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; justify-items: start; }
+.updates .dev-tools .btn { max-width: 100%; white-space: normal; text-align: left; }
 .updates .dev-tools small { color: var(--muted); }
 /* Update all on this screen: one build for every update, above the screen's own plugins. */
 .sp-updates { display: grid; gap: 10px; justify-items: start; padding: 12px 14px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
