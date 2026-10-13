@@ -36,7 +36,12 @@ Three rules keep this safe:
   built, and ran after, is then no change that page lacks; the flags this replaced got that wrong.
 
 A layout change forgets every kept page (`forget_kept`); the sets stay and are reused for the next pages, and their
-pictures go with what they showed. How many pages a board keeps is `kept_capacity()`: every page but the one on the
+pictures go with what they showed, and so do the cards' own drawings (their custom parts, their points, a calendar's
+events, a meter's texts: `end_extra`). A card that next shows a tile without custom parts would only hide them
+(`hide_extra`, made for paging a slot back and forth), so before, every layout left kept cards holding a hidden one: on a
+4-inch Guition two pages added and taken away took the memory inside the chip from 49 to 20 KB, until the screen refused
+layouts. A card's points (`new_points`, a kilobyte each) take PSRAM first. Measure it on the bench with a page added and
+taken away a few times: the free memory inside the chip comes back to where it was. How many pages a board keeps is `kept_capacity()`: every page but the one on the
 glass, up to the board's page ceiling (`kept_pages::MAX_KEPT`, GitHub #183: with only seven kept, paging through a long
 layout was quick on one page and slow on the next), none without PSRAM, and no new set once the free PSRAM falls under
 `KEEP_RESERVE` (2 MB, for pictures, a full camera and an alert's picture). The price is the first opening of a layout,

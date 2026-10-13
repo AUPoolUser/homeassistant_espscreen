@@ -1,5 +1,9 @@
 ## Unreleased
 
+- **Screens keep taking new layouts.** On a screen that keeps its pages (every board with PSRAM), a layout that added or
+  took away a page left what the old cards had drawn behind in the memory inside the chip. After a few such changes a
+  4-inch Guition refused new layouts until it was restarted, or lost Wi-Fi. That memory now comes back with every
+  layout, and the points a card draws its lines through live in PSRAM.
 - **Screens with plugin tiles stay up.** A plugin tile's options and data, and the buffers a picture is downloaded
   with, now live in the screen's PSRAM instead of the small memory inside the chip that Wi-Fi needs. On a 4-inch
   Guition with a few plugin tiles and pictures that memory could run out at a busy moment: the screen restarted, or lost

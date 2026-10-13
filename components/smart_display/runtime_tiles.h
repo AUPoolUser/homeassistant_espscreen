@@ -591,6 +591,16 @@ struct Widgets {
 // A page is being built off the glass (warm_page): its cards ask for no pictures and wake nothing.
 inline bool warming=false;
 constexpr unsigned POINT_BUFFER = 128;
+// The points a card's lines are drawn through (a graph, a clock's hands, a history chart): a kilobyte each, PSRAM first
+// (roomy.h). LVGL reads them only when it draws, and its objects live in PSRAM already; inside the chip, one for every
+// card of every kept page took the memory Wi-Fi needs (2026-10-13). Aborts, as the `new[]` before it did, only when no
+// memory has room.
+inline lv_point_precise_t *new_points() {
+  void *p = roomy::allocate(sizeof(lv_point_precise_t) * POINT_BUFFER);
+  if (!p) std::abort();
+  return static_cast<lv_point_precise_t *>(p);
+}
+inline void free_points(lv_point_precise_t *&p) { if (p) roomy::release(p); p = nullptr; }
 // One widget per cell of the grid the screen runs on: the cards make_cells makes at boot. The table is sized for the
 // biggest grid the screen may be given (CELLS_MAX, about 700 bytes a cell), so a board with PSRAM keeps it there, beside
 // the kept pages' sets (firmware 0.53.0+): fifteen cells inside the chip would take 10 KB the 4-inch Guition does not
@@ -4372,7 +4382,7 @@ inline void render_history_line(bool large,int card_x,int card_y,int card_w,int 
       if(at>=0)low_x=xs[at];
     }
   }
-  if(!c.points)c.points=new lv_point_precise_t[POINT_BUFFER];
+  if(!c.points)c.points=new_points();
   c.count=n>=2?history_view::monotone(xs,ys,n,4,c.points,POINT_BUFFER):0;
   c.area=lv_obj_create(detail_root);lv_obj_remove_style_all(c.area);lv_obj_set_pos(c.area,c.x,c.y);lv_obj_set_size(c.area,c.w,c.h);
   lv_obj_remove_flag(c.area,LV_OBJ_FLAG_CLICKABLE);lv_obj_remove_flag(c.area,LV_OBJ_FLAG_SCROLLABLE);
@@ -6114,7 +6124,7 @@ inline void hide_extra(Widgets &w) {
   // A plugin's tile goes as soon as its card shows something else (plugin_api.h), not when the slot next draws a custom
   // card: its object first, then its parts, as end_extra does. Its layer holds nothing of Tessera's worth keeping. A
   // kept card set off the glass keeps its plugin tiles: keep_page hides a kept card's tile, never its extra layer.
-  if(w.plugin){plugin_host::release(w);lv_obj_clean(w.extra);w.extra_mode.clear();delete[] w.points;w.points=nullptr;}
+  if(w.plugin){plugin_host::release(w);lv_obj_clean(w.extra);w.extra_mode.clear();free_points(w.points);}
 }
 inline void end_extra(Widgets &w) {
   if(!w.extra)return;
@@ -6125,7 +6135,7 @@ inline void end_extra(Widgets &w) {
     if(w.calendar)calendar_view::release(w);
     if(w.meter)meter_view::release(w);
     if(w.plugin)plugin_host::release(w);
-    lv_obj_clean(w.extra);w.parts.fill(nullptr);w.extra_mode.clear();delete[] w.points;w.points=nullptr;}
+    lv_obj_clean(w.extra);w.parts.fill(nullptr);w.extra_mode.clear();free_points(w.points);}
 }
 // Two triangles per segment between the polyline and its baseline. No canvas
 // buffer is needed, so the CYD can afford it as well.
@@ -6170,7 +6180,7 @@ inline void begin_extra(Widgets &w,const char *mode,int width,int height) {
                                                lv_obj_get_style_space_right(tile,LV_PART_MAIN),lv_obj_get_style_space_bottom(tile,LV_PART_MAIN)}));
     },LV_EVENT_REFR_EXT_DRAW_SIZE,nullptr);
   }
-  if(w.extra_mode!=mode || w.extra_full!=w.full){end_extra(w);w.extra_mode=mode;w.extra_full=w.full;w.points=(w.extra_mode=="tall"||w.extra_mode=="cover_tilt")?nullptr:new lv_point_precise_t[POINT_BUFFER];w.cached_active=-1;}
+  if(w.extra_mode!=mode || w.extra_full!=w.full){end_extra(w);w.extra_mode=mode;w.extra_full=w.full;w.points=(w.extra_mode=="tall"||w.extra_mode=="cover_tilt")?nullptr:new_points();w.cached_active=-1;}
   w.fill_points=nullptr;w.fill_count=0;
   // Parts that were hidden kept the colours of the card they last showed.
   if(lv_obj_has_flag(w.extra,LV_OBJ_FLAG_HIDDEN)){w.cached_active=-1;lv_obj_remove_flag(w.extra,LV_OBJ_FLAG_HIDDEN);}
@@ -9895,9 +9905,14 @@ inline kept_pages::Visit keep_page(int page, uint32_t leaving_synced) {
 }
 inline unsigned kept_count() { return (unsigned) shelf.pages(); }
 // Nothing kept shows what it did (another layout): the sets stay for the pages to come, their cards drawn anew.
+// What a card drew of its own goes now (its custom parts, their points, a calendar's events, a meter's texts): a card
+// that next shows a tile without custom parts only hides them (hide_extra, made for paging a slot back and forth), so
+// over a few layouts every kept card held a hidden one, and on a 4-inch Guition two pages added and taken away took
+// the memory inside the chip from 49 to 20 KB until layouts were refused (2026-10-13). The card itself stays.
 inline void forget_kept() {
   shelf.forget();
   for (auto *set : kept_sets) if (set) for (auto &w : *set) {
+    end_extra(w);
     w.index = grid.max_tiles(); w.cached_active = -1; w.art_key.clear();
 #if LV_USE_IMAGE
     // Their pictures go with what they showed: a picture object still pointing at a copy counts as drawing it, and the
