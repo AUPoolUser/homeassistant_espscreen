@@ -3,7 +3,7 @@
 // The pages side by side, like swiping on the screen, or as a map of where the page tiles lead; the library on the
 // right. One toolbar above both views: the view, undo and redo, the preview, a new page, and the how-to in one place.
 import { useElementSize, useSwipe } from "@vueuse/core";
-import { computed, onBeforeUnmount, ref, watchEffect } from "vue";
+import { computed, nextTick, onBeforeUnmount, ref, watch, watchEffect } from "vue";
 import { useAtMost } from "../composables/useWidths";
 import { useBandSelect } from "../composables/useBandSelect";
 import { modifierKey, shortcut } from "../editor/clipboard";
@@ -87,6 +87,20 @@ watchEffect(() => {
 });
 onBeforeUnmount(() => { canvas.room = null; });
 const zoomPercent = computed(() => `${Math.round(canvas.zoom * 100)}%`);
+// The page to add at the end of the row, in pixels: on its proportions alone (aspect-ratio) it kept the size of a zoom
+// after the zoom went back, while the pages beside it followed.
+const ghostSize = computed(() => {
+  const width = parseFloat(canvas.deviceStyle["--mockup-width"]), shape = doc.screenShape;
+  return { width: `${width}px`, height: `${((width * shape.height) / shape.width).toFixed(2)}px` };
+});
+// A zoom keeps the part of the row that is in view: the row scrolls along with its pages, instead of standing on a page
+// further along when they shrink.
+watch(() => canvas.zoom, (zoom, before) => {
+  const row = pagesView.value;
+  if (!row || !before) return;
+  const middle = (row.scrollLeft + row.clientWidth / 2) / before;
+  nextTick(() => { row.scrollLeft = Math.max(0, middle * zoom - row.clientWidth / 2); });
+});
 
 const layout = computed(() => doc.layout!);
 const entries = computed(() => dragging.preview || entriesOf(layout.value));
@@ -212,9 +226,9 @@ function onCanvasClick(e: MouseEvent) {
         </span>
         <p class="phone-hint">{{ t(doc.document.pages.length > 1 ? "editor.phone.hint_pages" : "editor.phone.hint") }}</p>
       </div>
-      <div v-if="!narrow" class="page ghost" :style="canvas.deviceStyle" :class="{ disabled: !canAdd }">
+      <div v-if="!narrow" class="page ghost" :style="{ ...canvas.deviceStyle, flexBasis: ghostSize.width }" :class="{ disabled: !canAdd }">
         <div class="page-head"><span class="page-name muted">{{ t("editor.page.label", { page: shown + 1 }) }}</span></div>
-        <div class="device" :class="{ compact: canvas.isCompact }" :style="canvas.deviceStyle" id="add-page" role="button" :tabindex="canAdd ? 0 : -1" @click="canAdd && (ui.pageWizardOpen = true)" @keydown.enter.prevent="canAdd && (ui.pageWizardOpen = true)">
+        <div class="device" :class="{ compact: canvas.isCompact }" :style="{ ...canvas.deviceStyle, ...ghostSize, aspectRatio: 'auto' }" id="add-page" role="button" :tabindex="canAdd ? 0 : -1" @click="canAdd && (ui.pageWizardOpen = true)" @keydown.enter.prevent="canAdd && (ui.pageWizardOpen = true)">
           <span class="ghost-plus"><Icon name="plus" /></span>
           <span>{{ canAdd ? t("editor.layout.add_page") : t("editor.layout.max_pages", grid.pages) }}</span>
         </div>
