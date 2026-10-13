@@ -141,17 +141,21 @@ class TheName(unittest.TestCase):
     """The App store shows the app from the #dev URL beside the stable one: on dev its name says dev, a release takes
     that off, and publish refuses a release that still has it (docs/RELEASING.md, "Testing dev")."""
     def test_dev_names_the_app_dev(self):
-        self.assertEqual(release.name_of(CONFIG), 'Tessera Screen Manager (dev)')
+        # On dev the CHANGELOG starts with "## Unreleased"; the release commit has its version there and the plain name.
+        on_dev = CHANGELOG.startswith('## Unreleased')
+        self.assertEqual(release.name_of(CONFIG), 'Tessera Screen Manager (dev)' if on_dev else 'Tessera Screen Manager')
 
     def test_a_release_takes_the_mark_off_and_dev_puts_it_back(self):
-        stable = release.with_name(CONFIG, dev=False)
+        # From dev's file also on a release commit, whose own file has the plain name already.
+        dev = release.with_name(CONFIG, dev=True)
+        stable = release.with_name(dev, dev=False)
         self.assertEqual(release.name_of(stable), 'Tessera Screen Manager')
         self.assertEqual(release.with_name(stable, dev=False), stable)
-        self.assertEqual(release.with_name(stable, dev=True), release.with_name(CONFIG, dev=True))
+        self.assertEqual(release.with_name(stable, dev=True), dev)
         self.assertEqual(release.name_of(release.with_name(stable, dev=True)), 'Tessera Screen Manager (dev)')
-        self.assertEqual(len(stable.splitlines()), len(CONFIG.splitlines()))
+        self.assertEqual(len(stable.splitlines()), len(dev.splitlines()))
         # Only the app's own name: the version and everything else stay as they are.
-        self.assertEqual(stable.replace('Tessera Screen Manager', ''), CONFIG.replace('Tessera Screen Manager (dev)', ''))
+        self.assertEqual(stable.replace('Tessera Screen Manager', ''), dev.replace('Tessera Screen Manager (dev)', ''))
 
 
 class TheCandidate(unittest.TestCase):
