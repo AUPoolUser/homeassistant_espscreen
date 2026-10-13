@@ -299,7 +299,8 @@ export type Inventory = {
   // (app 0.4.73), `failed` when Home Assistant asked something only the person can answer.
   pending?: { friendly: string; file: string; node?: string; installed?: boolean; downloaded?: boolean; api_key?: string; seen?: boolean; pairing?: "adding" | "failed" | null }[];
   // `channel`: the branch the screens build from, when the app was added from this repository (docs/RELEASING.md).
-  updates?: { target: string; busy?: boolean | string | null; pending?: number; auto?: boolean; channel?: "main" | "dev" | null };
+  // `reinstallable`: on the dev channel, how many screens Reinstall all from dev builds again (Updater.reinstallable).
+  updates?: { target: string; busy?: boolean | string | null; pending?: number; auto?: boolean; channel?: "main" | "dev" | null; reinstallable?: number };
   builds?: Record<string, Build>;
   // The add-on's build line (build_queue.py, docs/BUILDS.md): what runs, what waits and the last that ended (newest
   // first), from the same look at the line as `builds`, in every live answer.

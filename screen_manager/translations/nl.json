@@ -807,7 +807,8 @@
         "ip_unknown": "IP-adres onbekend. Vul het eenmalig in; nieuwe firmware meldt het daarna zelf.",
         "all_updated": "Alle bereikbare schermen zijn al bijgewerkt.",
         "reinstall_dev": "Dezelfde firmware opnieuw installeren kan alleen in het dev-kanaal.",
-        "all_on_the_way": "Elk scherm met een update heeft die al onderweg."
+        "all_on_the_way": "Elk scherm met een update heeft die al onderweg.",
+        "nothing_to_reinstall": "Er is nu geen scherm opnieuw te installeren: elk is offline, al onderweg, of heeft geen profiel in deze app."
       },
       "remove": {
         "not_allowed": "Deze app mag geen integratie uit Home Assistant verwijderen. Verwijder het scherm in Home Assistant zelf, onder Instellingen → Apparaten & diensten.",
@@ -1515,7 +1516,8 @@
         "reinstall": "Opnieuw installeren vanaf dev",
         "reinstall_why": "Bouwt dit scherm opnieuw vanuit de nieuwste dev en installeert het via wifi. Op dev blijft het versienummer gelijk, dus een nieuwe dev wordt nooit als update aangeboden.",
         "in_tessera": "Update eerst via Tessera",
-        "in_tessera_why": "Update dit scherm eerst hier in Tessera. Het heeft nog de flash-indeling van zijn eerste installatie, en de huidige firmware past daar niet meer in, dus ESPHome Device Builder kan het niet updaten. Tessera zet het onderweg om naar de nieuwe indeling en houdt zijn instellingen. Daarna werken beide manieren."
+        "in_tessera_why": "Update dit scherm eerst hier in Tessera. Het heeft nog de flash-indeling van zijn eerste installatie, en de huidige firmware past daar niet meer in, dus ESPHome Device Builder kan het niet updaten. Tessera zet het onderweg om naar de nieuwe indeling en houdt zijn instellingen. Daarna werken beide manieren.",
+        "reinstall_short": "Bouwt de nieuwste dev en zet die via Wi-Fi op het scherm."
       },
       "host": {
         "hint": "Eenmalig het IP-adres; nieuwe firmware meldt het zelf.",
@@ -1556,7 +1558,8 @@
         "done": "{name} is verwijderd.",
         "kept": "{name} is verwijderd. Het profiel {file} staat nog in de ESPHome-map."
       },
-      "home": "Overzicht van je schermen"
+      "home": "Overzicht van je schermen",
+      "dev_chip": "Dit is de dev-versie van de app: elk scherm dat hij bouwt komt van de dev-branch."
     },
     "palette": {
       "groups": {
@@ -2493,7 +2496,11 @@
         "all": "1 scherm bijwerken | Alle {n} schermen bijwerken",
         "whats_new": "Nieuw in firmware {version}",
         "auto_label": "Elke nacht automatisch bijwerken",
-        "auto_hint": "Tussen 03:00 en 06:00, één scherm tegelijk. Stopt bij een fout en meldt die in Home Assistant."
+        "auto_hint": "Tussen 03:00 en 06:00, één scherm tegelijk. Stopt bij een fout en meldt die in Home Assistant.",
+        "reinstall_all": "1 scherm opnieuw installeren van dev | Alle {n} schermen opnieuw installeren van dev",
+        "reinstall_all_hint": "Bouwt voor elk scherm de nieuwste dev, de een na de ander, en zet die via Wi-Fi op het scherm. Op dev blijft het versienummer gelijk, dus een nieuwe dev wordt nooit als update aangeboden.",
+        "reinstall_all_confirm": "1 scherm opnieuw installeren van de nieuwste dev? Het herstart zodra de firmware erop staat. | {n} schermen opnieuw installeren van de nieuwste dev? Ze worden een voor een gebouwd, en elk herstart zodra de firmware erop staat.",
+        "reinstall_all_go": "Opnieuw installeren"
       },
       "claude": {
         "installed": "Skill geïnstalleerd. Claude Code vindt hem meteen.",

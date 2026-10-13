@@ -45,7 +45,8 @@ What a person follows (`attended`) never joins and is never joined. The same req
 
 Update all and the nightly round are a `Round`: one build that fails leaves the builds of its round that still wait out
 (`skipped`), so a bad build never reaches the next screen. Builds asked apart, such as another screen's Update or a
-plugin build, stay in the line. Between two updates of one round there is a pause (`Updater.pause_seconds`).
+plugin build, stay in the line. A build of the round that someone also asks for by itself (its screen's Update or
+Reinstall from dev, a plugin that joins it) leaves the round, so it is never left out for another screen's failure. Between two updates of one round there is a pause (`Updater.pause_seconds`).
 
 ## Following a build
 

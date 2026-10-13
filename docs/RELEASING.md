@@ -59,9 +59,13 @@ The store then shows a second Tessera Screen Manager, under that repository. It 
 - every screen it builds or updates comes from dev: the board package, the components and the fonts. It writes
   `ref: dev` under `packages: display:` and `GITHUB_REF: "dev"` in the screen's substitutions. A `ref:` that names a
   tag, a commit or another branch is left alone;
+- the editor says it is the dev app: a small **dev** chip beside the name Tessera at the top of the sidebar;
 - the version number of dev stays the same from one change to the next, so a new dev is never offered as an update.
-  Each screen has **Reinstall from dev** in its details instead, which builds the newest dev and installs it over
-  Wi-Fi like an update;
+  Each screen has **Reinstall from dev** in its details in the sidebar instead, under its firmware, which builds the
+  newest dev and installs it over Wi-Fi like an update. **Reinstall all from dev** in Settings, Updates does that for
+  every screen, one after the other;
+- automatic updates at night leave a screen on dev's number alone, so nothing is built again every night. A screen
+  gets the nightly update after a release raised the number on dev, or for another language, and it builds from dev;
 - getting the newest app from dev: App store > ⋮ > Check for updates, then the app's ⋮ > Rebuild;
 - dev is tried on a few boards before it is pushed, not on every board, and it can break. Report what goes wrong on
   GitHub, with the board and the app's log.

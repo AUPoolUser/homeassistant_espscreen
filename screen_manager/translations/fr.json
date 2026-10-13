@@ -807,7 +807,8 @@
         "ip_unknown": "Adresse IP inconnue. Saisissez-la une seule fois ; le nouveau firmware la communique ensuite lui-même.",
         "all_updated": "Tous les écrans joignables sont déjà à jour.",
         "reinstall_dev": "Réinstaller le même firmware n'est possible que sur le canal dev.",
-        "all_on_the_way": "Chaque écran ayant une mise à jour l'a déjà en route."
+        "all_on_the_way": "Chaque écran ayant une mise à jour l'a déjà en route.",
+        "nothing_to_reinstall": "Aucun écran ne peut être réinstallé maintenant : chacun est hors ligne, déjà en route ou sans profil dans cette app."
       },
       "remove": {
         "not_allowed": "Cette application ne peut pas supprimer une intégration de Home Assistant. Retirez l'écran dans Home Assistant même, sous Paramètres → Appareils et services.",
@@ -1515,7 +1516,8 @@
         "reinstall": "Réinstaller depuis dev",
         "reinstall_why": "Recompile cet écran avec le dev le plus récent et l'installe par Wi-Fi. Sur dev, le numéro de version ne change pas, donc un nouveau dev n'est jamais proposé comme mise à jour.",
         "in_tessera": "Mettez d'abord à jour dans Tessera",
-        "in_tessera_why": "Mettez d'abord cet écran à jour ici dans Tessera. Il a encore la répartition de la mémoire flash de sa première installation, et le firmware actuel n'y tient plus, donc ESPHome Device Builder ne peut pas le mettre à jour. Tessera le passe au passage à la nouvelle répartition et garde ses réglages. Ensuite, les deux voies fonctionnent."
+        "in_tessera_why": "Mettez d'abord cet écran à jour ici dans Tessera. Il a encore la répartition de la mémoire flash de sa première installation, et le firmware actuel n'y tient plus, donc ESPHome Device Builder ne peut pas le mettre à jour. Tessera le passe au passage à la nouvelle répartition et garde ses réglages. Ensuite, les deux voies fonctionnent.",
+        "reinstall_short": "Compile la dev la plus récente et l'installe par Wi-Fi."
       },
       "host": {
         "hint": "L'adresse IP, une seule fois ; le nouveau firmware la communique ensuite lui-même.",
@@ -1556,7 +1558,8 @@
         "done": "{name} a été retiré.",
         "kept": "{name} a été retiré. Son profil {file} est encore dans le dossier ESPHome."
       },
-      "home": "Aperçu de vos écrans"
+      "home": "Aperçu de vos écrans",
+      "dev_chip": "C'est la version dev de l'app : chaque écran qu'elle compile vient de la branche dev."
     },
     "palette": {
       "groups": {
@@ -2854,7 +2857,11 @@
         "all": "Mettre à jour {n} écran | Mettre à jour les {n} écrans",
         "whats_new": "Nouveautés du firmware {version}",
         "auto_label": "Mettre à jour automatiquement chaque nuit",
-        "auto_hint": "Entre 03:00 et 06:00, un écran à la fois. S'arrête en cas d'erreur et la signale dans Home Assistant."
+        "auto_hint": "Entre 03:00 et 06:00, un écran à la fois. S'arrête en cas d'erreur et la signale dans Home Assistant.",
+        "reinstall_all": "Réinstaller 1 écran depuis dev | Réinstaller les {n} écrans depuis dev",
+        "reinstall_all_hint": "Compile la dev la plus récente pour chaque écran, l'un après l'autre, et l'installe par Wi-Fi. Sur dev, le numéro de version ne change pas : une nouvelle dev n'est donc jamais proposée comme mise à jour.",
+        "reinstall_all_confirm": "Réinstaller 1 écran depuis la dev la plus récente ? Il redémarre dès que son firmware est installé. | Réinstaller {n} écrans depuis la dev la plus récente ? Ils sont compilés l'un après l'autre, et chacun redémarre dès que son firmware est installé.",
+        "reinstall_all_go": "Réinstaller"
       },
       "claude": {
         "installed": "Compétence installée. Claude Code la prend en compte tout de suite.",

@@ -17,7 +17,8 @@ The build keeps the slot until all of its steps are done, so nothing else starts
   follows one (the page, a test) reads how it ended, also when the next build started at once. The line goes to the
   page with every live answer (`payload`, the inventory's `line`), and every change of it asks for one (`_changed`).
 - A round (Update all, the nightly round) is several builds that belong together: one that fails ends the ones of its
-  round that still wait, so a bad build never reaches the next screen.
+  round that still wait, so a bad build never reaches the next screen. A build someone asked for apart as well (a
+  screen's own Update, a plugin) no longer counts in the round, so it is never left out for another screen's failure.
 """
 import asyncio
 import collections
@@ -73,10 +74,13 @@ class Build:
         """What is asked for this profile while this build waits joins it. An update brings what a plugin build brings
         and more, so the build becomes the update: its steps, its round."""
         if other.by == 'update' and self.by != 'update':
-            self.by, self.run, self.round, self.screen = 'update', other.run, other.round, other.screen or self.screen
-        # The round that asked waits for this build now, whichever round it counts in.
+            self.by, self.run, self.screen = 'update', other.run, other.screen or self.screen
+        # The round that asked waits for this build now. It counts in a round only while everything asked for it came
+        # with that round: what someone asked apart is never left out because another screen of the round failed.
         if other.round:
             other.round.builds = [self if build is other else build for build in other.round.builds]
+        if self.round is not other.round:
+            self.round = None
         for key in ('add', 'remove'):
             self.plugins[key] = sorted(set(self.plugins[key]) | set(other.plugins[key]))
         # A plugin taken off now is no longer added, and the other way round.

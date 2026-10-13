@@ -807,7 +807,8 @@
         "ip_unknown": "Nieznany adres IP. Wpisz go raz; potem nowy firmware sam go zgłasza.",
         "all_updated": "Wszystkie osiągalne ekrany są już zaktualizowane.",
         "reinstall_dev": "Ponowna instalacja tego samego firmware jest możliwa tylko w kanale dev.",
-        "all_on_the_way": "Każdy ekran z aktualizacją ma ją już w drodze."
+        "all_on_the_way": "Każdy ekran z aktualizacją ma ją już w drodze.",
+        "nothing_to_reinstall": "Teraz nie można ponownie zainstalować żadnego ekranu: każdy jest offline, już w drodze albo nie ma profilu w tej aplikacji."
       },
       "remove": {
         "not_allowed": "Ta aplikacja nie może usunąć integracji z Home Assistant. Usuń ekran w samym Home Assistant, w sekcji Ustawienia → Urządzenia oraz usługi.",
@@ -1515,7 +1516,8 @@
         "reinstall": "Zainstaluj ponownie z dev",
         "reinstall_why": "Buduje ten ekran od nowa z najnowszego dev i instaluje go przez Wi-Fi. Na dev numer wersji się nie zmienia, więc nowy dev nigdy nie jest proponowany jako aktualizacja.",
         "in_tessera": "Najpierw zaktualizuj w Tessera",
-        "in_tessera_why": "Najpierw zaktualizuj ten ekran tutaj w Tessera. Ma jeszcze układ pamięci flash z pierwszej instalacji, a obecny firmware już się w nim nie mieści, więc ESPHome Device Builder nie może go zaktualizować. Tessera po drodze przestawi go na nowy układ i zachowa jego ustawienia. Potem działają obie drogi."
+        "in_tessera_why": "Najpierw zaktualizuj ten ekran tutaj w Tessera. Ma jeszcze układ pamięci flash z pierwszej instalacji, a obecny firmware już się w nim nie mieści, więc ESPHome Device Builder nie może go zaktualizować. Tessera po drodze przestawi go na nowy układ i zachowa jego ustawienia. Potem działają obie drogi.",
+        "reinstall_short": "Kompiluje najnowszą wersję dev i instaluje ją przez Wi-Fi."
       },
       "host": {
         "hint": "Adres IP, tylko ten jeden raz; nowy firmware sam go zgłasza.",
@@ -1556,7 +1558,8 @@
         "done": "Ekran {name} został usunięty.",
         "kept": "Ekran {name} został usunięty. Jego profil {file} pozostaje w folderze ESPHome."
       },
-      "home": "Przegląd twoich ekranów"
+      "home": "Przegląd twoich ekranów",
+      "dev_chip": "To wersja dev aplikacji: każdy ekran, który kompiluje, pochodzi z gałęzi dev."
     },
     "palette": {
       "groups": {
@@ -2854,7 +2857,11 @@
         "all": "Aktualizuj 1 ekran | Aktualizuj wszystkie ekrany ({n}) | Aktualizuj wszystkie ekrany ({n})",
         "whats_new": "Co nowego w firmware {version}",
         "auto_label": "Aktualizuj automatycznie co noc",
-        "auto_hint": "Między 03:00 a 06:00, po jednym ekranie naraz. Przy błędzie zatrzymuje się i zgłasza go w Home Assistant."
+        "auto_hint": "Między 03:00 a 06:00, po jednym ekranie naraz. Przy błędzie zatrzymuje się i zgłasza go w Home Assistant.",
+        "reinstall_all": "Zainstaluj ponownie 1 ekran z dev | Zainstaluj ponownie {n} ekrany z dev | Zainstaluj ponownie {n} ekranów z dev",
+        "reinstall_all_hint": "Kompiluje najnowszą wersję dev dla każdego ekranu, jeden po drugim, i instaluje ją przez Wi-Fi. Na dev numer wersji się nie zmienia, więc nowa wersja dev nigdy nie pojawia się jako aktualizacja.",
+        "reinstall_all_confirm": "Zainstalować ponownie 1 ekran z najnowszej wersji dev? Uruchomi się ponownie, gdy dostanie firmware. | Zainstalować ponownie {n} ekrany z najnowszej wersji dev? Kompilują się po kolei i każdy uruchamia się ponownie, gdy dostanie firmware. | Zainstalować ponownie {n} ekranów z najnowszej wersji dev? Kompilują się po kolei i każdy uruchamia się ponownie, gdy dostanie firmware.",
+        "reinstall_all_go": "Zainstaluj ponownie"
       },
       "claude": {
         "installed": "Umiejętność zainstalowana. Claude Code od razu ją wykrywa.",

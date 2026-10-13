@@ -59,6 +59,8 @@ a:hover { text-decoration: underline; }
 .brand:hover { background: var(--surface-2); }
 .brand .mark { width: 22px; height: 22px; flex: none; }
 .brand .txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The dev app says so beside its name (docs/RELEASING.md, "Testing dev"): a small chip in the colour of what waits. */
+.brand .channel-chip { flex: none; padding: 1px 7px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em; color: var(--warn); background: var(--warn-soft); border-color: transparent; }
 /* The logo and, beside it, the button that folds the sidebar to its icons: quiet until the sidebar is pointed at. */
 .side-top { display: flex; align-items: center; gap: 2px; }
 .side-top .brand { flex: 1; min-width: 0; }
@@ -82,6 +84,9 @@ a:hover { text-decoration: underline; }
   .side-folded .label-row > span, .side-folded .label-row #refresh, .side-folded .screen-item .name, .side-folded .screen-item .sub,
   .side-folded .screen-item .unsaved, .side-folded .row-end, .side-folded .side .more .nav-item .txt, .side-folded .broken-nav .txt, .side-folded .screen-item .broken-dot { display: none; }
   .side-folded .side-fold { width: 100%; }
+  /* Folded, the chip sits on the mark's corner, as small as it reads. */
+  .side-folded .brand { position: relative; }
+  .side-folded .brand .channel-chip { position: absolute; top: -3px; right: 2px; padding: 0 4px; font-size: 9px; }
   .side-folded .conn { justify-content: center; padding: 4px 0; }
   .side-folded .search-btn, .side-folded .nav-item { justify-content: center; padding: 0; gap: 0; }
   .side-folded .label-row { justify-content: center; padding: 10px 0 4px; }
@@ -279,6 +284,9 @@ a:hover { text-decoration: underline; }
 .broken-nav { color: var(--ink-2); }
 .broken-nav .ui-icon { color: var(--warn); font-size: 16px; width: 18px; text-align: center; }
 .broken-nav .txt { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The dev app's Reinstall from dev, where an update would be: a button and what it does. */
+.screen-dev { display: grid; gap: 4px; justify-items: start; }
+.screen-dev small { color: var(--muted); }
 .screen-broken { display: grid; gap: 2px; }
 .screen-broken-head { font-size: 11.5px; color: var(--warn); }
 .screen-broken .broken-list { margin: 0 -8px; }
@@ -1618,6 +1626,8 @@ section.advanced code { font-size: 11.5px; }
 .build-note .ui-icon { font-size: 16px; }
 .plugin-builds { display: grid; gap: 8px; }
 .updates .build-log { padding: 0; border: 0; background: none; }
+.updates .dev-tools { display: grid; gap: 4px; justify-items: start; }
+.updates .dev-tools small { color: var(--muted); }
 /* Update all on this screen: one build for every update, above the screen's own plugins. */
 .sp-updates { display: grid; gap: 10px; justify-items: start; padding: 12px 14px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
 .sp-updates p { font-size: 12.5px; line-height: 1.45; color: var(--ink-2); }

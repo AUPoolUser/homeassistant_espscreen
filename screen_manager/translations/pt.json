@@ -807,7 +807,8 @@
         "ip_unknown": "Endereço IP desconhecido. Introduza-o uma vez; depois disso, o firmware novo passa a comunicá-lo sozinho.",
         "all_updated": "Todos os ecrãs acessíveis já estão atualizados.",
         "reinstall_dev": "Reinstalar o mesmo firmware só é possível no canal dev.",
-        "all_on_the_way": "Todos os ecrãs com uma atualização já a têm a caminho."
+        "all_on_the_way": "Todos os ecrãs com uma atualização já a têm a caminho.",
+        "nothing_to_reinstall": "Agora nenhum ecrã pode ser reinstalado: cada um está offline, já a caminho ou sem perfil nesta app."
       },
       "remove": {
         "not_allowed": "Esta aplicação não pode remover uma integração do Home Assistant. Remova o ecrã no próprio Home Assistant, em Configuração → Dispositivos & serviços.",
@@ -1515,7 +1516,8 @@
         "reinstall": "Reinstalar a partir do dev",
         "reinstall_why": "Compila de novo este ecrã a partir do dev mais recente e instala-o por Wi-Fi. No dev o número da versão não muda, por isso um dev novo nunca é oferecido como atualização.",
         "in_tessera": "Atualize primeiro no Tessera",
-        "in_tessera_why": "Atualize primeiro este ecrã aqui no Tessera. Ainda tem a divisão da flash da primeira instalação e o firmware atual já não cabe, por isso o ESPHome Device Builder não o consegue atualizar. O Tessera passa-o pelo caminho para a nova divisão e mantém as definições. Depois, ambos os caminhos funcionam."
+        "in_tessera_why": "Atualize primeiro este ecrã aqui no Tessera. Ainda tem a divisão da flash da primeira instalação e o firmware atual já não cabe, por isso o ESPHome Device Builder não o consegue atualizar. O Tessera passa-o pelo caminho para a nova divisão e mantém as definições. Depois, ambos os caminhos funcionam.",
+        "reinstall_short": "Compila a dev mais recente e instala-a por Wi-Fi."
       },
       "host": {
         "hint": "O endereço IP, só desta vez; o firmware novo passa a comunicá-lo sozinho.",
@@ -1556,7 +1558,8 @@
         "done": "{name} foi removido.",
         "kept": "{name} foi removido. O seu perfil {file} continua na pasta ESPHome."
       },
-      "home": "Visão geral dos seus ecrãs"
+      "home": "Visão geral dos seus ecrãs",
+      "dev_chip": "Esta é a versão dev da app: cada ecrã que compila vem do ramo dev."
     },
     "palette": {
       "groups": {
@@ -2854,7 +2857,11 @@
         "all": "Atualizar {n} ecrã | Atualizar os {n} ecrãs",
         "whats_new": "Novidades do firmware {version}",
         "auto_label": "Atualizar automaticamente todas as noites",
-        "auto_hint": "Entre as 03:00 e as 06:00, um ecrã de cada vez. Para se houver um erro e comunica-o no Home Assistant."
+        "auto_hint": "Entre as 03:00 e as 06:00, um ecrã de cada vez. Para se houver um erro e comunica-o no Home Assistant.",
+        "reinstall_all": "Reinstalar 1 ecrã a partir de dev | Reinstalar os {n} ecrãs a partir de dev",
+        "reinstall_all_hint": "Compila a dev mais recente para cada ecrã, um após o outro, e instala-a por Wi-Fi. Em dev o número da versão não muda, por isso uma dev nova nunca é oferecida como atualização.",
+        "reinstall_all_confirm": "Reinstalar 1 ecrã a partir da dev mais recente? Reinicia assim que tiver o firmware. | Reinstalar {n} ecrãs a partir da dev mais recente? São compilados um após o outro, e cada um reinicia assim que tiver o firmware.",
+        "reinstall_all_go": "Reinstalar"
       },
       "claude": {
         "installed": "Habilidade instalada. O Claude Code deteta-a de imediato.",

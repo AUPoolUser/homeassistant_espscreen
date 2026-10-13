@@ -807,7 +807,8 @@
         "ip_unknown": "Dirección IP desconocida. Introdúcela una vez; después, el firmware nuevo la comunica por sí mismo.",
         "all_updated": "Todas las pantallas accesibles ya están actualizadas.",
         "reinstall_dev": "Reinstalar el mismo firmware solo es posible en el canal dev.",
-        "all_on_the_way": "Todas las pantallas con una actualización ya la tienen en camino."
+        "all_on_the_way": "Todas las pantallas con una actualización ya la tienen en camino.",
+        "nothing_to_reinstall": "Ahora no se puede reinstalar ninguna pantalla: cada una está desconectada, ya en camino o no tiene perfil en esta app."
       },
       "remove": {
         "not_allowed": "Esta aplicación no puede eliminar una integración de Home Assistant. Elimina la pantalla en el propio Home Assistant, en Configuración → Dispositivos y servicios.",
@@ -1515,7 +1516,8 @@
         "reinstall": "Reinstalar desde dev",
         "reinstall_why": "Compila de nuevo esta pantalla con el dev más reciente y la instala por Wi-Fi. En dev el número de versión no cambia, así que un dev nuevo nunca se ofrece como actualización.",
         "in_tessera": "Actualiza primero en Tessera",
-        "in_tessera_why": "Actualiza primero esta pantalla aquí en Tessera. Aún tiene la distribución de flash de su primera instalación y el firmware actual ya no cabe, así que ESPHome Device Builder no puede actualizarla. Tessera la pasa por el camino a la nueva distribución y conserva sus ajustes. Después, sirven las dos vías."
+        "in_tessera_why": "Actualiza primero esta pantalla aquí en Tessera. Aún tiene la distribución de flash de su primera instalación y el firmware actual ya no cabe, así que ESPHome Device Builder no puede actualizarla. Tessera la pasa por el camino a la nueva distribución y conserva sus ajustes. Después, sirven las dos vías.",
+        "reinstall_short": "Compila la dev más reciente y la instala por Wi-Fi."
       },
       "host": {
         "hint": "La dirección IP, solo esta vez; el firmware nuevo la comunica por sí mismo.",
@@ -1556,7 +1558,8 @@
         "done": "{name} se ha eliminado.",
         "kept": "{name} se ha eliminado. Su perfil {file} sigue en la carpeta ESPHome."
       },
-      "home": "Resumen de tus pantallas"
+      "home": "Resumen de tus pantallas",
+      "dev_chip": "Esta es la versión dev de la app: cada pantalla que compila viene de la rama dev."
     },
     "palette": {
       "groups": {
@@ -2854,7 +2857,11 @@
         "all": "Actualizar 1 pantalla | Actualizar las {n} pantallas",
         "whats_new": "Novedades del firmware {version}",
         "auto_label": "Actualizar automáticamente cada noche",
-        "auto_hint": "Entre las 03:00 y las 06:00, una pantalla cada vez. Se detiene si hay un error y lo notifica en Home Assistant."
+        "auto_hint": "Entre las 03:00 y las 06:00, una pantalla cada vez. Se detiene si hay un error y lo notifica en Home Assistant.",
+        "reinstall_all": "Reinstalar 1 pantalla desde dev | Reinstalar las {n} pantallas desde dev",
+        "reinstall_all_hint": "Compila la dev más reciente para cada pantalla, una tras otra, y la instala por Wi-Fi. En dev el número de versión no cambia, así que una dev nueva nunca se ofrece como actualización.",
+        "reinstall_all_confirm": "¿Reinstalar 1 pantalla desde la dev más reciente? Se reinicia cuando tenga el firmware. | ¿Reinstalar {n} pantallas desde la dev más reciente? Se compilan una tras otra y cada una se reinicia cuando tiene su firmware.",
+        "reinstall_all_go": "Reinstalar"
       },
       "claude": {
         "installed": "Habilidad instalada. Claude Code la detecta al momento.",

@@ -106,14 +106,18 @@ export const useBuildsStore = defineStore("builds", () => {
       ui.toast(e.message);
     }
   }
-  async function runUpdateAll() {
+  // `reinstall`: Reinstall all from dev, every screen again with the newest dev (the dev channel's own, docs/RELEASING.md
+  // "Testing dev"), one round in the build line like Update all.
+  async function runUpdateAll(reinstall = false) {
     try {
-      await send("updates/run", "POST");
-      await inv.refresh();
+      await send("updates/run", "POST", reinstall ? { reinstall } : undefined);
+      await inv.refresh(false);
     } catch (e: any) {
       ui.toast(e.message);
     }
   }
+  /** The app is the dev version (added from the repository's `#dev` URL): its screens build from the dev branch. */
+  const devChannel = computed(() => inv.inventory.updates?.channel === "dev");
   async function setAutoUpdate(auto: boolean) {
     try {
       await send("updates", "PUT", { auto });
@@ -195,7 +199,7 @@ export const useBuildsStore = defineStore("builds", () => {
 
   return {
     updating, ...lookups({ buildOf, building, isBuilding, buildText, buildProgress, whatsNew, lineBuild, lineForgot, lineOf, lineEnded, buildLogOf }),
-    anyBuilding, buildingScreens, prune, forget, watched, line,
+    anyBuilding, buildingScreens, prune, forget, watched, line, devChannel,
     startUpdate, runUpdateAll, setAutoUpdate, askBuild, loadBuildLog, answer, firmwareJob, fetchFirmware, loadFirmwareJob,
   };
 });

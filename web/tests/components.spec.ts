@@ -832,6 +832,7 @@ describe("Sidebar", () => {
     await item.find(".nav-item").trigger("click");
     if (!item.classes().includes("open")) await item.find(".details-toggle").trigger("click");
     expect(item.find(".reinstall-dev").exists()).toBe(false);
+    expect(sidebar.find("#dev-chip").exists()).toBe(false);
     // An app with no channel (a local copy) has no such button either.
     useInventoryStore().inventory.updates = { target: "0.51.0", auto: false, channel: null };
     await nextTick();
@@ -839,6 +840,9 @@ describe("Sidebar", () => {
     useInventoryStore().inventory.updates = { target: "0.51.0", auto: false, channel: "dev" };
     await nextTick();
     expect(item.find(".reinstall-dev").text()).toContain("Reinstall from dev");
+    // It stands in the details where an update would, with what it does; and the dev app says so beside its name.
+    expect(item.find(".screen-dev small").text()).toBe(t("editor.sidebar.update.reinstall_short"));
+    expect(sidebar.find("#dev-chip").text()).toBe("dev");
     // Another screen's update that runs is no reason: this one waits its turn after it.
     useInventoryStore().inventory.updates = { target: "0.51.0", auto: false, channel: "dev", busy: "other" };
     await nextTick();
@@ -1035,6 +1039,37 @@ describe("AppSettingsView", () => {
     useInventoryStore().inventory.updates = { target: "0.4.0", pending: 1, busy: "kitchen" };
     useInventoryStore().inventory.screens[1].update = { available: true, target: "0.4.1", state: "running" };
     expect(hint()).toBe("Updating to firmware 0.4.1…");
+  });
+});
+
+describe("Reinstall all from dev (the dev app's Updates card)", () => {
+  it("offers every screen again on the dev app only, asks first, and asks the add-on for the round", async () => {
+    const calls: [string, RequestInit][] = [];
+    vi.stubGlobal("fetch", vi.fn((path: string, options: RequestInit = {}) => {
+      calls.push([String(path), options]);
+      const body = String(path).includes("inventory") ? JSON.parse(JSON.stringify(useInventoryStore().inventory)) : { started: ["a", "b"] };
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
+    }));
+    useInventoryStore().inventory.updates = { target: "0.56.0", pending: 0, channel: "main" };
+    expect(mount(AppSettingsView).find("#reinstall-all").exists()).toBe(false);
+    useInventoryStore().inventory.updates = { target: "0.56.0", pending: 0, channel: "dev", reinstallable: 2 };
+    const view = mount(AppSettingsView);
+    expect(view.find("#reinstall-all").text()).toContain(t("editor.settings.updates.reinstall_all", 2));
+    let yes = false;
+    const asked = answerDialogs(() => yes);
+    await view.find("#reinstall-all").trigger("click");
+    await flushPromises();
+    expect(asked[0]).toMatchObject({ kind: "confirm", message: t("editor.settings.updates.reinstall_all_confirm", 2) });
+    expect(calls.some(([path]) => path.endsWith("updates/run"))).toBe(false);
+    yes = true;
+    await view.find("#reinstall-all").trigger("click");
+    await flushPromises();
+    const sent = calls.find(([path]) => path.endsWith("updates/run"))!;
+    expect(JSON.parse(String(sent[1].body))).toEqual({ reinstall: true });
+    // Nothing to build again: no button.
+    useInventoryStore().inventory.updates = { target: "0.56.0", pending: 0, channel: "dev", reinstallable: 0 };
+    await nextTick();
+    expect(view.find("#reinstall-all").exists()).toBe(false);
   });
 });
 

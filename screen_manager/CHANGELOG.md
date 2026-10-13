@@ -26,6 +26,10 @@
   update in one build. An update on a board with 4 MB keeps the line until all of its steps are done, so no other build
   starts while its screen restarts. Each build keeps how it ended and its log, so the editor says the right outcome
   also when the next build started at once.
+- **The dev app says it is the dev app, and reinstalls every screen from dev in one go.** Added from the `#dev`
+  repository, the app shows a small dev chip beside its name, Reinstall from dev stands in each screen's details under
+  its firmware, and Settings, Updates has Reinstall all from dev, which builds every screen with the newest dev, one
+  after the other.
 - **Editor: a map tile grown to two rows saves at once.** Dragging a new map tile (or an energy card) from one row to
   two gave it a setting the app does not keep for it, and the save asked to adjust the tile's settings first.
 - **Plugin API 0.10: pictures on a plugin's tile.** A plugin can lay out places for pictures on its tile and name an
