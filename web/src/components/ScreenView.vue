@@ -137,9 +137,12 @@ useEventListener(document, "keydown", onKey);
 
 <template>
   <header class="main-head">
-    <button v-if="ui.phone" type="button" class="phone-back" @click="phoneBack">
-      <Icon name="chevron-left" />{{ ui.tab !== "layout" ? t("editor.screen_view.tabs.layout") : t("editor.phone.screens") }}
-    </button>
+    <span v-if="ui.phone" class="phone-lead">
+      <button type="button" class="icon-btn phone-menu-key" id="phone-menu" :aria-label="t('editor.phone.menu')" @click="ui.sideOpen = true"><Icon name="menu" /></button>
+      <button type="button" class="phone-back" @click="phoneBack">
+        <Icon name="chevron-left" />{{ ui.tab !== "layout" ? t("editor.screen_view.tabs.layout") : t("editor.phone.screens") }}
+      </button>
+    </span>
     <div class="head-title">
       <h1 id="screen-name">{{ screen.name }}</h1>
       <span v-if="!ui.phone" id="delivery" class="chip status" :class="statusKind" :title="statusText"><span class="dot"></span>{{ statusWord }}</span>
@@ -149,7 +152,7 @@ useEventListener(document, "keydown", onKey);
       <button type="button" id="tab-layout" role="tab" :aria-pressed="ui.tab === 'layout' ? 'true' : 'false'" :aria-selected="ui.tab === 'layout'" @click="ui.tab = 'layout'">
         <Icon name="view-dashboard-outline" />{{ t("editor.screen_view.tabs.layout") }}
       </button>
-      <button v-if="!screen.virtual" type="button" id="tab-settings" role="tab" :aria-pressed="ui.tab === 'settings' ? 'true' : 'false'" :aria-selected="ui.tab === 'settings'" @click="ui.tab = 'settings'; insp.closeInspector()">
+      <button v-if="!screen.virtual || doc.gridWay" type="button" id="tab-settings" role="tab" :aria-pressed="ui.tab === 'settings' ? 'true' : 'false'" :aria-selected="ui.tab === 'settings'" @click="ui.tab = 'settings'; insp.closeInspector()">
         <Icon name="cog-outline" />{{ t("editor.screen_view.tabs.settings") }}
       </button>
       <button v-if="!screen.virtual && plugins.pluginsEnabled" type="button" id="tab-plugins" role="tab" :aria-pressed="ui.tab === 'plugins' ? 'true' : 'false'" :aria-selected="ui.tab === 'plugins'" @click="ui.tab = 'plugins'; insp.closeInspector()">
@@ -179,7 +182,7 @@ useEventListener(document, "keydown", onKey);
           <UiMenuItem icon="view-column-outline" @select="ui.tab = 'layout'; ui.pagesSheet = true">{{ t("editor.phone.pages_order") }}</UiMenuItem>
           <UiMenuItem icon="page-layout-header" @select="ui.tab = 'layout'; insp.openBar(0, doc.barPage)">{{ t("editor.page.edit_bar") }}</UiMenuItem>
           <UiMenuSeparator />
-          <UiMenuItem v-if="!screen.virtual" icon="cog-outline" @select="phoneSettings">{{ t("editor.screen_view.tabs.settings") }}</UiMenuItem>
+          <UiMenuItem v-if="!screen.virtual || doc.gridWay" icon="cog-outline" @select="phoneSettings">{{ t("editor.screen_view.tabs.settings") }}</UiMenuItem>
           <UiMenuItem v-if="!screen.virtual && plugins.pluginsEnabled" icon="puzzle-outline" @select="closeMenu(); insp.closeInspector(); ui.tab = 'plugins'">{{ t("editor.screen_view.tabs.plugins") }}</UiMenuItem>
           <UiMenuItem v-if="!screen.virtual" icon="pencil-outline" @select="phoneRename">{{ t("editor.sidebar.rename.button") }}</UiMenuItem>
           <UiMenuSeparator />

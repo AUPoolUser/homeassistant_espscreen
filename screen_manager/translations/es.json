@@ -3348,6 +3348,8 @@
       "arrange": "Ordenar desde Inicio",
       "zoom_out": "Alejar",
       "zoom_in": "Acercar",
+      "zoom": "Tamaño de las páginas",
+      "zoom_reset": "Volver al 100 %",
       "choose_destination": "Elige la página de destino.",
       "move_map": "Mover {name} en el mapa",
       "change_destination": "Cambiar el destino de una tarjeta de navegación en {name}",
@@ -3623,6 +3625,7 @@
       "reset": "Volver a {name}"
     },
     "phone": {
+      "menu": "Menú",
       "screens": "Pantallas",
       "add_tile": "Añadir mosaico",
       "add_to_cell": "Va en el lugar {cell} de {page}",

@@ -3348,6 +3348,8 @@
       "arrange": "Disponi dalla pagina iniziale",
       "zoom_out": "Riduci zoom",
       "zoom_in": "Aumenta zoom",
+      "zoom": "Dimensione delle pagine",
+      "zoom_reset": "Torna al 100%",
       "choose_destination": "Scegli la pagina di destinazione.",
       "move_map": "Sposta {name} sulla mappa",
       "change_destination": "Cambia la destinazione di un riquadro di navigazione su {name}",
@@ -3623,6 +3625,7 @@
       "reset": "Torna a {name}"
     },
     "phone": {
+      "menu": "Menu",
       "screens": "Schermi",
       "add_tile": "Aggiungi riquadro",
       "add_to_cell": "Va al posto {cell} di {page}",

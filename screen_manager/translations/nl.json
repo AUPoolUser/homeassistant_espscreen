@@ -2987,6 +2987,8 @@
       "arrange": "Ordenen vanaf Thuis",
       "zoom_out": "Uitzoomen",
       "zoom_in": "Inzoomen",
+      "zoom": "Grootte van de pagina's",
+      "zoom_reset": "Terug naar 100%",
       "choose_destination": "Kies de bestemmingspagina voor deze navigatietegel.",
       "move_map": "Verplaats {name} op de kaart",
       "change_destination": "Wijzig de bestemming van een navigatietegel op {name}",
@@ -3262,6 +3264,7 @@
       "reset": "Terug naar {name}"
     },
     "phone": {
+      "menu": "Menu",
       "screens": "Schermen",
       "add_tile": "Tegel toevoegen",
       "add_to_cell": "Komt op plek {cell} van {page}",

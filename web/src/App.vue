@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onKeyStroke } from "@vueuse/core";
-import { computed } from "vue";
+import { computed, watch } from "vue";
+import { t } from "./i18n";
+import Icon from "./components/ui/Icon.vue";
 import Sidebar from "./components/Sidebar.vue";
 import Toast from "./components/Toast.vue";
 import CommandPalette from "./components/CommandPalette.vue";
@@ -42,6 +44,9 @@ const view = computed(() => {
   if (scr.currentScreen && doc.layout) return ScreenView;
   return scr.selected || !inv.inventory.screens.length ? EmptyState : HomeView;
 });
+// The sidebar of a phone closes once something in it is chosen: a screen, the overview or another page.
+watch(() => [ui.route, scr.selected, ui.phone], () => { ui.sideOpen = false; });
+onKeyStroke("Escape", () => { ui.sideOpen = false; }, { target: document });
 // ⌘K (Ctrl+K) opens the search from anywhere, unless a question of the editor's is open.
 onKeyStroke((e) => (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k" && !question.value,
   (e) => { e.preventDefault(); ui.palette = !ui.palette; }, { target: document });
@@ -50,10 +55,16 @@ onKeyStroke((e) => (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k" && !q
 <template>
   <div class="app" :class="{ dragging: dragging.active, phone: ui.phone, 'side-folded': sidebar.folded, 'side-resizing': sidebar.resizing }"
     :style="{ '--side-w': `${sidebar.shownWidth}px` }">
-    <!-- On a phone the overview and a screen carry their own way around (app 0.4.40): the sidebar's row stays for the rest. -->
-    <Sidebar v-if="!(ui.phone && ui.route === '')" />
+    <!-- On a phone the sidebar is a sheet from the left, everything it holds on a wider page, behind the menu key of
+         the overview, of a screen and of every other page. -->
+    <Sidebar :class="{ sheet: ui.phone, open: ui.phone && ui.sideOpen }" :inert="ui.phone && !ui.sideOpen" />
+    <div v-if="ui.phone && ui.sideOpen" class="sheet-dim side-dim" @click="ui.sideOpen = false"></div>
     <main class="main">
       <ConnectionBar />
+      <header v-if="ui.phone && ui.route !== ''" class="phone-nav">
+        <button type="button" class="icon-btn phone-menu-key" id="phone-menu" :aria-label="t('editor.phone.menu')" @click="ui.sideOpen = true"><Icon name="menu" /></button>
+        <b>Tessera</b>
+      </header>
       <component :is="view" />
     </main>
     <Toast />

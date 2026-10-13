@@ -2,8 +2,8 @@
 
 // The pages side by side, like swiping on the screen, or as a map of where the page tiles lead; the library on the
 // right. One toolbar above both views: the view, undo and redo, the preview, a new page, and the how-to in one place.
-import { useSwipe } from "@vueuse/core";
-import { computed, ref } from "vue";
+import { useElementSize, useSwipe } from "@vueuse/core";
+import { computed, onBeforeUnmount, ref, watchEffect } from "vue";
 import { useAtMost } from "../composables/useWidths";
 import { useBandSelect } from "../composables/useBandSelect";
 import { modifierKey, shortcut } from "../editor/clipboard";
@@ -17,7 +17,6 @@ import Library from "./Library.vue";
 import PageMap from "./PageMap.vue";
 import NavigationPreview from './NavigationPreview.vue';
 import GridReview from './GridReview.vue';
-import GridPicker from './GridPicker.vue';
 import MemoryMeter from './MemoryMeter.vue';
 import Icon from './ui/Icon.vue';
 import type { IconName } from '../model/ui-icons';
@@ -75,6 +74,20 @@ const swipe = useSwipe(pagesView, {
   },
 });
 
+// The room for one page (stores/canvas.ts deviceStyle): the canvas less its padding, and its height less the toolbar
+// and the page's head above the glass, so a large screen opens as large as fits without scrolling.
+const canvasView = ref<HTMLElement | null>(null);
+const { band } = useBandSelect(canvasView);
+const canvasSize = useElementSize(canvasView);
+watchEffect(() => {
+  const width = canvasSize.width.value, height = canvasSize.height.value;
+  // A phone fills its width with the page (stores/canvas.ts); a narrow page that is not a phone keeps the sizes above.
+  canvas.room = width <= 0 || height <= 0 || (narrow.value && !ui.phone) ? null
+    : ui.phone ? { width, height } : { width: width - 10, height: height - 110 };
+});
+onBeforeUnmount(() => { canvas.room = null; });
+const zoomPercent = computed(() => `${Math.round(canvas.zoom * 100)}%`);
+
 const layout = computed(() => doc.layout!);
 const entries = computed(() => dragging.preview || entriesOf(layout.value));
 const pages = computed(() => pageCount(entries.value, layout.value.pages));
@@ -93,9 +106,7 @@ const reachHint = computed(() => pageReachWarning());
 const tips: [IconName, string][] = [["pencil-outline", "change"], ["plus", "add"], ["drag", "move"], ["content-copy", "copy"], ["view-column-outline", "pages"], ["sitemap-outline", "map"], ["play", "preview"]];
 // The keys of copy and paste as this computer writes them (editor/clipboard.ts).
 const keys = { mod: modifierKey(), copy: shortcut("C"), paste: shortcut("V") };
-// A band dragged from beside the tiles chooses the tiles it touches (composables/useBandSelect.ts).
-const canvasView = ref<HTMLElement | null>(null);
-const { band } = useBandSelect(canvasView);
+// A band dragged from beside the tiles chooses the tiles it touches (composables/useBandSelect.ts), on the canvas above.
 function onCanvasClick(e: MouseEvent) {
   // A click beside the pages closes the drawer; the cards and the bar handle their own clicks.
   if ((e.target as HTMLElement).closest(".device, .page-label, .page-head, .editor-toolbar, .map-node, .map-links, button, select, input")) return;
@@ -122,7 +133,6 @@ function onCanvasClick(e: MouseEvent) {
       </div>
       <button type="button" class="btn quiet" :title="t('editor.pages.try_navigation')" @click="ui.previewOpen = true"><Icon name="play" />{{ t('editor.pages.preview') }}</button>
       <button type="button" id="toolbar-add-page" class="btn quiet" :disabled="!canAdd" :title="canAdd ? '' : t('editor.layout.max_pages', grid.pages)" @click="ui.pageWizardOpen = true"><Icon name="plus" />{{ t('editor.layout.add_page') }}</button>
-      <GridPicker />
       <span class="spacer"></span>
       <span id="count" class="toolbar-count">{{ t("editor.layout.count", { tiles: layout.tiles.length, limit: doc.tileLimit }, pages) }}</span>
       <MemoryMeter />
@@ -210,6 +220,12 @@ function onCanvasClick(e: MouseEvent) {
         </div>
       </div>
     </div>
+    <!-- The size of the pages (stores/canvas.ts zoom): out of the toolbar, in the corner, as on a map. -->
+    <div v-if="!ui.phone && mode === 'simple'" class="zoom-dock"><div class="zoom-pill" role="group" :aria-label="t('editor.pages.zoom')">
+      <button type="button" class="icon-btn" id="zoom-out" :aria-label="t('editor.pages.zoom_out')" :disabled="canvas.zoom <= 0.5" @click="canvas.zoomBy(-1)"><Icon name="magnify-minus-outline" /></button>
+      <button type="button" class="zoom-value" id="zoom-reset" :title="t('editor.pages.zoom_reset')" @click="canvas.zoom = 1">{{ zoomPercent }}</button>
+      <button type="button" class="icon-btn" id="zoom-in" :aria-label="t('editor.pages.zoom_in')" :disabled="canvas.zoom >= 2" @click="canvas.zoomBy(1)"><Icon name="magnify-plus-outline" /></button>
+    </div></div>
     </template>
   </div>
   <Teleport to="body"><div v-if="band" class="select-band" :style="{ left: `${band.left}px`, top: `${band.top}px`, width: `${band.width}px`, height: `${band.height}px` }"></div></Teleport>
@@ -229,5 +245,11 @@ function onCanvasClick(e: MouseEvent) {
 .page-pills button b { font-weight: 650; color: var(--muted); }
 .page-pills button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--surface); }
 .page-pills button[aria-pressed="true"] b { color: inherit; opacity: .7; }
+/* No room of its own in the column: it stands over the corner of the pages, at the foot of what is in view. */
+.zoom-dock { position: sticky; bottom: 0; align-self: flex-end; margin-top: auto; height: 0; z-index: 2; }
+.zoom-pill { position: absolute; right: 0; bottom: 0; display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 2px 8px rgba(20, 24, 40, 0.08); }
+.zoom-pill .icon-btn { width: 28px; height: 28px; border-radius: 50%; }
+.zoom-value { min-width: 46px; height: 28px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-2); font-size: 12px; font-variant-numeric: tabular-nums; cursor: pointer; }
+.zoom-value:hover { background: var(--seg); }
 @media (max-width: 700px) { #layout-preview { flex-direction: column; align-items: center; overflow: visible; } }
 </style>

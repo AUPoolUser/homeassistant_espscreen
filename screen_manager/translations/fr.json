@@ -3348,6 +3348,8 @@
       "arrange": "Organiser depuis l’accueil",
       "zoom_out": "Dézoomer",
       "zoom_in": "Zoomer",
+      "zoom": "Taille des pages",
+      "zoom_reset": "Revenir à 100 %",
       "choose_destination": "Choisissez la page de destination.",
       "move_map": "Déplacer {name} sur la carte",
       "change_destination": "Changer la destination d’une tuile de navigation sur {name}",
@@ -3623,6 +3625,7 @@
       "reset": "Revenir à {name}"
     },
     "phone": {
+      "menu": "Menu",
       "screens": "Écrans",
       "add_tile": "Ajouter une tuile",
       "add_to_cell": "Va à la place {cell} de {page}",

@@ -1,5 +1,15 @@
 ## Unreleased
 
+- **Editor: large screens get room.** A page of an 8- or 10-inch screen is drawn larger, as large as its glass up to
+  what fits in the window, instead of the same size as a 4-inch one. A zoom in the corner below the pages makes every
+  page larger or smaller (50 to 200 %; a click on the percentage goes back to 100 %), and the browser remembers it.
+- **Editor: columns and rows are a screen setting.** The grid moved from the pages' toolbar to Screen settings, as the
+  first card. A preview screen gets the Settings tab with just that card.
+- **Editor on a phone: the sidebar is back.** A menu key on the overview, on a screen and on every other page opens the
+  whole sidebar from the left: every screen with its details (update, rename, files, remove), Plugins, Alerts and
+  Settings.
+- **Editor on a phone: a page keeps its size.** Every page of a screen is now drawn at the full width of the phone.
+  Before, a page took the width of what was on it, so one page stood a little wider or narrower than the next.
 - **Editor: choose several tiles, and copy them to another page or screen.** ⌘ (or Ctrl) or Shift with a click adds
   a tile to the choice, and a band dragged with the mouse from beside the tiles chooses every tile it touches; ⌘A
   chooses the whole page. ⌘C copies the tiles with every setting, ⌘X cuts them and ⌘V pastes them on the chosen page

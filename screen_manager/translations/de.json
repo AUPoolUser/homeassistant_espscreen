@@ -3348,6 +3348,8 @@
       "arrange": "Ab Startseite anordnen",
       "zoom_out": "Verkleinern",
       "zoom_in": "Vergrößern",
+      "zoom": "Größe der Seiten",
+      "zoom_reset": "Zurück auf 100 %",
       "choose_destination": "Zielseite auswählen.",
       "move_map": "{name} auf der Karte verschieben",
       "change_destination": "Ziel einer Navigationskachel auf {name} ändern",
@@ -3623,6 +3625,7 @@
       "reset": "Zurück zu {name}"
     },
     "phone": {
+      "menu": "Menü",
       "screens": "Bildschirme",
       "add_tile": "Kachel hinzufügen",
       "add_to_cell": "Kommt an Platz {cell} auf {page}",

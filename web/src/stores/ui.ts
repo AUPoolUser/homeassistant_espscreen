@@ -104,6 +104,8 @@ export const useUiStore = defineStore("ui", () => {
   const narrowPhone = ref(atMost("phone"));
   const fullEditor = usePreference("esp-screens.full-editor", false, { serializer: flagSerializer });
   const phone = computed(() => narrowPhone.value && !fullEditor.value);
+  // The sidebar of a phone, a sheet from the left (App.vue): open until a screen or a page is chosen in it.
+  const sideOpen = ref(false);
   function setFullEditor(on: boolean) {
     fullEditor.value = on;
     addSheet.value = false; pagesSheet.value = false; menuOpen.value = false;
@@ -157,7 +159,7 @@ export const useUiStore = defineStore("ui", () => {
   return {
     notice, toast, dismissToast, copyText, openIntegrations,
     tab, menuOpen, palette, addSheet, pagesSheet, previewOpen, pageWizardOpen,
-    narrowPhone, fullEditor, phone, setFullEditor,
+    narrowPhone, fullEditor, phone, setFullEditor, sideOpen,
     hash, route, go, overrideProfile, overrideFriendly,
     libraryOpen, filter, search, room, hidePlaced,
     now, fontsVersion, start,

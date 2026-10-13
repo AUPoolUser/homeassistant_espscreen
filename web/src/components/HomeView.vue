@@ -62,6 +62,7 @@ onMounted(entities.loadOverview);
   <section id="home" class="home">
     <header class="home-head">
       <!-- On a phone the sidebar's row is gone (app 0.4.40): search, alerts, settings and a new screen are in this menu. -->
+      <button v-if="ui.phone" type="button" class="icon-btn phone-menu-key" id="phone-menu" :aria-label="t('editor.phone.menu')" @click="ui.sideOpen = true"><Icon name="menu" /></button>
       <UiMenu v-if="ui.phone" width="240px">
         <template #trigger><button type="button" class="icon-btn home-more" :aria-label="t('editor.screen_view.more')"><Icon name="dots-horizontal" /></button></template>
         <UiMenuItem icon="magnify" @select="ui.palette = true">{{ t("editor.sidebar.search") }}</UiMenuItem>

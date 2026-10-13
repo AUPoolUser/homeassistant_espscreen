@@ -6,6 +6,7 @@ import { usePressRepeat } from "../composables/usePressRepeat";
 import { t } from "../i18n";
 import { glyph } from "../model/topbar";
 import FeedbackPanel from "./FeedbackPanel.vue";
+import GridSettings from "./GridSettings.vue";
 import ScreensaverCard from "./ScreensaverCard.vue";
 import Icon from "./ui/Icon.vue";
 import PluginSettings from "./PluginSettings.vue";
@@ -101,8 +102,12 @@ const startCalibration = () => scr.currentScreen && scr.calibrateTouch(scr.curre
 
 <template>
   <div class="settings" id="general-settings" :class="{ offline }">
-    <span class="status" id="settings-status" role="status">{{ status }}</span>
-    <div v-if="view" class="set-grid" id="settings-groups">
+    <span v-if="!scr.currentScreen?.virtual" class="status" id="settings-status" role="status">{{ status }}</span>
+    <div class="set-grid" id="settings-groups">
+      <!-- The grid of the pages (GridSettings): a change of the draft, sent with the next save, so it is here also while
+           the screen is offline, and the only card of a preview screen. -->
+      <GridSettings />
+      <template v-if="view && !scr.currentScreen?.virtual">
       <template v-for="group in groups" :key="group.group">
       <section class="set-card">
         <h4><span class="mdi">{{ glyph(group.icon) }}</span>{{ t(`editor.screen_settings.groups.${group.group}`) }}</h4>
@@ -157,6 +162,7 @@ const startCalibration = () => scr.currentScreen && scr.calibrateTouch(scr.curre
         </div>
         <p class="hint">{{ t("editor.screen_settings.actions.calibrate.hint") }}</p>
       </section>
+      </template>
     </div>
     <!-- Does it work as you expect (app 0.3.10): always here, also for a screen that is offline or never got its tiles. -->
     <div v-if="scr.currentScreen?.feedback?.available" class="set-grid feedback-grid">
@@ -168,4 +174,6 @@ const startCalibration = () => scr.currentScreen && scr.calibrateTouch(scr.curre
 <style scoped>
 .feedback-grid { margin-top: 14px; }
 .offline .feedback-grid { opacity: 1; }
+.settings.offline .set-grid { opacity: 1; }
+.settings.offline .set-grid > :not(.grid-card) { opacity: 0.6; }
 </style>

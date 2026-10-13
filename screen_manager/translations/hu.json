@@ -3348,6 +3348,8 @@
       "arrange": "Rendezés a kezdőlaptól",
       "zoom_out": "Kicsinyítés",
       "zoom_in": "Nagyítás",
+      "zoom": "Az oldalak mérete",
+      "zoom_reset": "Vissza 100%-ra",
       "choose_destination": "Válaszd ki a céloldalt.",
       "move_map": "{name} mozgatása a térképen",
       "change_destination": "Navigációs csempe céljának módosítása itt: {name}",
@@ -3623,6 +3625,7 @@
       "reset": "Vissza erre: {name}"
     },
     "phone": {
+      "menu": "Menü",
       "screens": "Képernyők",
       "add_tile": "Csempe hozzáadása",
       "add_to_cell": "Ide kerül: {page}, {cell}. hely",

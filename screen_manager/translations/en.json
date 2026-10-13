@@ -2987,6 +2987,8 @@
       "arrange": "Arrange from Home",
       "zoom_out": "Zoom out",
       "zoom_in": "Zoom in",
+      "zoom": "Size of the pages",
+      "zoom_reset": "Back to 100%",
       "choose_destination": "Choose the destination page.",
       "move_map": "Move {name} on the map",
       "change_destination": "Change a navigation tile’s destination on {name}",
@@ -3262,6 +3264,7 @@
       "reset": "Back to {name}"
     },
     "phone": {
+      "menu": "Menu",
       "screens": "Screens",
       "add_tile": "Add tile",
       "add_to_cell": "Goes in place {cell} on {page}",

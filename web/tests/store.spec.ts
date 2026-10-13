@@ -717,6 +717,38 @@ describe("the mockup of a screen, whichever way it hangs", () => {
     shaped({ width: 320, height: 240, columns: 2, rows: 3, look: "compact", dpi: 143, fonts: { watch_value: 22, sublabel_big: 14, sublabel: 11 } } as any);
     expect(canvas.deviceStyle).toMatchObject({ "--pill-h": "45.00px", "--pill-key": "37.50px", "--face-watch": "27.50px" });
   });
+  it("draws larger glass larger, as long as it fits, and zooms from there", () => {
+    // A 10-inch 1280 x 800 at 149 dpi: its shorter side 800 / 149 inches, drawn 96 px an inch, and its width in proportion.
+    shaped({ width: 1280, height: 800, columns: 5, rows: 5, look: "standard", dpi: 149 });
+    expect(Math.round(shorter(canvas.deviceStyle))).toBe(Math.round((800 / 149) * 96));
+    // The 4-inch Guition is smaller than 300 px on the glass and keeps the 300 every screen had.
+    shaped({ width: 480, height: 480, columns: 2, rows: 3, look: "standard", dpi: 170 });
+    expect(px(canvas.deviceStyle)).toBe(300);
+    // Never larger than the room the editor has for a page, never smaller than the 300 px.
+    shaped({ width: 1280, height: 800, columns: 5, rows: 5, look: "standard", dpi: 149 });
+    canvas.room = { width: 700, height: 2000 };
+    expect(px(canvas.deviceStyle)).toBe(700);
+    canvas.room = { width: 2000, height: 400 };
+    expect(px(canvas.deviceStyle)).toBe(640);
+    canvas.room = { width: 200, height: 200 };
+    expect(px(canvas.deviceStyle)).toBe(480);
+    // The zoom takes the size from there, in a browser's steps, between 50 and 200 %.
+    canvas.room = null;
+    canvas.zoom = 1;
+    canvas.zoomBy(1);
+    expect(canvas.zoom).toBe(1.1);
+    canvas.zoom = 2;
+    canvas.zoomBy(1);
+    expect(canvas.zoom).toBe(2);
+    shaped({ width: 480, height: 480, columns: 2, rows: 3, look: "standard", dpi: 170 });
+    expect(px(canvas.deviceStyle)).toBe(600);
+    expect(canvas.deviceStyle["--glass"]).toBe(String(600 / 480));
+    canvas.zoom = 0.5;
+    canvas.zoomBy(-1);
+    expect(canvas.zoom).toBe(0.5);
+    expect(px(canvas.deviceStyle)).toBe(150);
+    canvas.zoom = 1;
+  });
   it("keeps a board's look when it is built standing up", () => {
     // The board says which look it is, and that is what counts. Without it the shorter side decides, because the
     // width alone would read a 480 x 800 standard screen as a compact one.

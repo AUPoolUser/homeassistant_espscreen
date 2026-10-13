@@ -3348,6 +3348,8 @@
       "arrange": "Organizar a partir do início",
       "zoom_out": "Reduzir zoom",
       "zoom_in": "Aumentar zoom",
+      "zoom": "Tamanho das páginas",
+      "zoom_reset": "Voltar a 100%",
       "choose_destination": "Escolha a página de destino.",
       "move_map": "Mover {name} no mapa",
       "change_destination": "Alterar o destino de um cartão de navegação em {name}",
@@ -3623,6 +3625,7 @@
       "reset": "Voltar a {name}"
     },
     "phone": {
+      "menu": "Menu",
       "screens": "Ecrãs",
       "add_tile": "Adicionar mosaico",
       "add_to_cell": "Vai para o lugar {cell} de {page}",

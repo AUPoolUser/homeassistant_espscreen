@@ -3348,6 +3348,8 @@
       "arrange": "Ułóż od strony głównej",
       "zoom_out": "Oddal",
       "zoom_in": "Przybliż",
+      "zoom": "Rozmiar stron",
+      "zoom_reset": "Wróć do 100%",
       "choose_destination": "Wybierz stronę docelową.",
       "move_map": "Przesuń {name} na mapie",
       "change_destination": "Zmień cel kafelka nawigacyjnego na {name}",
@@ -3623,6 +3625,7 @@
       "reset": "Wróć do: {name}"
     },
     "phone": {
+      "menu": "Menu",
       "screens": "Ekrany",
       "add_tile": "Dodaj kafelek",
       "add_to_cell": "Trafi na miejsce {cell} na stronie {page}",

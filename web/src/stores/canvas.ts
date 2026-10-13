@@ -3,12 +3,14 @@
 // larger names a roomy cell takes. Only getters, worked out from the draft's shape and grid (stores/document.ts) and the
 // screen's navigation settings; nothing here changes.
 import { defineStore } from "pinia";
-import { computed } from "vue";
+import { computed, ref } from "vue";
+import { usePreference } from "../composables/usePreference";
 import * as pages from "../model/pages";
 import { barMetricsFor } from "../model/topbar";
 import { frameOf, pillMetrics, uiScale } from "../model/ui-scale";
 import { useDocumentStore } from "./document";
 import { useSettingsStore } from "./settings";
+import { useUiStore } from "./ui";
 
 // The tile grid of a page, as CSS variables: the mockup is the screen's own shape, whatever board it is. Every mockup has
 // the same shorter side (MOCKUP_SIDE), so a screen keeps its size against its neighbours: a 800 x 480 page lying down is
@@ -16,10 +18,26 @@ import { useSettingsStore } from "./settings";
 // instead, a 480 x 800 screen came out 180 px wide, smaller than the 480 x 480 Guition though it has more glass. Very wide
 // glass is capped so it still fits beside a neighbour on a laptop.
 const MOCKUP_SIDE = 300;
+// Larger glass is drawn larger: the shorter side as long as it is on the glass (96 CSS pixels an inch), so a 10-inch
+// screen with five columns and five rows has room for its names where 300 px made every card a stub. Never smaller than
+// MOCKUP_SIDE (the fonts of the mockup don't shrink with it), and never larger than the room the editor has for a page,
+// so it opens without scrolling. The zoom (below the pages) takes it from there.
+const CSS_PER_INCH = 96;
+// The zoom steps of the pages, as a browser's.
+export const ZOOMS = [0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2] as const;
 
 export const useCanvasStore = defineStore("canvas", () => {
   const doc = useDocumentStore();
   const settings = useSettingsStore();
+  const ui = useUiStore();
+  // The zoom of the pages in this browser (1 = the size above), and the room the editor has for one page, measured by
+  // the page row (LayoutView) while it is there.
+  const zoom = usePreference<number>("esp-screens.editor-zoom", 1);
+  const room = ref<{ width: number; height: number } | null>(null);
+  function zoomBy(step: number) {
+    const at = ZOOMS.findIndex((value) => value >= zoom.value - 0.001);
+    zoom.value = ZOOMS[Math.min(ZOOMS.length - 1, Math.max(0, (at < 0 ? ZOOMS.length - 1 : at) + step))];
+  }
 
   // The top bar of the mockup at the screen's own width and density (model/topbar.ts).
   const barMetrics = computed(() => barMetricsFor(doc.screenShape));
@@ -30,7 +48,14 @@ export const useCanvasStore = defineStore("canvas", () => {
     const shape = doc.screenShape, grid = doc.documentGrid;
     // To a tenth of a pixel, not a whole one: on a 1280 x 800 screen the nearest whole pixel of width would make the
     // mockup a pixel taller than the rest. Every board lying down lands on a whole number anyway.
-    const width = shape.width >= shape.height ? Math.min(560, (MOCKUP_SIDE * shape.width) / shape.height) : MOCKUP_SIDE;
+    const across = (side: number) => (shape.width >= shape.height ? (side * shape.width) / shape.height : side);
+    const least = shape.width >= shape.height ? Math.min(560, across(MOCKUP_SIDE)) : MOCKUP_SIDE;
+    const life = "dpi" in shape && shape.dpi ? across((Math.min(shape.width, shape.height) / shape.dpi) * CSS_PER_INCH) : 0;
+    const fit = room.value ? Math.min(room.value.width, (room.value.height * shape.width) / shape.height) : Infinity;
+    const scale = ui.phone ? 1 : Math.min(2, Math.max(0.5, Number(zoom.value) || 1));
+    // A phone draws the page across its whole width, the same on every page (before, a page took the width of its
+    // contents there, and one with a long name stood wider than the next).
+    const width = ui.phone && room.value ? room.value.width : Math.max(least, Math.min(life, fit)) * scale;
     const rounded = Math.round(width * 10) / 10;
     // The glass in editor pixels, and the -/+ pill at the size the screen draws it (model/ui-scale.ts).
     const glass = rounded / shape.width, pill = pillMetrics(shape);
@@ -86,5 +111,5 @@ export const useCanvasStore = defineStore("canvas", () => {
     return cell >= Math.floor((shape.dpi * 30 + 12) / 25);
   });
 
-  return { barMetrics, pageBarShown, deviceStyle, isCompact, roomyNames };
+  return { barMetrics, pageBarShown, deviceStyle, isCompact, roomyNames, zoom, zoomBy, room };
 });
