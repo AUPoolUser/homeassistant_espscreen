@@ -14,6 +14,9 @@ With `expander_cs_pin`, the CH390 is added to the SPI host without a hardware ch
 transfer, as Portworld's firmware does. Every edge is an I2C write, so throughput is a fraction of a native chip
 select, but ample for Home Assistant's API. Without those options the component behaves exactly as ESPHome's.
 
+Tried on a YC-SM43P on 2026-10-16 (ESPHome 2026.9.1, Tessera firmware 0.56.0, powered by 802.3af PoE): the
+CH390D took a DHCP address on the wire next to Wi-Fi, and answered ping with no loss at 6 to 13 ms.
+
 It shadows ESPHome's built-in component, so it must match the ESPHome version that builds it (2026.9.x).
 
 ```yaml
