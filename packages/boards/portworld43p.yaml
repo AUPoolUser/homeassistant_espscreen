@@ -6,7 +6,8 @@
 # The pins come from Portworld's schematic extracts (the ESP32-S3 module, the NCA9555 and the CH390D) and from
 # the panel configuration in their closed board library (github.com/Portworld-tech/43p-esp32-neutral-software,
 # components/board_bsp), whose four schematic-visible data lines (B1 GPIO5, R3 GPIO8, R4 GPIO18, R5 GPIO17) match.
-# The timings and the init registers are that library's. Not yet seen on the glass of a board here: docs/PORTWORLD43P.md.
+# The timings and the init registers are that library's. Seen on the glass on 2026-10-15 (ESPHome 2026.9.1): the test
+# card's colours and corners right, touch 0-479 both ways, the AHT20 reading; docs/PORTWORLD43P.md.
 #
 # The glass is the size of the 4-inch Guition's, so every size is the Guition's: the same tiles in millimetres,
 # the same six cells. The Ethernet chip, the RS485 port, the real-time clock and the buzzer stay unused here.

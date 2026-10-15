@@ -3,7 +3,13 @@
 This is the **Portworld YC-SM43P** (sold as the "YC-SM43P ESP32 4″ Smart Touch Panel"): a 4-inch 480 x 480 IPS panel
 with an ST7701S driver over RGB, GT911 capacitive touch, an ESP32-S3 (N16R8: 16 MB flash, 8 MB octal PSRAM) in an
 86 x 86 wall box, with a CH390D Ethernet chip, RS485, an optional AHT20 temperature and humidity sensor and a buzzer.
-It is powered by 802.3af PoE (48 V), 12 V DC or USB-C. Physical acceptance has not been performed.
+It is powered by 802.3af PoE (48 V), 12 V DC or USB-C.
+
+Tried on one unit on 2026-10-15 with ESPHome 2026.9.1, using this board's pins and timings in a plain ESPHome
+configuration: the ESPHome test card drew with its colours in order, unmirrored and edge to edge after a cold start;
+the GT911 answered at 0x5D and read 3 to 474 on both axes with the centre at about 218 x 234; the I2C scan found the
+expander (0x20), the AHT20 (0x38, reading 27.0 °C and 31.8 %RH inside the case), the real-time clock (0x51) and the
+GT911. The Tessera firmware itself has not been on the glass yet. ESPHome reports the pixel clock as 20 MHz.
 
 ## Install
 
