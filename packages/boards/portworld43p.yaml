@@ -1,0 +1,190 @@
+# ESP Screens - Portworld YC-SM43P board, experimental: a 4-inch 480 x 480 IPS panel (ST7701S over RGB) with GT911
+# capacitive touch in an 86 x 86 wall box, an ESP32-S3 with 16 MB flash and 8 MB of octal PSRAM, and an NCA9555 (a
+# TCA9555 by its registers) that carries the panel's setup lines, the panel and touch resets, the CH390D Ethernet
+# chip's select and reset, the RS485 direction line and the buzzer. Powered by 802.3af PoE, 12 V DC or USB-C.
+#
+# The pins come from Portworld's schematic extracts (the ESP32-S3 module, the NCA9555 and the CH390D) and from
+# the panel configuration in their closed board library (github.com/Portworld-tech/43p-esp32-neutral-software,
+# components/board_bsp), whose four schematic-visible data lines (B1 GPIO5, R3 GPIO8, R4 GPIO18, R5 GPIO17) match.
+# The timings and the init registers are that library's. Not yet seen on the glass of a board here: docs/PORTWORLD43P.md.
+#
+# The glass is the size of the 4-inch Guition's, so every size is the Guition's: the same tiles in millimetres,
+# the same six cells. The Ethernet chip, the RS485 port, the real-time clock and the buzzer stay unused here.
+#
+# A board file is the board's hardware, the facts the shared tree takes from it (its glass and its grid), and the
+# features it has; docs/PROFILES.md says how the files of a screen fit together.
+packages:
+  # The chip and its memory for an RGB panel.
+  hardware: !include ../hardware/esp32s3-rgb.yaml
+  look: !include ../looks/standard.yaml
+  touch: !include ../features/capacitive-touch.yaml
+  backlight: !include ../features/backlight.yaml
+  camera: !include ../features/camera.yaml
+  self_test: !include ../features/self-test.yaml
+  snapshot: !include ../features/snapshot.yaml
+
+substitutions:
+  # The key of this board file; the firmware reports it so ESP Screens knows what board a screen is.
+  BOARD_ID: "portworld43p"
+  DEVICE_NAME: "portworld43p-new"
+  DEVICE_FRIENDLY_NAME: "My Portworld YC-SM43P"
+
+  # The glass: the panel's own pixels and its density, 679 diagonal pixels over 4.0 inches.
+  PANEL_W: "480"
+  PANEL_H: "480"
+  DISPLAY_DPI: "169.706"
+  # The tile grid: columns and rows of cells; square glass has the same six whichever way it hangs.
+  GRID_COLS: "2"
+  GRID_ROWS: "3"
+  LVGL_BUFFER_SIZE: "25%"                       # LVGL's draw buffer as a share of the screen
+
+  # More tiles and pages than the 64 and eight of a board without PSRAM (firmware 0.34.0+): the tile list, the cards and the
+  # extras live in PSRAM here, and the memory budget (tile_memory.h) says how many of them a layout really takes.
+  SCREEN_MAX_TILES: "128"
+  SCREEN_MAX_PAGES: "24"
+  SCREEN_MAX_BAR_ITEMS: "12"                   # a wider top bar where the glass has the width for it
+  # Hardware a screen's own YAML may change (docs/EASY_SETUP.md, "Hardware-specific YAML overrides")
+  BACKLIGHT_FREQUENCY: "5000Hz"                 # the backlight's PWM, as Portworld's own firmware drives it
+
+# ============================================================
+# No need to edit below this line.
+# ============================================================
+
+esp32:
+  flash_size: 16MB
+
+logger:
+  tx_buffer_size: 2048
+  # The USB-C port is the chip's own USB (GPIO19/20). UART0 (GPIO43/44) goes to the RS485 transceiver, so the log stays
+  # off it: a log on UART0 would be sent out over the RS485 pair whenever its driver is enabled.
+  hardware_uart: USB_SERIAL_JTAG
+
+# The GT911, the NCA9555 and the optional AHT20 temperature and humidity sensor share one bus.
+i2c:
+  id: touch_bus
+  sda: GPIO15
+  scl: GPIO7
+  frequency: 400kHz
+  scan: true
+
+# The IO expander. Port 0: 0 panel select, 1 touch reset, 2 panel reset, 3 panel data, 4 panel clock, 5 CH390D select,
+# 6 clock interrupt, 7 CH390D reset. Port 1 (numbers 8 to 15): 8 RS485 direction, 9 buzzer.
+tca9555:
+  - id: expander
+    address: 0x20
+    i2c_id: touch_bus
+
+# The ST7701S takes its setup over three-wire SPI, and on this board those wires are expander lines, so the bus is
+# ESPHome's software SPI on them. It runs once, at boot; the picture itself goes over the RGB pins below.
+spi:
+  id: lcd
+  interface: software
+  clk_pin:
+    tca9555: expander
+    number: 4
+    allow_other_uses: true
+  mosi_pin:
+    tca9555: expander
+    number: 3
+    allow_other_uses: true
+
+output:
+  # GPIO4 drives the backlight with PWM at 5 kHz in Portworld's firmware, which never lets it below 10 %.
+  - platform: ledc
+    pin: GPIO4
+    id: gpio_backlight_pwm
+    frequency: ${BACKLIGHT_FREQUENCY}
+    min_power: 0.10
+    zero_means_zero: true
+  # The panel's setup lines, parked before the setup goes out: select high (idle), data and clock low (ESPHome issue
+  # #11748, as on the Waveshare 4B). The expander starts with every line an input, so a cold start would otherwise
+  # send the setup over lines that are not yet driven. These outputs start after the expander and before the display.
+  - platform: gpio
+    id: lcd_select_idle
+    pin:
+      tca9555: expander
+      number: 0
+      allow_other_uses: true
+    inverted: true
+  - platform: gpio
+    id: lcd_data_idle
+    pin:
+      tca9555: expander
+      number: 3
+      allow_other_uses: true
+  - platform: gpio
+    id: lcd_clock_idle
+    pin:
+      tca9555: expander
+      number: 4
+      allow_other_uses: true
+
+# The GT911's reset is an expander line and its interrupt GPIO16; together they fix its address at 0x5D on reset.
+touchscreen:
+  - platform: gt911
+    id: ts_touch
+    i2c_id: touch_bus
+    display: my_display
+    update_interval: 20ms
+    interrupt_pin: GPIO16
+    reset_pin:
+      tca9555: expander
+      number: 1
+    # The GT911 reports pixels, 0 to 479 either way; the range keeps a panel whose own configuration says otherwise
+    # from squeezing every touch into one corner (GitHub #78, on the Guition).
+    calibration:
+      x_min: 0
+      x_max: 480
+      y_min: 0
+      y_max: 480
+
+# ESPHome's generic ST7701S model brings the common init sequence. Portworld's own sequence is the same but for four
+# registers, which follow it below, and it leaves CD (the RGB bus mode) at its reset value, 0x00: the 16-bit bus, as
+# on the Guition, where ESPHome's model sets 0x08. Pins, timings, pixel format, colour order and clock are Portworld's
+# (a 20.6 MHz pixel clock, 60 frames a second on 648 x 530 with the porches); if the picture slips sideways under
+# load, 16 MHz is the first thing to try.
+display:
+  - platform: mipi_rgb
+    model: ST7701S
+    id: my_display
+    spi_id: lcd
+    cs_pin:
+      tca9555: expander
+      number: 0
+      allow_other_uses: true
+    reset_pin:
+      tca9555: expander
+      number: 2
+    data_rate: 1MHz
+    dimensions:
+      width: ${PANEL_W}
+      height: ${PANEL_H}
+    de_pin: GPIO40
+    pclk_pin: GPIO41
+    hsync_pin: GPIO38
+    vsync_pin: GPIO39
+    pclk_frequency: 20.6MHz
+    pclk_inverted: false
+    hsync_pulse_width: 8
+    hsync_back_porch: 80
+    hsync_front_porch: 80
+    vsync_pulse_width: 2
+    vsync_back_porch: 30
+    vsync_front_porch: 18
+    pixel_mode: 18bit
+    color_order: RGB
+    invert_colors: false
+    init_sequence:
+      - [0xFF, 0x77, 0x01, 0x00, 0x00, 0x10]    # command bank 0
+      - [0xC2, 0x21, 0x08]
+      - [0xCD, 0x00]                            # 16-bit RGB bus
+      - [0xFF, 0x77, 0x01, 0x00, 0x00, 0x11]    # command bank 1
+      - [0xB1, 0x30]
+      - [0xB2, 0x87]
+      - [0xFF, 0x77, 0x01, 0x00, 0x00, 0x00]    # back to the standard commands
+    data_pins:
+      red: [GPIO46, GPIO3, GPIO8, GPIO18, GPIO17]
+      green: [GPIO14, GPIO13, GPIO12, GPIO11, GPIO10, GPIO9]
+      blue: [GPIO5, GPIO45, GPIO48, GPIO47, GPIO21]
+    update_interval: never
+    auto_clear_enabled: false
