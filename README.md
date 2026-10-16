@@ -7,11 +7,13 @@
 > - [`yc-sm43p-ethernet`](https://github.com/AUPoolUser/homeassistant_espscreen/tree/yc-sm43p-ethernet): wired Ethernet over PoE. ESPHome 2026.9's `ethernet` component with the CH390D chip select driven through the panel's IO expander ([details](https://github.com/AUPoolUser/homeassistant_espscreen/blob/yc-sm43p-ethernet/components/ethernet/PORTWORLD.md)), and a complete, tested settings file in [`portworld/yc-sm43p.local.yaml`](https://github.com/AUPoolUser/homeassistant_espscreen/blob/yc-sm43p-ethernet/portworld/yc-sm43p.local.yaml).
 >   - **What changed in the Ethernet component:** two new options for `type: CH390`, `expander_cs_pin` and `expander_reset_pin`, which accept an IO-expander pin where ESPHome normally needs an ESP32 pin. A small custom SPI driver (`ch390_expander_spi.cpp`) switches the chip select over I2C around every transfer, the same way Portworld's own firmware does. Without those options it behaves exactly like ESPHome's standard component.
 >   - **Limitations:** it replaces ESPHome's built-in `ethernet` component, so it must match the ESPHome version (2026.9.x) and needs updating when ESPHome changes. Because every transfer waits on the I2C expander, throughput is lower than native Ethernet: plenty for Home Assistant, but camera images load more slowly.
-> - **Added a Wi-Fi on/off toggle:** the settings file also adds a *Panel Wi-Fi* switch in Home Assistant, so the panel can run on the Ethernet cable alone. If the cable stops working while Wi-Fi is off, Wi-Fi turns itself back on after a minute.
+> - **Added a Wi-Fi on/off toggle:** the settings file also adds a *Panel Wi-Fi* switch in Home Assistant, so the panel can run on the Ethernet cable alone. If the ethernet stops working while Wi-Fi is off, Wi-Fi turns itself back on after a minute.
 >
-> Tested on real hardware in October 2026: display, touch, PoE power and Ethernet-only operation.
+> Successfully Tested on real hardware in October 2026: display, touch, PoE power and Ethernet-only operation.
 > The built-in optional temperature sensor reads approximately 12°C higher from the panel's own heat, so use of an external room sensor is probably recommended.
 >
+> TESTING STILL IN PROGRESS
+> 
 > For Tessera itself, install from the original repository. Everything after the setup guide is the original README.
 
 ## Setting up a YC-SM43P in Home Assistant
