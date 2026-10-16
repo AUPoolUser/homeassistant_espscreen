@@ -1,8 +1,10 @@
-> **This is a fork of [Tessera](https://github.com/MaxGramser/homeassistant_espscreen) by MaxGramser, adding support for the Portworld YC-SM43P**, a 4-inch ESP32-S3 PoE wall panel (480 × 480 ST7701S display, GT911 touch, CH390D Ethernet, AHT20 sensor).
+> **This is a fork of [Tessera](https://github.com/MaxGramser/homeassistant_espscreen) by MaxGramser, adding support for the Portworld YC-SM43P**, a 4-inch ESP32-S3 PoE and WiFi wall panel (480 × 480 ST7701S display, GT911 touch, CH390D Ethernet, AHT20 sensor).
 >
+> For Wall Panels that are in poor WiFi areas, or have solid walls causing reliability issues or where greater reliability is required - the PortWorld YC-SM43P is being tested with the excellent Tessera project.
+> Changes are noted below - everything else remains original: 
 > - [`board/portworld-yc-sm43p`](https://github.com/AUPoolUser/homeassistant_espscreen/tree/board/portworld-yc-sm43p): the YC-SM43P as a Tessera board (experimental), intended for upstream.
 > - [`yc-sm43p-ethernet`](https://github.com/AUPoolUser/homeassistant_espscreen/tree/yc-sm43p-ethernet): wired Ethernet over PoE. ESPHome 2026.9's `ethernet` component with the CH390D chip select driven through the panel's IO expander ([details](https://github.com/AUPoolUser/homeassistant_espscreen/blob/yc-sm43p-ethernet/components/ethernet/PORTWORLD.md)), and a complete, tested settings file in [`portworld/yc-sm43p.local.yaml`](https://github.com/AUPoolUser/homeassistant_espscreen/blob/yc-sm43p-ethernet/portworld/yc-sm43p.local.yaml).
-> - **Wi-Fi on/off toggle:** the settings file also adds a *Panel Wi-Fi* switch in Home Assistant, so the panel can run on the Ethernet cable alone. If the cable stops working while Wi-Fi is off, Wi-Fi turns itself back on after a minute.
+> - **Added a Wi-Fi on/off toggle:** the settings file also adds a *Panel Wi-Fi* switch in Home Assistant, so the panel can run on the Ethernet cable alone. If the cable stops working while Wi-Fi is off, Wi-Fi turns itself back on after a minute.
 >
 > Tested on real hardware in October 2026: display, touch, PoE power and Ethernet-only operation. The built-in temperature sensor reads about 12 °C high from the panel's own heat, so use an external room sensor.
 >
