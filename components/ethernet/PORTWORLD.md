@@ -16,6 +16,8 @@ select, but ample for Home Assistant's API. Without those options the component 
 
 Tried on a YC-SM43P on 2026-10-16 (ESPHome 2026.9.1, Tessera firmware 0.56.0, powered by 802.3af PoE): the
 CH390D took a DHCP address on the wire next to Wi-Fi, and answered ping with no loss at 6 to 13 ms.
+It stayed up overnight, and with Wi-Fi switched off (`wifi.disable`) the panel ran on the cable alone:
+ping 6 to 15 ms, ESPHome's dashboard and Home Assistant connected over Ethernet.
 
 It shadows ESPHome's built-in component, so it must match the ESPHome version that builds it (2026.9.x).
 
