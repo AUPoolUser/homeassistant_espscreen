@@ -16,9 +16,9 @@
 > 
 > For Tessera itself, install from the original repository. Everything after the setup guide is the original README.
 
-## Setting up a YC-SM43P in Home Assistant
+## Setting up a PORTWORLD YC-SM43P POE in Home Assistant
 
-This guide takes a new YC-SM43P from the box to a Tessera panel running on a single PoE cable. Allow about two hours the first time, most of it waiting for the firmware to build. A second panel takes much less effort, though the build time is the same.
+This guide takes a new Portworld YC-SM43P from the box to a Tessera panel running on a single PoE cable. Allow about two hours the first time, most of it waiting for the firmware to build. A second panel takes much less effort, though the build time is the same.
 
 ### How the pieces fit together
 
@@ -26,7 +26,7 @@ This guide takes a new YC-SM43P from the box to a Tessera panel running on a sin
 |---|---|---|
 | **Tessera Screen Manager** | The Home Assistant add-on where you design the panel's pages and tiles. | The original Tessera repository |
 | **ESPHome Device Builder** | Builds the panel's firmware and installs it, over USB the first time and over the network after that. | Home Assistant's add-on store |
-| **Tessera's Guition 4 inch profile** | The firmware base. The Guition has the same 480 × 480 glass as the YC-SM43P, so Tessera's layouts fit as they are. | The original Tessera repository |
+| **Tessera's Guition 4 inch profile** | The firmware base. The Guition has the same 480 × 480 glass as the Portworld YC-SM43P, so Tessera's layouts fit as they are. | The original Tessera repository |
 | **The YC-SM43P settings file** | Replaces the Guition's hardware details with the YC-SM43P's: pins, display timings, sensor, Ethernet and the Wi-Fi switch. | This fork: [`portworld/yc-sm43p.local.yaml`](https://github.com/AUPoolUser/homeassistant_espscreen/blob/yc-sm43p-ethernet/portworld/yc-sm43p.local.yaml) |
 | **The Ethernet component** | Lets ESPHome drive the CH390D Ethernet chip through the panel's IO expander. The settings file downloads it automatically. | This fork: [`components/ethernet`](https://github.com/AUPoolUser/homeassistant_espscreen/tree/yc-sm43p-ethernet/components/ethernet) |
 
