@@ -3,6 +3,8 @@
 > - [`board/portworld-yc-sm43p`](https://github.com/AUPoolUser/homeassistant_espscreen/tree/board/portworld-yc-sm43p): the YC-SM43P as a Tessera board (experimental), intended for upstream.
 > - [`yc-sm43p-ethernet`](https://github.com/AUPoolUser/homeassistant_espscreen/tree/yc-sm43p-ethernet): wired Ethernet over PoE. ESPHome 2026.9's `ethernet` component with the CH390D chip select driven through the panel's IO expander ([details](https://github.com/AUPoolUser/homeassistant_espscreen/blob/yc-sm43p-ethernet/components/ethernet/PORTWORLD.md)), and a complete, tested settings file in [`portworld/yc-sm43p.local.yaml`](https://github.com/AUPoolUser/homeassistant_espscreen/blob/yc-sm43p-ethernet/portworld/yc-sm43p.local.yaml).
 >
+> - **Wi-Fi on/off toggle:** the settings file also adds a *Panel Wi-Fi* switch in Home Assistant, so the panel can run on the Ethernet cable alone. If the cable stops working while Wi-Fi is off, Wi-Fi turns itself back on after a minute.
+>
 > Tested on real hardware in October 2026: display, touch, PoE power and Ethernet-only operation. The built-in temperature sensor reads about 12 °C high from the panel's own heat, so use an external room sensor.
 >
 > For Tessera itself, install from the original repository. Everything below is the original README.
