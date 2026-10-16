@@ -9,8 +9,9 @@
 >   - **Limitations:** it replaces ESPHome's built-in `ethernet` component, so it must match the ESPHome version (2026.9.x) and needs updating when ESPHome changes. Because every transfer waits on the I2C expander, throughput is lower than native Ethernet: plenty for Home Assistant, but camera images load more slowly.
 > - **Added a Wi-Fi on/off toggle:** the settings file also adds a *Panel Wi-Fi* switch in Home Assistant, so the panel can run on the Ethernet cable alone. If the ethernet stops working while Wi-Fi is off, Wi-Fi turns itself back on after a minute.
 >
-> Successfully Tested on real hardware in October 2026: display, touch, PoE power and Ethernet-only operation.
-> The built-in optional temperature sensor reads approximately 12°C higher from the panel's own heat, so use of an external room sensor is probably recommended.
+> Successfully Tested on PortWorld YC-SM43P in October 2026: display, touch, PoE power and Ethernet-only operation.
+> NOTES:
+>    The built-in optional temperature sensor reads approximately 12°C higher from the panel's own heat, so use of an external room sensor is probably recommended.
 >
 > WORKING WELL BUT TESTING STILL IN PROGRESS (only commenced testing 15 October 2026). Updates will be provided.
 > 
