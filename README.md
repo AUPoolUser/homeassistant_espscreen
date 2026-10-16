@@ -12,7 +12,7 @@
 > Successfully Tested on real hardware in October 2026: display, touch, PoE power and Ethernet-only operation.
 > The built-in optional temperature sensor reads approximately 12°C higher from the panel's own heat, so use of an external room sensor is probably recommended.
 >
-> TESTING STILL IN PROGRESS
+> WORKING WELL BUT TESTING STILL IN PROGRESS (only commenced testing 15 October 2026). Updates will be provided.
 > 
 > For Tessera itself, install from the original repository. Everything after the setup guide is the original README.
 
