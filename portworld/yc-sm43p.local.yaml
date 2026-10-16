@@ -1,0 +1,190 @@
+# Portworld YC-SM43P: the complete, tested Override YAML for a Tessera screen (2026-10-16).
+#
+# How to use it for a new panel (e.g. touchscreen02):
+#   1. In Tessera: New screen -> "Guition 4 inch" -> name it -> install "Later".
+#   2. In ESPHome Builder, add `compile_process_limit: 1` under `esphome:` in the screen's own YAML
+#      (needed on a Raspberry Pi), and put this whole file into <name>.local.yaml (the ".local" card).
+#   3. Validate the screen's own card (not the .local one), then install over USB the first time.
+#
+# What it does: the YC-SM43P's pins and display timings on top of Tessera's Guition profile, the AHT20
+# sensor, wired Ethernet over PoE (CH390D, chip select on the IO expander: components/ethernet), and a
+# "Panel Wi-Fi" switch in Home Assistant with an automatic fall-back to Wi-Fi if the cable stops working.
+# Contains no keys or passwords: those stay in the screen's own YAML.
+
+substitutions:
+  BACKLIGHT_FREQUENCY: "5000Hz"
+
+# USB-C is the chip's own USB; UART0 goes to the RS485 transceiver.
+logger:
+  hardware_uart: USB_SERIAL_JTAG
+
+# The Guition's bus, moved to the YC-SM43P's pins: GT911, expander and AHT20.
+i2c:
+  sda: GPIO15
+  scl: GPIO7
+  frequency: 400kHz
+
+# NCA9555 (TCA9555 registers). P0.0 LCD CS, P0.1 touch RST, P0.2 LCD RST, P0.3 LCD SDA,
+# P0.4 LCD SCL, P0.5 CH390D CS, P0.6 RTC INT, P0.7 CH390D RST, P1.0 (8) RS485 DE, P1.1 (9) buzzer.
+tca9555:
+  - id: expander
+    address: 0x20
+    i2c_id: touch_bus
+
+# The panel's setup bus, bit-banged on expander lines once at boot.
+spi:
+  interface: software
+  clk_pin:
+    tca9555: expander
+    number: 4
+    allow_other_uses: true
+  mosi_pin:
+    tca9555: expander
+    number: 3
+    allow_other_uses: true
+
+output:
+  - id: !extend gpio_backlight_pwm
+    pin: GPIO4
+    min_power: 0.10
+  # Park the setup lines (CS high, data and clock low) before the display starts.
+  - platform: gpio
+    id: lcd_select_idle
+    pin:
+      tca9555: expander
+      number: 0
+      allow_other_uses: true
+    inverted: true
+  - platform: gpio
+    id: lcd_data_idle
+    pin:
+      tca9555: expander
+      number: 3
+      allow_other_uses: true
+  - platform: gpio
+    id: lcd_clock_idle
+    pin:
+      tca9555: expander
+      number: 4
+      allow_other_uses: true
+
+touchscreen:
+  - id: !extend ts_touch
+    interrupt_pin: GPIO16
+    reset_pin:
+      tca9555: expander
+      number: 1
+
+display:
+  - id: !extend my_display
+    cs_pin:
+      tca9555: expander
+      number: 0
+      allow_other_uses: true
+    reset_pin:
+      tca9555: expander
+      number: 2
+    data_rate: 1MHz
+    de_pin: GPIO40
+    pclk_pin: GPIO41
+    hsync_pin: GPIO38
+    vsync_pin: GPIO39
+    pclk_frequency: 20.6MHz
+    pclk_inverted: false
+    hsync_pulse_width: 8
+    hsync_back_porch: 80
+    hsync_front_porch: 80
+    vsync_pulse_width: 2
+    vsync_back_porch: 30
+    vsync_front_porch: 18
+    color_order: RGB
+    invert_colors: false
+    # All 16 data lines in the driver's own (byte-swapped) order, as one list so it replaces the
+    # Guition's red/green/blue groups instead of adding to them:
+    # G3 G4 G5 R1 R2 R3 R4 R5 B1 B2 B3 B4 B5 G0 G1 G2
+    data_pins: [11, 10, 9, 46, 3, 8, 18, 17, 5, 45, 48, 47, 21, 14, 13, 12]
+    # Added after the Guition's own sequence: Portworld's four differing registers and 18-bit pixels.
+    init_sequence:
+      - [0xFF, 0x77, 0x01, 0x00, 0x00, 0x10]
+      - [0xC2, 0x21, 0x08]
+      - [0xCD, 0x00]
+      - [0xFF, 0x77, 0x01, 0x00, 0x00, 0x11]
+      - [0xB1, 0x30]
+      - [0xB2, 0x87]
+      - [0xFF, 0x77, 0x01, 0x00, 0x00, 0x00]
+      - [0x3A, 0x66]
+
+# The temperature and humidity sensor (units ordered with it).
+sensor:
+  - platform: aht10
+    variant: AHT20
+    i2c_id: touch_bus
+    temperature:
+      name: Room temperature
+    humidity:
+      name: Room humidity
+    update_interval: 60s
+# ---- Wired Ethernet (CH390D) over PoE: add this at the end of touchscreen01.local.yaml ----
+# The CH390D's chip select and reset are IO expander lines, which ESPHome's own ethernet: can't drive.
+# This uses ESPHome 2026.9.1's ethernet component with that added, from the AUPoolUser fork
+# (components/ethernet/PORTWORLD.md there says what changed).
+external_components:
+  - source:
+      type: git
+      url: https://github.com/AUPoolUser/homeassistant_espscreen
+      ref: yc-sm43p-ethernet
+      path: components
+    components: [ethernet]
+    refresh: 1d
+
+# Ethernet first; Wi-Fi stays as the fallback when the cable is out.
+network:
+  priority: [ethernet, wifi]
+
+ethernet:
+  type: CH390
+  clk_pin: GPIO42
+  mosi_pin: GPIO2
+  miso_pin: GPIO1
+  interrupt_pin: GPIO6
+  clock_speed: 20MHz
+  expander_cs_pin:
+    tca9555: expander
+    number: 5
+  expander_reset_pin:
+    tca9555: expander
+    number: 7
+
+# ---- Panel Wi-Fi on/off switch: add this at the end of touchscreen01.local.yaml ----
+# Adds a "Panel Wi-Fi" switch to the panel's device in Home Assistant. Off = the panel runs on the
+# Ethernet cable alone. The choice is remembered across restarts.
+# Safety net: if the Ethernet link is down for a minute while Wi-Fi is off, Wi-Fi comes back on by
+# itself, so the panel can't strand itself off the network.
+switch:
+  - platform: template
+    id: panel_wifi_switch
+    name: "Panel Wi-Fi"
+    icon: mdi:wifi
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    turn_on_action:
+      - wifi.enable:
+    turn_off_action:
+      - wifi.disable:
+
+interval:
+  - interval: 60s
+    then:
+      - if:
+          condition:
+            and:
+              - not:
+                  ethernet.connected:
+              - not:
+                  wifi.enabled:
+          then:
+            - logger.log:
+                level: WARN
+                format: "Ethernet down with Wi-Fi off: turning Wi-Fi back on"
+            - wifi.enable:
