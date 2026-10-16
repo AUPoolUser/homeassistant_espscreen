@@ -220,6 +220,7 @@ The AHT20 sits inside the sealed wall box, next to the processor, the PoE conver
 | No wired address appears | Check that the port supplies 802.3af PoE and is connected to your network, and that the settings file includes the `ethernet:` block. |
 | Room temperature 10 °C or more too high | Expected, because the sensor sits inside the warm wall box. Use a separate room sensor. |
 
+EVERYTHING BELOW HERE S THE ORIGINAL REPOSITORY...
 ---
 
 <p align="center">
