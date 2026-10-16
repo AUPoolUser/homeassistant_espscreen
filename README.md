@@ -11,17 +11,101 @@
 > Tested on real hardware in October 2026: display, touch, PoE power and Ethernet-only operation.
 > The built-in optional temperature sensor reads approximately 12°C higher from the panel's own heat, so use of an external room sensor is probably recommended.
 >
-> ### Setting up a YC-SM43P in Home Assistant
->
-> 1. **Install the add-ons.** In Home Assistant, install **Tessera Screen Manager** (from the original Tessera repository) and **ESPHome Device Builder** (2026.9.x, the version the Ethernet component is built for). Make sure your 2.4 GHz Wi-Fi name and password are in ESPHome's **Secrets**: the panel uses them for its first connection.
-> 2. **Create the screen in Tessera.** Choose **New screen → Guition 4 inch** (it has the same 480 × 480 glass, so Tessera's layouts fit as they are), give it a name, and choose **Later** when asked how to install. Don't install yet: plain Guition firmware leaves the YC-SM43P's screen blank.
-> 3. **Add the YC-SM43P settings.** In ESPHome Builder, Tessera has created two cards: the screen itself (e.g. `touchscreen01`) and its settings file (`touchscreen01.local`). Open the **`.local`** card, replace everything in it with [`portworld/yc-sm43p.local.yaml`](https://github.com/AUPoolUser/homeassistant_espscreen/blob/yc-sm43p-ethernet/portworld/yc-sm43p.local.yaml), and save. This file holds the panel's pins, display timings, the AHT20 sensor, wired Ethernet and the Wi-Fi switch, and Tessera keeps it through its updates. The `.local` card shows errors when checked on its own; that is expected, ignore them.
-> 4. **Limit the build's memory use.** Open the **main** card and add `compile_process_limit: 1` under `esphome:`. Tessera's firmware is large, and on a Home Assistant server with limited memory the build otherwise stops with `Killed signal terminated program cc1plus`. Don't paste the settings file into this card as well: entities defined twice stop the build.
-> 5. **Validate and install.** On the **main** card choose **⋮ → Validate** (the log's first line should name `touchscreen01.yaml`, not `.local`) and wait for *Configuration is valid!*. Install over **USB** the first time: plug the panel into the Home Assistant server with a USB-C **data** cable and choose *Plug into the computer running ESPHome Device Builder*. The first build can take 30–60 minutes. After that, every update can go **Wirelessly**.
-> 6. **Add it to Home Assistant.** Once the panel shows Tessera, accept the discovered ESPHome device under **Settings → Devices & services**, then add your tiles in Tessera.
-> 7. **Move to PoE and Ethernet.** Connect the panel to an 802.3af PoE port on your network; it picks up a wired address alongside Wi-Fi. To run on the cable alone, turn off the **Panel Wi-Fi** switch on the device page in Home Assistant. Give the panel's wired address a DHCP reservation on your router so Home Assistant always finds it.
->
-> For Tessera itself, install from the original repository. Everything below is the original README.
+> For Tessera itself, install from the original repository. Everything after the setup guide is the original README.
+
+## Setting up a YC-SM43P in Home Assistant
+
+### What you need
+
+- A Portworld YC-SM43P (the ESP32-S3 version), with or without the optional AHT20 sensor.
+- Home Assistant OS or Supervised (so you can install add-ons), with **ESPHome Device Builder 2026.9.x**. The Ethernet component is built for that version.
+- A USB-C cable that carries **data**, for the first install only. Many USB-C cables only charge.
+- An **802.3af** PoE switch port or PoE injector on your network, for power and wired Ethernet.
+- Your 2.4 GHz Wi-Fi details. The panel uses Wi-Fi for its first connection and as a fall-back.
+
+### 1. Install the add-ons
+
+1. Add the original Tessera repository to Home Assistant: **Settings → Apps → Install app → ⋮ → Repositories** (on older versions **Settings → Add-ons → Add-on Store**), add `https://github.com/MaxGramser/homeassistant_espscreen`, then install and start **Tessera Screen Manager**. Turn on **Show in sidebar**.
+2. Install **ESPHome Device Builder** from the same store if you don't have it. Check its version at the bottom of its page: it must be 2026.9.x.
+3. In ESPHome Device Builder, click **Secrets** and make sure it contains:
+   ```yaml
+   wifi_ssid: "YourNetwork"
+   wifi_password: "YourPassword"
+   ```
+
+### 2. Create the screen in Tessera
+
+1. Open **Tessera** from the sidebar and click **New screen**.
+2. Choose **Guition 4 inch** (ESP32-S3-4848S040). It has the same 480 × 480 glass as the YC-SM43P, so Tessera's grid, sizes and features fit as they are; the settings file in step 3 swaps in the YC-SM43P's own hardware.
+3. Give it a name (for example `TouchScreen01`; this becomes its name in Home Assistant).
+4. On *How do you want to install it?*, choose **Later** ("Only keep the settings for now"). **Don't install yet:** plain Guition firmware leaves the YC-SM43P's screen blank.
+
+The screen now shows in Tessera's list as *Not installed yet*.
+
+### 3. Add the YC-SM43P settings file
+
+1. Open **ESPHome Device Builder**. Tessera has created two cards: the screen itself (`touchscreen01`) and its settings file (`touchscreen01.local`).
+2. On the **`.local`** card, click **Edit**, select everything (Ctrl+A), and replace it with the whole of [`portworld/yc-sm43p.local.yaml`](https://github.com/AUPoolUser/homeassistant_espscreen/blob/yc-sm43p-ethernet/portworld/yc-sm43p.local.yaml). Click **Save**.
+3. This file holds the panel's pins and display timings, the AHT20 sensor, wired Ethernet (CH390D) and the *Panel Wi-Fi* switch. Tessera loads it after its own firmware and keeps it through every update.
+4. If you check the `.local` card on its own, it reports `'esphome' section missing` and `Source for extension of ID 'gpio_backlight_pwm' was not found`. That is expected: it is only an add-on to the main card. Never validate or install the `.local` card.
+
+### 4. Prepare the main card
+
+1. On the **main** card (`touchscreen01`, without `.local`), click **Edit**.
+2. Under `esphome:`, add `compile_process_limit: 1`, indented like `name:`:
+   ```yaml
+   esphome:
+     name: "touchscreen01"
+     friendly_name: "TouchScreen01"
+     compile_process_limit: 1
+   ```
+   Tessera's firmware has some very large source files. Compiling one at a time keeps the build within the memory of a typical Home Assistant server; without it the build can stop with `Killed signal terminated program cc1plus`.
+3. Change nothing else. In particular, don't paste the settings file here as well: the file should still end with `captive_portal:`. Anything defined in both files stops the build with *Duplicate … entity*.
+4. Click **Save**.
+
+### 5. Validate
+
+1. On the **main** card, click **⋮ → Validate**.
+2. The first line of the log must read `Reading configuration /config/esphome/touchscreen01.yaml` (not `.local.yaml`).
+3. Wait for **Configuration is valid!** The first run downloads Tessera and the Ethernet component, so it can take a few minutes.
+
+### 6. First install, over USB
+
+1. Plug the panel into a USB port of the **Home Assistant server** with the USB-C data cable. The panel can power from USB for now.
+2. Check that the server sees it: **Settings → System → Hardware → ⋮ → All hardware**, search for `tty`. You should see `/dev/ttyACM0` (an *Espressif USB JTAG/serial debug unit*). If it isn't listed, try another cable or port.
+3. On the main card, click **⋮ → Install → Plug into the computer running ESPHome Device Builder**, and choose that port.
+4. Leave the window open. The first build can take **30 to 60 minutes**. The log shows many `warning:` lines from Tessera's code; they are harmless. Only lines with `error` or `FAILED` matter.
+5. When it reports **Successfully uploaded program**, the panel restarts into Tessera.
+
+### 7. Add it to Home Assistant
+
+1. Go to **Settings → Devices & services**. The panel appears as a discovered ESPHome device: click **Add**. If asked for an encryption key, copy it from Tessera (click the screen → **Copy API key**).
+2. The panel moves past *Waiting for Home Assistant*. Add your tiles in Tessera.
+3. If you used a test firmware on the panel before, delete that old device under **ESPHome**, or Home Assistant keeps trying it (`BAD_INDICATOR` in the panel's log).
+
+### 8. Move to PoE and wired Ethernet
+
+1. Unplug the USB cable and connect the panel's RJ45 port to an 802.3af PoE port on your network. The panel boots on PoE and picks up a **wired** address next to its Wi-Fi one; ESPHome's log then says *Starting log output from &lt;Wi-Fi address&gt; or &lt;wired address&gt;*.
+2. Check the wired address answers: `ping <wired address>`.
+3. To run on the cable alone, open the panel's device page in Home Assistant and turn off **Panel Wi-Fi** (under *Configuration*). The choice is kept across restarts. If the Ethernet link is down for a minute while Wi-Fi is off, Wi-Fi turns itself back on.
+4. Give the wired address a **DHCP reservation** on your router. If Home Assistant shows the panel as *Unavailable* after turning Wi-Fi off, open **ESPHome → the panel → ⋮ → Reconfigure** and enter the wired address.
+
+### Updating later
+
+- Use **⋮ → Install → Wirelessly** on the main card. No USB needed; it goes over Ethernet or Wi-Fi. Don't choose *Plug into this computer*: that is a browser USB install and fails with *Failed to initialize* when nothing is plugged in.
+- Keep ESPHome Device Builder on **2026.9.x**. The Ethernet component replaces ESPHome's own, so a newer ESPHome needs an updated component first.
+
+### Troubleshooting
+
+| What you see | What it means |
+|---|---|
+| *No serial ports found* | The server doesn't see the panel over USB: use a data cable, plug straight into the server, then restart ESPHome Device Builder. |
+| `Killed signal terminated program cc1plus` | The build ran out of memory: add `compile_process_limit: 1` (step 4) and stop other heavy add-ons while it builds. |
+| `'esphome' section missing` / `gpio_backlight_pwm was not found` | The `.local` card was validated on its own. Validate the main card instead. |
+| *Duplicate … entity with name …* | Something from the settings file was also pasted into the main card. Remove it from the main card. |
+| Blank screen, backlight on | The panel was installed with the Guition settings only. Add the settings file (step 3) and install again over USB. |
+| *Waiting for Home Assistant* on the panel | Home Assistant hasn't connected yet: add the device (step 7) and remove any old device for the same panel. |
+| Room temperature 10 °C or more too high | Expected: the AHT20 sits inside the warm wall box. Use a separate room sensor for climate control. |
 
 ---
 
