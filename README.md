@@ -202,7 +202,7 @@ The AHT20 sits inside the sealed wall box, next to the processor, the PoE conver
 
 - **The panel keeps restarting after an update.** After repeated failed boots, ESPHome starts in **safe mode**, which still accepts a wireless install. Fix the configuration and install again over the network.
 - **It can't be reached over the network at all.** Plug it into the Home Assistant server over USB and install again from step 6. A USB install always works, whatever is on the panel.
-- **Going back to Portworld's firmware.** That's only possible from a backup of the factory firmware, taken with `esptool --chip esp32s3 read-flash 0 0x1000000 backup.bin` before the first install, or by copying it from an untouched panel the same way.
+- **Going back to Portworld's firmware.** Portworld supplies its standard demo firmware and flashing tool on request (ask your Portworld contact), and its SDK is public at [Portworld-tech/43p-esp32-neutral-software](https://github.com/Portworld-tech/43p-esp32-neutral-software). Flashing that firmware over USB returns the panel to factory software, so you don't need to keep an untouched panel. You can also take your own backup of the factory firmware before the first install: `esptool --chip esp32s3 read-flash 0 0x1000000 backup.bin`.
 
 ### Troubleshooting
 
