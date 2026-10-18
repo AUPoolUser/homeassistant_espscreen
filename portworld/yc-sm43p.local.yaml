@@ -158,16 +158,24 @@ ethernet:
 # ---- Panel Wi-Fi on/off switch ----
 # Adds a "Panel Wi-Fi" switch to the panel's device in Home Assistant. Off = the panel runs on the
 # Ethernet cable alone. The choice is remembered across restarts.
-# Every 30 seconds the panel checks:
-#   - Ethernet up and the switch off  -> Wi-Fi off (this also applies the setting after a restart,
-#     when Wi-Fi starts up on its own before the switch can act).
-#   - Ethernet down for ten checks in a row (5 minutes) -> Wi-Fi back on as a fall-back,
-#     and off again once Ethernet is back, if the switch is still off.
+#
+# Wi-Fi no longer starts by itself at boot. Every 15 seconds the panel checks:
+#   - Switch on                          -> Wi-Fi on.
+#   - Switch off and Ethernet up         -> Wi-Fi off.
+#   - Switch off and Ethernet down       -> Wi-Fi on as a fall-back after 5 minutes
+#                                           (after 1 minute right after a restart), and off
+#                                           again once Ethernet is back.
+# So with the switch off, Home Assistant only ever sees the panel on the cable, also after restarts.
+wifi:
+  enable_on_boot: false
+
 globals:
+  # Checks in a row with Ethernet down. Starts at 16 so that, right after a restart, Wi-Fi comes on
+  # after 4 failed checks (1 minute) instead of 20 (5 minutes) if the cable is not working.
   - id: panel_eth_down_checks
     type: int
     restore_value: false
-    initial_value: '0'
+    initial_value: '16'
 
 switch:
   - platform: template
@@ -180,7 +188,7 @@ switch:
     turn_on_action:
       - wifi.enable:
     turn_off_action:
-      # Only drop Wi-Fi while the cable is up; otherwise the 30-second check does it once Ethernet is back.
+      # Only drop Wi-Fi while the cable is up; otherwise the 15-second check handles it.
       - if:
           condition:
             ethernet.connected:
@@ -188,33 +196,43 @@ switch:
             - wifi.disable:
 
 interval:
-  - interval: 30s
+  - interval: 15s
     then:
       - if:
           condition:
-            ethernet.connected:
+            switch.is_on: panel_wifi_switch
           then:
-            - globals.set:
-                id: panel_eth_down_checks
-                value: '0'
             - if:
                 condition:
-                  and:
-                    - switch.is_off: panel_wifi_switch
-                    - wifi.enabled:
+                  not:
+                    wifi.enabled:
                 then:
-                  - logger.log: "Ethernet up and Panel Wi-Fi off: turning Wi-Fi off"
-                  - wifi.disable:
-          else:
-            - lambda: 'id(panel_eth_down_checks) += 1;'
-            - if:
-                condition:
-                  and:
-                    - lambda: 'return id(panel_eth_down_checks) >= 10;'
-                    - not:
-                        wifi.enabled:
-                then:
-                  - logger.log:
-                      level: WARN
-                      format: "Ethernet down for 5 minutes: turning Wi-Fi back on"
+                  - logger.log: "Panel Wi-Fi on: turning Wi-Fi on"
                   - wifi.enable:
+          else:
+            - if:
+                condition:
+                  ethernet.connected:
+                then:
+                  - globals.set:
+                      id: panel_eth_down_checks
+                      value: '0'
+                  - if:
+                      condition:
+                        wifi.enabled:
+                      then:
+                        - logger.log: "Ethernet up and Panel Wi-Fi off: turning Wi-Fi off"
+                        - wifi.disable:
+                else:
+                  - lambda: 'id(panel_eth_down_checks) += 1;'
+                  - if:
+                      condition:
+                        and:
+                          - lambda: 'return id(panel_eth_down_checks) >= 20;'
+                          - not:
+                              wifi.enabled:
+                      then:
+                        - logger.log:
+                            level: WARN
+                            format: "Ethernet down: turning Wi-Fi on as a fall-back"
+                        - wifi.enable:
