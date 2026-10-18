@@ -17,6 +17,30 @@
 > 
 > For Tessera itself, install from the original repository. Everything after the setup guide is the original README.
 
+## What was changed, and why
+
+**The goal:** a wall panel that runs Tessera on a single cable, with power and network both over PoE, for rooms where Wi-Fi is weak, walls are solid, or the panel simply has to stay connected. The YC-SM43P is a good fit: an ESP32-S3 with 16 MB flash and 8 MB PSRAM, a 4-inch 480 × 480 touch screen, a CH390D Ethernet chip and 802.3af PoE, in an 86 × 86 mm wall box. But it isn't one of Tessera's supported screens, and Portworld doesn't publish its wiring. These are the changes that make it work, and the reason for each.
+
+**1. The panel's hardware details (settings file).**
+Portworld supplies only a precompiled board library and a few schematic extracts, not a full pin map. The display's pins, timings and start-up registers, the touch controller, the IO expander and the sensor were worked out from those extracts and from the configuration compiled into Portworld's library, then confirmed on the panel. The results live in one settings file, [`portworld/yc-sm43p.local.yaml`](https://github.com/AUPoolUser/homeassistant_espscreen/blob/yc-sm43p-ethernet/portworld/yc-sm43p.local.yaml).
+*Why on top of Tessera's Guition 4 inch profile:* the Guition has the same 480 × 480 glass, so Tessera's editor, grid and sizes fit unchanged. Only the hardware section needs replacing, and Tessera keeps that file through its own updates. The proper long-term route, a YC-SM43P board in Tessera itself, is prepared on the `board/portworld-yc-sm43p` branch.
+
+**2. Wired Ethernet: a small change to ESPHome's Ethernet component.**
+On this board the CH390D's chip-select and reset lines are wired to the IO expander rather than to the ESP32. ESPHome's standard `ethernet:` component only accepts ESP32 pins, so it can't drive the chip. The component in this fork is ESPHome 2026.9's own, with two added options (`expander_cs_pin`, `expander_reset_pin`) and a small SPI driver that switches the chip select over I2C around each transfer, the same method Portworld's firmware uses. Without those options it behaves exactly as ESPHome's. ([Details](https://github.com/AUPoolUser/homeassistant_espscreen/blob/yc-sm43p-ethernet/components/ethernet/PORTWORLD.md))
+*Why not wait for a different board:* it makes the panels people already own work on a cable today. The trade-offs are lower throughput than native Ethernet (fine for Home Assistant) and a tie to ESPHome 2026.9.x until the component is updated. The clean fix is a hardware change by Portworld: chip select on a spare ESP32 pin, for example GPIO0.
+
+**3. The *Panel Wi-Fi* switch, and why it went through three versions.**
+With Ethernet working, Wi-Fi becomes optional. Turning it off means the panel needs no Wi-Fi coverage or credentials once installed, doesn't add to a busy Wi-Fi network, and leaves Home Assistant only one address to talk to. A fallback keeps a panel from being stranded if its cable fails.
+- *Version 1* simply switched Wi-Fi off and on, with a one-minute fallback. Testing showed Wi-Fi came back after every restart while the switch still said Off, because the switch acted before ESPHome had started Wi-Fi, and Wi-Fi then started anyway.
+- *Version 2* re-applied the switch every 30 seconds and lengthened the fallback to 5 minutes, so a brief cable or switch hiccup doesn't bring Wi-Fi up. It still let Wi-Fi start briefly at boot. Home Assistant connected over Wi-Fi, lost the panel when Wi-Fi turned off 30 seconds later, and took a few minutes to find it again on the cable.
+- *Version 3* (current) stops Wi-Fi starting at boot (`enable_on_boot: false`) and turns it on only when the switch is on, or as a fallback when Ethernet is down: after 1 minute straight after a restart, and after 5 minutes during normal running. It turns Wi-Fi off again once Ethernet is back. With the switch off, Home Assistant only ever sees the panel on the cable, also after restarts.
+
+**4. Build settings for a Home Assistant server.**
+Tessera's firmware has some very large source files. Compiling several at once ran a typical Home Assistant server out of memory (`Killed signal terminated program cc1plus`), so the guide adds `compile_process_limit: 1`. It's slower, but it finishes.
+
+**5. The temperature sensor is reported, not trusted.**
+The optional AHT20 sits inside the warm wall box and read about 10–14 °C above the room in testing, so it can't be fixed with a simple offset. It stays in the settings file for information. For climate control the guide recommends a separate room sensor.
+
 ## Setting up a PORTWORLD YC-SM43P POE in Home Assistant
 
 This guide takes a new Portworld YC-SM43P from the box to a Tessera panel running on a single PoE cable. Allow about two hours the first time, most of it waiting for the firmware to build. A second panel takes much less effort, though the build time is the same.
