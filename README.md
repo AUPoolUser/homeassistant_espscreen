@@ -165,9 +165,9 @@ This guide takes a new Portworld YC-SM43P from the box to a Tessera panel runnin
    - in your router's list of connected devices, or
    - in ESPHome Device Builder: open **Logs** on the main card, and the first lines read *Starting log output from &lt;Wi-Fi address&gt; or &lt;wired address&gt;*.
 3. **Test the wired connection.** From a computer on the same network, run `ping <wired address>`. You should get steady replies, typically 6–15 ms.
-4. **Run on Ethernet alone** (recommended where Wi-Fi is weak or busy). On the panel's device page in Home Assistant, turn off **Panel Wi-Fi** under *Configuration*. Within 30 seconds, `ping <Wi-Fi address>` stops replying while the wired address keeps answering. Tessera keeps working throughout.
+4. **Run on Ethernet alone** (recommended where Wi-Fi is weak or busy). On the panel's device page in Home Assistant, turn off **Panel Wi-Fi** under *Configuration*. Within 15 seconds, `ping <Wi-Fi address>` stops replying while the wired address keeps answering. Tessera keeps working throughout.
    - The setting is kept across restarts.
-   - **Safety net:** if the Ethernet link is down for 5 minutes while Wi-Fi is off, Wi-Fi turns itself back on, and off again once Ethernet is back, so the panel can't drop off the network for long. The setting also re-applies itself about 30 seconds after every restart.
+   - **Safety net:** if the Ethernet link is down for 5 minutes while Wi-Fi is off, Wi-Fi turns itself back on, and off again once Ethernet is back, so the panel can't drop off the network for long. With the switch off, Wi-Fi doesn't start at all after a restart (unless the cable isn't working for the first minute), so Home Assistant only ever sees the panel on the cable.
 5. **Fix the address.** Give the panel's wired connection a **DHCP reservation** on your router, so it always gets the same address.
 6. **If Home Assistant shows the panel as *Unavailable*** after Wi-Fi is turned off, it's still using the old Wi-Fi address. Go to **Settings → Devices & services → ESPHome → your panel → ⋮ → Reconfigure** and enter the wired address.
 
