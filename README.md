@@ -207,6 +207,10 @@ This guide takes a new Portworld YC-SM43P from the box to a Tessera panel runnin
 | Ethernet only | Panel Wi-Fi off, then use the panel | Everything still works |
 | Fallback | Unplug the network cable for six minutes (with USB or 12 V power) | Panel reconnects over Wi-Fi |
 
+### Ethernet versus WiFi Speeds
+
+Ethernet is definately slower because the ESP32 was not designed for wired connectivity - it was designed as a wifi module. The ESP32 module in the ortworld YC-SM43P is connected to an IO expander CH390D chipset - this slows ethernet to ESP32 communication. There is practically no perceptible difference in the normal touchscreen operation other than security camera images on the screen. I have connected the Portworld YC-SM43P to a Dahua door camera and it renders in 3 seconds on ethernet and 1.8seconds on a strong wifi signal (-58 dBm). Ethernet Pings are 5 to 12 ms versus WiFi Pings are 3-30ms. The Ethernet seems to have a tigher range and is steadier than the WiFi. The only perceivable difference is the security camera images.
+
 ### Adding more panels
 
 Repeat steps 2 to 8 for each panel, with a **new, unique name** (for example `TouchScreen02`). Use the **same settings file** for every panel. Each panel gets its own keys from Tessera automatically. Builds after the first are often quicker, because ESPHome reuses what it already compiled. Plug each panel into the server one at a time for its first install.
