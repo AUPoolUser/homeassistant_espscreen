@@ -1,33 +1,33 @@
 > **This is a fork of [Tessera](https://github.com/MaxGramser/homeassistant_espscreen) by MaxGramser, adding support for the Portworld YC-SM43P**, a 4-inch ESP32-S3 PoE and WiFi wall panel (480 × 480 ST7701S display, GT911 touch, CH390D Ethernet, AHT20 sensor).
 >
-> For Wall Panels that are in poor WiFi areas, or have solid walls causing reliability issues or where greater reliability is required - the PortWorld YC-SM43P is being tested with the excellent Tessera project. The PortWorld YC-SM43P is a POE capable and WiFi capable 4" x 4" touch screen. (see https://portworld-solu.com/portfolio-item/yc-sm43p-esp32-4-smart-touch-panel/ )
+> For Wall Panels that are in poor WiFi areas, or have solid brick walls causing reliability issues or where greater (wired) reliability and security is required - the PortWorld YC-SM43P is being tested with the excellent Tessera project by MaxGramser. The PortWorld YC-SM43P is a POE capable and WiFi capable 4" x 4" touch screen. (see https://portworld-solu.com/portfolio-item/yc-sm43p-esp32-4-smart-touch-panel/ ) It ca be powered with POE or via 12VDC. We are only testing it with POE. 
 > 
-> Changes are noted below - everything else remains original: 
+> Changes are noted below - everything else remains on the original repository: 
 > - [`board/portworld-yc-sm43p`](https://github.com/AUPoolUser/homeassistant_espscreen/tree/board/portworld-yc-sm43p): the YC-SM43P as a Tessera board (experimental), intended for upstream.
 > - [`yc-sm43p-ethernet`](https://github.com/AUPoolUser/homeassistant_espscreen/tree/yc-sm43p-ethernet): wired Ethernet over PoE. ESPHome 2026.9's `ethernet` component with the CH390D chip select driven through the panel's IO expander ([details](https://github.com/AUPoolUser/homeassistant_espscreen/blob/yc-sm43p-ethernet/components/ethernet/PORTWORLD.md)), and a complete, tested settings file in [`portworld/yc-sm43p.local.yaml`](https://github.com/AUPoolUser/homeassistant_espscreen/blob/yc-sm43p-ethernet/portworld/yc-sm43p.local.yaml).
 >   - **What changed in the Ethernet component:** two new options for `type: CH390`, `expander_cs_pin` and `expander_reset_pin`, which accept an IO-expander pin where ESPHome normally needs an ESP32 pin. A small custom SPI driver (`ch390_expander_spi.cpp`) switches the chip select over I2C around every transfer, the same way Portworld's own firmware does. Without those options it behaves exactly like ESPHome's standard component.
->   - **Limitations:** it replaces ESPHome's built-in `ethernet` component, so it must match the ESPHome version (2026.9.x) and needs updating when ESPHome changes. Because every transfer waits on the I2C expander, throughput is lower than native Ethernet: plenty for Home Assistant, but camera images load more slowly.
-> - **Added a Wi-Fi on/off toggle:** the settings file also adds a *Panel Wi-Fi* switch in Home Assistant, so the panel can run on the Ethernet cable alone. If Ethernet is down for 5 minutes while Wi-Fi is off, Wi-Fi turns itself back on, and off again once Ethernet is back.
+>   - **Limitations:** it replaces ESPHome's built-in `ethernet` component, so it must match the ESPHome version (2026.9.x) and needs updating when ESPHome changes. Because every transfer waits on the I2C expander, throughput is actually lower than native Ethernet: plenty for Home Assistant, but camera images load more slowly - I will provide details below.
+> - **Added a Wi-Fi on/off toggle:** the settings file also adds a *Panel Wi-Fi* switch in Home Assistant, so the panel can run on the Ethernet cable alone. If Ethernet is down for 5 minutes while the Wi-Fi Switch is off, Wi-Fi turns itself back on, and off again once Ethernet is back operation. Effectively, WiFi is a fallback
 >
-> Successfully Tested on PortWorld YC-SM43P in October 2026: display, touch, PoE power and Ethernet-only operation.
+> I have successfully tested this on PortWorld's YC-SM43P in October 2026: display, touch, PoE power and Ethernet-only operation with WiFi fallback.
 > NOTES:
->    The built-in optional temperature sensor reads approximately 12°C higher from the panel's own heat, so use of an external room sensor is probably recommended.
+>    The built-in optional temperature sensor reads approximately 12°C higher from the panel's own heat, so use of an external room sensor is probably recommended I do not recommend the addition of the temperature sensor to the unit.
 >
-> WORKING WELL BUT TESTING STILL IN PROGRESS (only commenced testing 15 October 2026). Updates will be provided.
+> WORKING WELL BUT TESTING STILL IN PROGRESS (only commenced testing 15 October 2026). Updates will be provided here.
 > 
 > For Tessera itself, install from the original repository. Everything after the setup guide is the original README.
 
 ## What was changed, and why
 
-**The goal:** a wall panel that runs Tessera on a single cable, with power and network both over PoE, for rooms where Wi-Fi is weak, walls are solid, or the panel simply has to stay connected. The YC-SM43P is a good fit: an ESP32-S3 with 16 MB flash and 8 MB PSRAM, a 4-inch 480 × 480 touch screen, a CH390D Ethernet chip and 802.3af PoE, in an 86 × 86 mm wall box. But it isn't one of Tessera's supported screens, and Portworld doesn't publish its wiring. These are the changes that make it work, and the reason for each.
+**The goal:** a wall panel that runs Tessera on a single ethernet cable, with power and network both being supplied over PoE. This is especially handy for rooms where Wi-Fi is weak, walls are solid, or the panel simply has to stay connected and secure. The YC-SM43P is a good fit: it is an ESP32-S3 with 16 MB flash and 8 MB PSRAM, a 4-inch 480 × 480 touch screen, a CH390D Ethernet chipset and 802.3af PoE, in an 86 × 86 mm x 12mm wall box (with a 50mm x 50mm x 27mm box at centre rear for the ethernet and some electronics). But it isn't one of Tessera's supported screens, and Portworld doesn't publish its wiring. These are the changes that make it work, and the reason for each.
 
 **1. The panel's hardware details (settings file).**
 Portworld supplies only a precompiled board library and a few schematic extracts, not a full pin map. The display's pins, timings and start-up registers, the touch controller, the IO expander and the sensor were worked out from those extracts and from the configuration compiled into Portworld's library, then confirmed on the panel. The results live in one settings file, [`portworld/yc-sm43p.local.yaml`](https://github.com/AUPoolUser/homeassistant_espscreen/blob/yc-sm43p-ethernet/portworld/yc-sm43p.local.yaml).
-*Why on top of Tessera's Guition 4 inch profile:* the Guition has the same 480 × 480 glass, so Tessera's editor, grid and sizes fit unchanged. Only the hardware section needs replacing, and Tessera keeps that file through its own updates. The proper long-term route, a YC-SM43P board in Tessera itself, is prepared on the `board/portworld-yc-sm43p` branch.
+*Why are we sitting on top of Tessera's Guition 4 inch profile:* the Guition has the same 480 × 480 glass, so Tessera's editor, grid and sizes fit unchanged. Only the hardware section needs replacing, and Tessera keeps that file through its own updates. The proper long-term route, a YC-SM43P board in Tessera itself, is prepared on the `board/portworld-yc-sm43p` branch. Hopefully one day it becomes a supported board
 
 **2. Wired Ethernet: a small change to ESPHome's Ethernet component.**
 On this board the CH390D's chip-select and reset lines are wired to the IO expander rather than to the ESP32. ESPHome's standard `ethernet:` component only accepts ESP32 pins, so it can't drive the chip. The component in this fork is ESPHome 2026.9's own, with two added options (`expander_cs_pin`, `expander_reset_pin`) and a small SPI driver that switches the chip select over I2C around each transfer, the same method Portworld's firmware uses. Without those options it behaves exactly as ESPHome's. ([Details](https://github.com/AUPoolUser/homeassistant_espscreen/blob/yc-sm43p-ethernet/components/ethernet/PORTWORLD.md))
-*Why not wait for a different board:* it makes the panels people already own work on a cable today. The trade-offs are lower throughput than native Ethernet (fine for Home Assistant) and a tie to ESPHome 2026.9.x until the component is updated. The clean fix is a hardware change by Portworld: chip select on a spare ESP32 pin, for example GPIO0.
+*Why not wait for a different board:* I've been waiting for a POE board for some time and this is the best fit. The trade-offs are lower throughput than native Ethernet (which is fine for Home Assistant) and a tie to ESPHome 2026.9.x until the component is updated. The clean fix is a hardware change by Portworld: chip select on a spare ESP32 pin, for example GPIO0 - but this is the compromise.
 
 **3. The *Panel Wi-Fi* switch, and why it went through three versions.**
 With Ethernet working, Wi-Fi becomes optional. Turning it off means the panel needs no Wi-Fi coverage or credentials once installed, doesn't add to a busy Wi-Fi network, and leaves Home Assistant only one address to talk to. A fallback keeps a panel from being stranded if its cable fails.
@@ -38,8 +38,8 @@ With Ethernet working, Wi-Fi becomes optional. Turning it off means the panel ne
 **4. Build settings for a Home Assistant server.**
 Tessera's firmware has some very large source files. Compiling several at once ran a typical Home Assistant server out of memory (`Killed signal terminated program cc1plus`), so the guide adds `compile_process_limit: 1`. It's slower, but it finishes.
 
-**5. The temperature sensor is reported, not trusted.**
-The optional AHT20 sits inside the warm wall box and read about 10–14 °C above the room in testing, so it can't be fixed with a simple offset. It stays in the settings file for information. For climate control the guide recommends a separate room sensor.
+**5. The optional temperature sensor is not accurate.**
+The optional AHT20 sits inside the warm wall box and read about 10–14 °C above the room in testing, so it can't be fixed with a simple offset. It stays in the settings file for information. For climate control the guide recommends a separate room sensor. Mightbe useful only to see the tempertaure of the board!
 
 ## Setting up a PORTWORLD YC-SM43P POE in Home Assistant
 
@@ -58,7 +58,7 @@ This guide takes a new Portworld YC-SM43P from the box to a Tessera panel runnin
 ### What you need
 
 **Hardware**
-- A **Portworld YC-SM43P, ESP32-S3 version**: check the listing or label says *ESP32*. The optional AHT20 temperature/humidity sensor is supported if fitted.
+- A **Portworld YC-SM43P, ESP32-S3 version**: check the listing or label says *ESP32*. The optional AHT20 temperature/humidity sensor is supported if fitted (but not recommended).
 - A **USB-C cable that carries data**, for the first install only. Many USB-C cables are charge-only. If in doubt, use one that transfers files from a phone.
 - An **802.3af (or 802.3at) PoE** switch port or PoE injector connected to your network. **Passive PoE (24 V) injectors are not suitable.** The panel can also run from 12 V DC or USB-C, but then it has no wired network.
 
@@ -115,7 +115,7 @@ This guide takes a new Portworld YC-SM43P from the box to a Tessera panel runnin
 
 5. **Optional edits**
    - **No AHT20 fitted?** Delete the `sensor:` block. If you leave it in, the panel just logs that the sensor isn't found.
-   - **Wi-Fi only, no Ethernet?** Delete `external_components:`, `network:`, `ethernet:`, `switch:` and `interval:` together. The Wi-Fi switch and fallback depend on Ethernet.
+   - **Wi-Fi only, no Ethernet?** Delete `external_components:`, `network:`, `ethernet:`, `switch:` and `interval:` together. The Wi-Fi switch and fallback depend on Ethernet. But if youre not wanting the ethernet - I would recommend the supported Guition 4 inch screen
 6. **Expected errors on this card.** If ESPHome checks the `.local` card on its own, it reports `'esphome' section missing` and `Source for extension of ID 'gpio_backlight_pwm' was not found`. That's normal: this file is only an add-on to the main card. **Never validate or install the `.local` card.**
 
 ### 4. Prepare the main card
