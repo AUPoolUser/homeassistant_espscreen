@@ -7,7 +7,7 @@
 > - [`yc-sm43p-ethernet`](https://github.com/AUPoolUser/homeassistant_espscreen/tree/yc-sm43p-ethernet): wired Ethernet over PoE. ESPHome 2026.9's `ethernet` component with the CH390D chip select driven through the panel's IO expander ([details](https://github.com/AUPoolUser/homeassistant_espscreen/blob/yc-sm43p-ethernet/components/ethernet/PORTWORLD.md)), and a complete, tested settings file in [`portworld/yc-sm43p.local.yaml`](https://github.com/AUPoolUser/homeassistant_espscreen/blob/yc-sm43p-ethernet/portworld/yc-sm43p.local.yaml).
 >   - **What changed in the Ethernet component:** two new options for `type: CH390`, `expander_cs_pin` and `expander_reset_pin`, which accept an IO-expander pin where ESPHome normally needs an ESP32 pin. A small custom SPI driver (`ch390_expander_spi.cpp`) switches the chip select over I2C around every transfer, the same way Portworld's own firmware does. Without those options it behaves exactly like ESPHome's standard component.
 >   - **Limitations:** it replaces ESPHome's built-in `ethernet` component, so it must match the ESPHome version (2026.9.x) and needs updating when ESPHome changes. Because every transfer waits on the I2C expander, throughput is lower than native Ethernet: plenty for Home Assistant, but camera images load more slowly.
-> - **Added a Wi-Fi on/off toggle:** the settings file also adds a *Panel Wi-Fi* switch in Home Assistant, so the panel can run on the Ethernet cable alone. If the ethernet stops working while Wi-Fi is off, Wi-Fi turns itself back on after a minute.
+> - **Added a Wi-Fi on/off toggle:** the settings file also adds a *Panel Wi-Fi* switch in Home Assistant, so the panel can run on the Ethernet cable alone. If Ethernet is down for 5 minutes while Wi-Fi is off, Wi-Fi turns itself back on, and off again once Ethernet is back.
 >
 > Successfully Tested on PortWorld YC-SM43P in October 2026: display, touch, PoE power and Ethernet-only operation.
 > NOTES:
@@ -165,9 +165,9 @@ This guide takes a new Portworld YC-SM43P from the box to a Tessera panel runnin
    - in your router's list of connected devices, or
    - in ESPHome Device Builder: open **Logs** on the main card, and the first lines read *Starting log output from &lt;Wi-Fi address&gt; or &lt;wired address&gt;*.
 3. **Test the wired connection.** From a computer on the same network, run `ping <wired address>`. You should get steady replies, typically 6–15 ms.
-4. **Run on Ethernet alone** (recommended where Wi-Fi is weak or busy). On the panel's device page in Home Assistant, turn off **Panel Wi-Fi** under *Configuration*. Within a minute, `ping <Wi-Fi address>` stops replying while the wired address keeps answering. Tessera keeps working throughout.
+4. **Run on Ethernet alone** (recommended where Wi-Fi is weak or busy). On the panel's device page in Home Assistant, turn off **Panel Wi-Fi** under *Configuration*. Within 30 seconds, `ping <Wi-Fi address>` stops replying while the wired address keeps answering. Tessera keeps working throughout.
    - The setting is kept across restarts.
-   - **Safety net:** if the Ethernet link is down for a minute while Wi-Fi is off, Wi-Fi turns itself back on, so the panel can't drop off the network entirely.
+   - **Safety net:** if the Ethernet link is down for 5 minutes while Wi-Fi is off, Wi-Fi turns itself back on, and off again once Ethernet is back, so the panel can't drop off the network for long. The setting also re-applies itself about 30 seconds after every restart.
 5. **Fix the address.** Give the panel's wired connection a **DHCP reservation** on your router, so it always gets the same address.
 6. **If Home Assistant shows the panel as *Unavailable*** after Wi-Fi is turned off, it's still using the old Wi-Fi address. Go to **Settings → Devices & services → ESPHome → your panel → ⋮ → Reconfigure** and enter the wired address.
 
@@ -181,7 +181,7 @@ This guide takes a new Portworld YC-SM43P from the box to a Tessera panel runnin
 | PoE | Unplug USB and run on PoE only | Panel stays on |
 | Ethernet | `ping <wired address>` | Replies with no loss |
 | Ethernet only | Panel Wi-Fi off, then use the panel | Everything still works |
-| Fallback | Unplug the network cable for two minutes (with USB or 12 V power) | Panel reconnects over Wi-Fi |
+| Fallback | Unplug the network cable for six minutes (with USB or 12 V power) | Panel reconnects over Wi-Fi |
 
 ### Adding more panels
 
