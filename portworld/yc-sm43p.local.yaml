@@ -8,7 +8,7 @@
 #
 # What it does: the YC-SM43P's pins and display timings on top of Tessera's Guition profile, the AHT20
 # sensor, wired Ethernet over PoE (CH390D, chip select on the IO expander: components/ethernet), and a
-# "Panel Wi-Fi" switch in Home Assistant with an automatic fall-back to Wi-Fi if the cable stops working.
+# "Panel Wi-Fi" switch in Home Assistant with an automatic fall-back to Wi-Fi if the cable is down for 5 minutes.
 # Contains no keys or passwords: those stay in the screen's own YAML.
 
 substitutions:
@@ -155,11 +155,20 @@ ethernet:
     tca9555: expander
     number: 7
 
-# ---- Panel Wi-Fi on/off switch: add this at the end of touchscreen01.local.yaml ----
+# ---- Panel Wi-Fi on/off switch ----
 # Adds a "Panel Wi-Fi" switch to the panel's device in Home Assistant. Off = the panel runs on the
 # Ethernet cable alone. The choice is remembered across restarts.
-# Safety net: if the Ethernet link is down for a minute while Wi-Fi is off, Wi-Fi comes back on by
-# itself, so the panel can't strand itself off the network.
+# Every 30 seconds the panel checks:
+#   - Ethernet up and the switch off  -> Wi-Fi off (this also applies the setting after a restart,
+#     when Wi-Fi starts up on its own before the switch can act).
+#   - Ethernet down for ten checks in a row (5 minutes) -> Wi-Fi back on as a fall-back,
+#     and off again once Ethernet is back, if the switch is still off.
+globals:
+  - id: panel_eth_down_checks
+    type: int
+    restore_value: false
+    initial_value: '0'
+
 switch:
   - platform: template
     id: panel_wifi_switch
@@ -171,20 +180,41 @@ switch:
     turn_on_action:
       - wifi.enable:
     turn_off_action:
-      - wifi.disable:
+      # Only drop Wi-Fi while the cable is up; otherwise the 30-second check does it once Ethernet is back.
+      - if:
+          condition:
+            ethernet.connected:
+          then:
+            - wifi.disable:
 
 interval:
-  - interval: 60s
+  - interval: 30s
     then:
       - if:
           condition:
-            and:
-              - not:
-                  ethernet.connected:
-              - not:
-                  wifi.enabled:
+            ethernet.connected:
           then:
-            - logger.log:
-                level: WARN
-                format: "Ethernet down with Wi-Fi off: turning Wi-Fi back on"
-            - wifi.enable:
+            - globals.set:
+                id: panel_eth_down_checks
+                value: '0'
+            - if:
+                condition:
+                  and:
+                    - switch.is_off: panel_wifi_switch
+                    - wifi.enabled:
+                then:
+                  - logger.log: "Ethernet up and Panel Wi-Fi off: turning Wi-Fi off"
+                  - wifi.disable:
+          else:
+            - lambda: 'id(panel_eth_down_checks) += 1;'
+            - if:
+                condition:
+                  and:
+                    - lambda: 'return id(panel_eth_down_checks) >= 10;'
+                    - not:
+                        wifi.enabled:
+                then:
+                  - logger.log:
+                      level: WARN
+                      format: "Ethernet down for 5 minutes: turning Wi-Fi back on"
+                  - wifi.enable:
